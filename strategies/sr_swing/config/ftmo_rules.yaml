@@ -1,0 +1,47 @@
+# ============================================================
+# REGLAS FTMO — Guardarraíles Irrompibles
+# ============================================================
+# ESTAS REGLAS NO SE MODIFICAN. Son límites de seguridad
+# con margen interno para nunca alcanzar los límites reales
+# de FTMO (5% diario, 10% total).
+# ============================================================
+
+ftmo_rules:
+  # --- Drawdown (con margen de seguridad) ---
+  max_daily_loss_pct: 0.04            # 4% interno (FTMO permite 5%)
+  max_total_loss_pct: 0.08            # 8% interno (FTMO permite 10%)
+  safety_margin_daily: 0.01           # Dejar de operar al 4% (1% antes del límite real)
+  safety_margin_total: 0.02           # Dejar de operar al 8% (2% antes del límite real)
+
+  # --- Límites de servidor ---
+  max_server_requests_per_day: 500    # FTMO permite 2000, usamos 500
+  max_open_orders: 10                 # FTMO permite 200, usamos 10
+
+  # --- Operativos ---
+  min_trading_days: 4                 # Mínimo 4 días con operaciones
+
+  # --- Fin de semana ---
+  close_before_weekend: true
+  weekend_close_minutes_before: 30    # Cerrar 30 min antes del cierre del viernes
+
+  # --- Noticias de alto impacto ---
+  avoid_high_impact_news: true
+  news_blackout_minutes: 15           # No abrir 15 min antes/después
+
+  # --- Objetivos del Challenge ---
+  challenge:
+    phase1_profit_target_pct: 0.10    # 10%
+    phase2_profit_target_pct: 0.05    # 5%
+
+  # --- Acciones automáticas ---
+  on_daily_limit_hit:
+    close_all_positions: true
+    block_new_trades: true
+    send_alert: true
+    require_manual_reset: false       # Se resetea al día siguiente automáticamente
+
+  on_total_limit_hit:
+    close_all_positions: true
+    block_new_trades: true
+    send_alert: true
+    require_manual_reset: true        # Requiere intervención manual

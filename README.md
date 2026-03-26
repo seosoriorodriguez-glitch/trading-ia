@@ -1,44 +1,63 @@
-# 🤖 Bot de Trading Automatizado con IA - Estrategia S/R en Índices
+# 🤖 Trading IA - Framework Multi-Estrategia
 
-Bot automatizado para operar índices (US30, NAS100, SPX500) en MetaTrader 5,
-diseñado específicamente para cuentas de fondeo FTMO con gestión de riesgo avanzada.
+Framework modular para desarrollo y backtesting de estrategias de trading automatizado en MetaTrader 5, diseñado para cuentas de fondeo FTMO.
 
-## Estrategia
+## 🎯 Estrategias Disponibles
 
-- **Zonas en H4:** Detecta soportes y resistencias basados en rechazos fuertes
-- **Entradas en H1:** Pin bar, envolvente, y falso quiebre (liquidity sweep)
-- **Gestión de riesgo:** 0.5% por operación, máximo 3 simultáneas
-- **Compliance FTMO:** Guardarraíles de drawdown diario (4%) y total (8%)
+### 1. [S/R Swing Trading](strategies/sr_swing/) ✅ VALIDADA
 
-## Estructura del Proyecto
+**Swing trading basado en zonas de Soporte y Resistencia**
+
+- **Timeframes**: H4 (zonas) + H1 (señales)
+- **Patrones**: Pin Bar, False Breakout B1
+- **Filtros**: EMA 200, Solo LONGs
+- **Resultados**: PF 3.57, WR 72%, +9.01% (US30, 2 años)
+- **Estado**: ✅ Validada, lista para demo
+
+### 2. [Pivot Points Scalping](strategies/pivot_scalping/) 🔄 EN DESARROLLO
+
+**Scalping en pivots puros M15+M5**
+
+- **Timeframes**: M15 (pivots) + M5 (entradas)
+- **Patrones**: Pin Bar, Engulfing, Inside Bar
+- **Gestión**: BE en 1:1, Trailing Stop activo
+- **Estado**: 🔄 En desarrollo, pendiente de implementación
+
+## 📁 Estructura del Proyecto
 
 ```
-sr-trading-bot/
-├── config/
-│   ├── strategy_params.yaml      # Parámetros de la estrategia
-│   ├── ftmo_rules.yaml           # Reglas FTMO (guardarraíles)
-│   └── instruments.yaml          # Configuración por instrumento
-├── core/
-│   ├── config_loader.py          # Cargador de configuración
-│   ├── market_data.py            # Conexión MT5 (Windows + Mac/Docker)
-│   ├── levels.py                 # Detección de zonas S/R
-│   ├── signals.py                # Detección de señales de entrada
-│   ├── risk_manager.py           # Gestión de riesgo y compliance
-│   └── executor.py               # Ejecución de órdenes en MT5
-├── backtest/
-│   └── backtester.py             # Motor de backtesting
-├── monitoring/
-│   ├── telegram_notifier.py      # Notificaciones Telegram
-│   └── trade_logger.py           # Log de trades en CSV
-├── logs/                         # Logs del bot (auto-generado)
-├── data/                         # Datos históricos para backtest
-├── main.py                       # Loop principal del bot
-├── run_backtest.py               # Script de backtesting
-├── docker-compose.yml            # MT5 en Docker (para macOS)
-├── setup_mac.sh                  # Setup automático macOS
-├── requirements.txt              # Dependencias Python
-├── .env.example                  # Variables de entorno (template)
-└── .gitignore
+trading-ia/
+├── strategies/                    # 🎯 Estrategias (modular)
+│   ├── sr_swing/                  # Estrategia S/R Swing (validada)
+│   │   ├── config/                # Configs específicas
+│   │   ├── core/                  # Lógica de la estrategia
+│   │   ├── backtest/              # Backtester
+│   │   ├── data/                  # Datos y resultados
+│   │   ├── results/               # Análisis
+│   │   └── README.md              # Documentación
+│   │
+│   └── pivot_scalping/            # Estrategia Pivot Scalping (en desarrollo)
+│       ├── config/
+│       ├── core/
+│       ├── backtest/
+│       └── README.md
+│
+├── core/                          # 🔧 Código compartido
+│   ├── candle.py                  # Clases base
+│   ├── config_loader.py           # Cargador de configs
+│   ├── market_data.py             # Conexión MT5
+│   └── utils.py                   # Utilidades
+│
+├── tools/                         # 🛠️ Herramientas
+│   ├── download_yahoo_data.py     # Descarga datos Yahoo Finance
+│   ├── compare_strategies.py      # Comparar estrategias
+│   ├── portfolio_simulator.py     # Simular portfolio multi-estrategia
+│   └── create_strategy.py         # Crear nueva estrategia
+│
+├── docs/                          # 📚 Documentación
+├── main.py                        # Loop principal del bot
+├── requirements.txt               # Dependencias Python
+└── README.md                      # Este archivo
 ```
 
 ## Requisitos
@@ -98,41 +117,73 @@ pip install MetaTrader5 pandas numpy PyYAML requests matplotlib
 copy .env.example .env
 ```
 
-## Uso
+## 🚀 Uso Rápido
 
-### 1. Exportar datos históricos (desde MT5)
-
-```bash
-python run_backtest.py --export-mt5 US30 --days 365
-```
-
-Esto genera CSVs en la carpeta `data/`.
-
-### 2. Ejecutar backtest
+### 1. Ejecutar Backtest de una Estrategia
 
 ```bash
-# Desde CSV
-python run_backtest.py \
-  --data-h1 data/US30_raw_H1_365d.csv \
-  --data-h4 data/US30_raw_H4_365d.csv \
+# S/R Swing (H4+H1)
+cd strategies/sr_swing
+python3 run_backtest.py \
+  --data-h1 data/US30_H1_730d.csv \
+  --data-h4 data/US30_H4_730d.csv \
   --instrument US30 \
-  --balance 100000 \
-  --output data/backtest_results.csv
-
-# Directo desde MT5
-python run_backtest.py --from-mt5 US30 --days 365 --output results.csv
+  --output data/backtest_US30_new.csv
 ```
 
-### 3. Ejecutar bot (simulación)
+### 2. Comparar Múltiples Estrategias
 
 ```bash
-python main.py --log-level INFO
+python3 tools/compare_strategies.py \
+  strategies/sr_swing/data/backtest_US30_v4_longs_only.csv \
+  strategies/pivot_scalping/data/backtest_US30_scalping_60d.csv
 ```
 
-### 4. Ejecutar bot (LIVE — ¡solo después de validar con backtest y demo!)
+**Salida**:
+```
+================================================================================
+COMPARATIVA DE ESTRATEGIAS
+================================================================================
+Estrategia        Trades  Win Rate  PF    Retorno  Mejor Trade  Peor Trade
+sr_swing          25      72.0%     3.57  +9.01%   $2,450.00    -$500.00
+pivot_scalping    87      58.3%     1.42  +5.23%   $850.00      -$520.00
+================================================================================
+```
+
+### 3. Simular Portfolio Multi-Estrategia
 
 ```bash
-python main.py --live --log-level INFO
+python3 tools/portfolio_simulator.py \
+  --strategy sr_swing strategies/sr_swing/data/backtest_US30_v4_longs_only.csv \
+  --strategy pivot_scalping strategies/pivot_scalping/data/backtest_US30_scalping_60d.csv
+```
+
+### 4. Crear Nueva Estrategia
+
+```bash
+python3 tools/create_strategy.py mi_nueva_estrategia
+```
+
+Esto crea:
+```
+strategies/mi_nueva_estrategia/
+├── config/
+├── core/
+├── backtest/
+├── data/
+├── results/
+└── README.md
+```
+
+### 5. Descargar Datos
+
+```bash
+# Yahoo Finance (H1, H4, D1)
+python3 tools/download_yahoo_data.py \
+  --ticker "^DJI" \
+  --days 730 \
+  --interval 1h \
+  --output data/US30_H1_730d
 ```
 
 ## Configuración de Telegram
@@ -169,32 +220,45 @@ Cada 60 segundos (o al cierre de vela H1):
      → Enviar orden → Notificar por Telegram → Registrar en log
 ```
 
-## Parámetros Clave (strategy_params.yaml)
+## 📊 Resultados de Estrategias
 
-| Parámetro | Valor | Descripción |
-|-----------|-------|-------------|
-| `swing_strength` | 3 | Velas a cada lado para confirmar swing |
-| `min_wick_ratio` | 0.40 | Mínimo 40% mecha para rechazo fuerte |
-| `min_touches` | 2 | Toques mínimos para validar zona |
-| `min_rr_ratio` | 1.5 | R:R mínimo para tomar trade |
-| `risk_per_trade_pct` | 0.005 | 0.5% riesgo por operación |
-| `sl_buffer_points` | 80 | Puntos extra de SL (US30) |
-| `max_simultaneous_trades` | 3 | Máximo operaciones abiertas |
+### S/R Swing (V4 - Solo LONGs)
 
-## Proceso de Validación Recomendado
+| Instrumento | Trades | Win Rate | PF | Retorno | Max DD | Frecuencia |
+|-------------|--------|----------|-----|---------|--------|------------|
+| **US30** | 25 | 72.0% | 3.57 | +9.01% | 0.98% | 1.0/mes |
+| **NAS100** | 37 | 51.4% | 1.89 | +7.97% | 2.75% | 1.6/mes |
+| **SPX500** | 30 | 56.7% | 1.24 | +1.56% | 2.25% | 1.5/mes |
 
-1. **Backtest** con 2+ años de datos → verificar métricas
-2. **Paper trading** en cuenta demo FTMO (mínimo 2-4 semanas)
-3. **FTMO Free Trial** (si disponible) con el bot
-4. **FTMO Challenge** solo si los resultados son consistentes
+**Recomendación**: US30 + NAS100 para FTMO (2.6 trades/mes, PF promedio 2.23)
 
-## Métricas Objetivo del Backtest
+## 🎯 Proceso de Desarrollo de Estrategias
 
-- Win Rate: >= 45%
-- Profit Factor: >= 1.5
-- Max Drawdown: < 8% (compliance FTMO)
+1. **Diseño**: Definir reglas claras de entrada/salida
+2. **Implementación**: Crear módulos en `strategies/[nombre]/core/`
+3. **Backtest**: Validar con 1-2 años de datos históricos
+4. **Optimización**: Ajustar parámetros basado en resultados
+5. **Demo**: Operar 1-3 meses en cuenta demo
+6. **FTMO**: Solo si métricas son consistentes
+
+## 📈 Métricas Objetivo
+
+### Para Swing Trading (H4+H1)
+- Win Rate: >= 50%
+- Profit Factor: >= 1.8
+- Max Drawdown: < 5%
+- Frecuencia: 2-4 trades/mes por instrumento
+
+### Para Scalping (M15+M5)
+- Win Rate: >= 55%
+- Profit Factor: >= 1.3 (después de costos)
+- Max Drawdown: < 10%
+- Frecuencia: 10-30 trades/mes por instrumento
+
+### Compliance FTMO (Todas las Estrategias)
+- Max Drawdown Total: < 8%
 - Max Daily Drawdown: < 4%
-- R:R promedio: >= 1.5:1
+- Mínimo Trading Days: 4+ trades/mes
 
 ## Advertencias
 

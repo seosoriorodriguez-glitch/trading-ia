@@ -1,0 +1,57 @@
+# ============================================================
+# INSTRUMENTOS — Parámetros por Instrumento
+# ============================================================
+# ⚠️ IMPORTANTE: Los nombres de símbolo (symbol_mt5) DEBEN verificarse
+# con tu broker específico ANTES de ejecutar backtest o trading.
+#
+# Estos nombres están configurados para BlackBull Markets.
+# FTMO puede usar nombres DIFERENTES (ej: US30cash, US30_m, etc.)
+#
+# Para verificar nombres correctos:
+#   1. Levantar MT5 (Docker o nativo)
+#   2. Ejecutar: python verify_mt5.py --search US30 NAS100 SPX500
+#   3. Actualizar symbol_mt5 con los nombres exactos encontrados
+# ============================================================
+
+instruments:
+  US30:
+    enabled: true
+    symbol_mt5: "US30.raw"            # ⚠️ VERIFICAR con verify_mt5.py antes de usar
+    description: "Dow Jones Industrial Average"
+    sl_buffer_points: 150             # ⚠️ OPTIMIZADO: Aumentado de 80 a 150 (reducir stop-outs prematuros)
+    zone_merge_distance: 150          # Puntos para agrupar swings en misma zona
+    tp_offset_points: 20              # Puntos antes de la zona opuesta para TP
+    max_spread_points: 30
+    min_zone_width: 50                # Zona más angosta que esto se descarta
+    max_zone_width: 500               # Zona más ancha que esto se descarta
+    correlation_group: "us_indices"
+
+  NAS100:
+    enabled: true
+    symbol_mt5: "NAS100.raw"          # ⚠️ VERIFICAR con verify_mt5.py antes de usar
+    description: "Nasdaq 100"
+    sl_buffer_points: 100             # Más volátil que US30
+    zone_merge_distance: 200
+    tp_offset_points: 30
+    max_spread_points: 40
+    min_zone_width: 80
+    max_zone_width: 600
+    correlation_group: "us_indices"
+
+  SPX500:
+    enabled: true
+    symbol_mt5: "SPX500.raw"          # ⚠️ VERIFICAR con verify_mt5.py antes de usar
+    description: "S&P 500"
+    sl_buffer_points: 30              # Menos volátil
+    zone_merge_distance: 50
+    tp_offset_points: 10
+    max_spread_points: 15
+    min_zone_width: 15
+    max_zone_width: 150
+    correlation_group: "us_indices"
+
+# Grupos de correlación — máximo 2 trades en mismo grupo
+correlation_groups:
+  us_indices:
+    instruments: ["US30", "NAS100", "SPX500"]
+    max_simultaneous: 2
