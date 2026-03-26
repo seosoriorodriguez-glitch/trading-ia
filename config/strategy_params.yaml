@@ -1,0 +1,112 @@
+# ============================================================
+# ESTRATEGIA S/R INDICES — Parámetros de Estrategia v1.0
+# ============================================================
+# Este archivo es la configuración central del bot.
+# Modificar con cuidado — cada cambio afecta las señales.
+# Siempre hacer backtest después de cualquier ajuste.
+# ============================================================
+
+# --- Detección de Zonas (H4) ---
+zone_detection:
+  timeframe: "H4"
+  lookback_candles: 200               # ~33 días de mercado
+  swing_strength: 3                   # Velas a cada lado para confirmar swing high/low
+  min_wick_ratio: 0.40                # Mínimo 40% de mecha para "rechazo fuerte"
+  min_touches: 2                      # Toques mínimos para validar zona
+  min_touch_separation: 5             # Velas H4 mínimas entre toques (evita contar consecutivas)
+  max_zones_active: 6                 # Máximo zonas activas (3 soporte + 3 resistencia)
+  zone_expiry_candles: 300            # Zona expira si no se toca en 300 velas H4 (~50 días)
+
+# --- Señales de Entrada (H1) ---
+entry:
+  timeframe: "H1"
+  valid_patterns:
+    - "pin_bar"
+    - "engulfing"
+    - "false_breakout_b1"
+    - "false_breakout_b2"
+  entry_price: "close"                # Entrar al cierre de la vela de confirmación
+  entry_type: "market"                # Orden a mercado
+
+  # Pin Bar / Martillo
+  pin_bar:
+    min_wick_to_body_ratio: 2.0       # Mecha >= 2x el cuerpo
+    close_in_upper_half: true         # Para largos: cierre en mitad superior
+    close_in_lower_half: true         # Para cortos: cierre en mitad inferior
+
+  # Envolvente
+  engulfing:
+    body_engulfs_previous: true       # Cuerpo actual envuelve cuerpo anterior
+    previous_opposite_color: true     # Vela anterior debe ser de color opuesto
+
+  # Falso quiebre
+  false_breakout:
+    # B1: Intra-vela (preferida, mayor probabilidad)
+    b1_min_body_ratio: 0.40           # Cuerpo >= 40% del rango
+    b1_min_penetration: 0             # Cualquier penetración cuenta
+
+    # B2: Dos velas (respaldo)
+    b2_max_candles_to_return: 2       # Máximo siguiente vela H1
+    b2_min_body_ratio: 0.50           # Vela de regreso: cuerpo >= 50% del rango
+
+    prefer_b1_over_b2: true
+
+# --- Stop Loss ---
+stop_loss:
+  method: "zone_edge_plus_buffer"     # SL en borde de zona + buffer
+  # buffer_points se define por instrumento en instruments.yaml
+
+# --- Take Profit ---
+take_profit:
+  method: "next_zone_with_offset"     # TP en siguiente zona opuesta - offset
+  min_rr_ratio: 1.5                   # No tomar trades con R:R < 1.5:1
+  # offset_points se define por instrumento
+
+# --- Tamaño de Posición ---
+position_sizing:
+  risk_per_trade_pct: 0.005           # 0.5% del balance por operación
+  max_simultaneous_trades: 3          # Máximo 3 operaciones abiertas
+  max_risk_total_pct: 0.015           # Máximo 1.5% riesgo total expuesto
+  max_correlated_trades: 2            # Máximo 2 en instrumentos correlacionados
+
+# --- Break Even ---
+break_even:
+  enabled: true
+  trigger_rr: 1.0                     # Mover SL a BE cuando alcanza 1:1
+  offset_points: 10                   # SL a entrada + 10 pts (cubre spread/comisión)
+
+# --- Trailing Stop ---
+trailing_stop:
+  enabled: false                      # Desactivado hasta validar en backtest
+  activation_rr: 1.5
+  trail_distance_points: 100
+
+# --- Filtros ---
+filters:
+  # Horario — solo operar en sesiones líquidas
+  trading_sessions:
+    london_open: "08:00"              # UTC
+    ny_open: "13:30"                  # UTC
+    ny_close: "20:00"                 # UTC
+    only_during_sessions: true
+
+  # Spread máximo
+  max_spread_points: 30               # Override por instrumento
+
+  # Volatilidad mínima
+  volatility:
+    atr_period: 14                    # ATR 14 períodos en H4
+    min_atr_multiplier: 0.5           # ATR >= 50% de su media de 50 períodos
+
+# --- Bot Loop ---
+bot:
+  check_interval_seconds: 60          # Revisar cada 60 segundos
+  check_on_candle_close: true         # Priorizar checks al cierre de vela H1
+  timezone: "Europe/Prague"           # Timezone de FTMO para cálculos diarios
+
+# --- Conexión MT5 ---
+mt5:
+  # macOS con Docker: host y puerto del contenedor
+  host: "localhost"
+  port: 8001
+  # En Windows estos se ignoran (usa conexión directa)

@@ -1,0 +1,23 @@
+# ============================================================
+# Docker Compose — MetaTrader 5 para macOS
+# ============================================================
+# Ejecuta MT5 dentro de un contenedor Docker con emulación x86.
+#
+# Uso:
+#   docker-compose up -d      # Iniciar
+#   docker-compose logs -f    # Ver logs
+#   docker-compose down       # Detener
+# ============================================================
+
+services:
+  mt5:
+    image: bahadirumutiscimen/pysiliconwine:latest
+    container_name: mt5-trading
+    ports:
+      - "8001:8001"          # Puerto para la API Python
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G

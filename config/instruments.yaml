@@ -1,0 +1,50 @@
+# ============================================================
+# INSTRUMENTOS — Parámetros por Instrumento
+# ============================================================
+# Los nombres de símbolo (symbol_mt5) dependen del broker.
+# Verificar en MT5: Vista > Símbolos para obtener nombres exactos.
+# Estos están configurados para BlackBull Markets.
+# ============================================================
+
+instruments:
+  US30:
+    enabled: true
+    symbol_mt5: "US30.raw"            # VERIFICAR con tu broker
+    description: "Dow Jones Industrial Average"
+    sl_buffer_points: 80              # Puntos extra de SL más allá de la zona
+    zone_merge_distance: 150          # Puntos para agrupar swings en misma zona
+    tp_offset_points: 20              # Puntos antes de la zona opuesta para TP
+    max_spread_points: 30
+    min_zone_width: 50                # Zona más angosta que esto se descarta
+    max_zone_width: 500               # Zona más ancha que esto se descarta
+    correlation_group: "us_indices"
+
+  NAS100:
+    enabled: true
+    symbol_mt5: "NAS100.raw"          # VERIFICAR con tu broker
+    description: "Nasdaq 100"
+    sl_buffer_points: 100             # Más volátil que US30
+    zone_merge_distance: 200
+    tp_offset_points: 30
+    max_spread_points: 40
+    min_zone_width: 80
+    max_zone_width: 600
+    correlation_group: "us_indices"
+
+  SPX500:
+    enabled: true
+    symbol_mt5: "SPX500.raw"          # VERIFICAR con tu broker
+    description: "S&P 500"
+    sl_buffer_points: 30              # Menos volátil
+    zone_merge_distance: 50
+    tp_offset_points: 10
+    max_spread_points: 15
+    min_zone_width: 15
+    max_zone_width: 150
+    correlation_group: "us_indices"
+
+# Grupos de correlación — máximo 2 trades en mismo grupo
+correlation_groups:
+  us_indices:
+    instruments: ["US30", "NAS100", "SPX500"]
+    max_simultaneous: 2
