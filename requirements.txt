@@ -1,18 +1,14 @@
-# SR Trading Bot — Dependencies
+# Trading IA - Multi-Strategy Framework
+# Plataforma: Windows
 # pip install -r requirements.txt
 
 # ============================================================
-# MetaTrader 5 — Instalar UNA de las dos opciones:
+# MetaTrader 5 (Windows - Librería Oficial)
 # ============================================================
-
-# OPCIÓN A: Windows (librería oficial de MetaQuotes)
-# pip install MetaTrader5>=5.0.45
-
-# OPCIÓN B: macOS con Docker (compatible Apple Silicon M1/M2/M3/M4)
-# pip install siliconmetatrader5
+MetaTrader5>=5.0.45
 
 # ============================================================
-# Dependencias comunes (instalar siempre)
+# Dependencias Core
 # ============================================================
 
 # Data & Analysis
@@ -27,3 +23,6 @@ requests>=2.31
 
 # Backtesting & Visualization
 matplotlib>=3.7
+
+# Data Download (Yahoo Finance como fallback)
+yfinance>=0.2.28
