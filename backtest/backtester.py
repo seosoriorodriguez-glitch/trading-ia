@@ -336,6 +336,8 @@ class Backtester:
             
             # Obtener configuración de filtro de tendencia
             trend_config = self.config.get("filters", {}).get("trend", {})
+            if h1_idx == 1:  # Solo log en la primera iteración
+                logger.info(f"🔧 Backtest trend_config: {trend_config}")
 
             signals = scan_for_signals(
                 candles_h1=h1_window,

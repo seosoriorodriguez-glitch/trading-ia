@@ -94,6 +94,7 @@ filters:
     ema_timeframe: "H4"
     neutral_zone_pct: 0.005           # ±0.5% alrededor de EMA = zona neutral
     counter_trend_min_touches: 7      # ⚠️ V3: Contra tendencia solo si zona tiene 7+ toques (muy probada)
+    allow_counter_trend: false        # ⚠️ V4: DESACTIVAR SHORTs completamente (solo LONGs)
 
   # Horario — solo operar en sesiones líquidas
   trading_sessions:

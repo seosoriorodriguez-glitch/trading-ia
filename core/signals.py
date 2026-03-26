@@ -462,17 +462,17 @@ def scan_for_signals(
         direction, signal_type, confidence = result
         entry_price = candles_h1[-1].close
         
-        # Aplicar filtro de tendencia
-        if ema_200 is not None and trend_config:
+        # Aplicar filtro de tendencia (aplicar SIEMPRE si trend_config está disponible)
+        if trend_config:
             allowed, reason = should_allow_signal(
                 direction.value,
                 entry_price,
-                ema_200,
+                ema_200,  # Puede ser None
                 zone.touches,
                 trend_config
             )
             if not allowed:
-                logger.debug(f"Señal {direction.value} filtrada por tendencia: {reason}")
+                logger.info(f"❌ Señal {direction.value} filtrada por tendencia: {reason}")
                 continue
 
         # Calcular SL/TP

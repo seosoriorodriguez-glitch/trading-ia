@@ -85,6 +85,14 @@ def should_allow_signal(
     if not trend_config.get("enabled", False):
         return (True, "trend_filter_disabled")
     
+    # V4: Verificar si se permiten trades contra tendencia
+    allow_counter_trend = trend_config.get("allow_counter_trend", True)
+    
+    # V4: Si allow_counter_trend es False, desactivar TODOS los SHORTs (incluso si EMA no está disponible)
+    if not allow_counter_trend and direction == "SHORT":
+        logger.info(f"❌ V4: SHORT desactivado (allow_counter_trend=False)")
+        return (False, "shorts_disabled")
+    
     if ema_200 is None:
         return (True, "ema_not_available")
     
@@ -101,7 +109,9 @@ def should_allow_signal(
     if price_position:
         if direction == "LONG":
             return (True, "with_trend")
-        else:  # SHORT
+        else:  # SHORT (contra tendencia)
+            if not allow_counter_trend:
+                return (False, "counter_trend_disabled")
             if zone_touches >= counter_trend_min_touches:
                 return (True, "counter_trend_strong_zone")
             else:
@@ -111,7 +121,9 @@ def should_allow_signal(
     else:
         if direction == "SHORT":
             return (True, "with_trend")
-        else:  # LONG
+        else:  # LONG (contra tendencia)
+            if not allow_counter_trend:
+                return (False, "counter_trend_disabled")
             if zone_touches >= counter_trend_min_touches:
                 return (True, "counter_trend_strong_zone")
             else:
