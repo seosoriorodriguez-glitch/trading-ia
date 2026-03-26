@@ -34,6 +34,7 @@ class BacktestTrade:
     exit_price: float = 0
     exit_reason: str = ""              # tp_hit, sl_hit, break_even, weekend_close
     pnl_points: float = 0
+    pnl_usd: float = 0                 # P&L en USD basado en riesgo normalizado
     pnl_pct: float = 0
     risk_reward_planned: float = 0
     risk_reward_actual: float = 0
@@ -69,8 +70,18 @@ class BacktestResult:
 
     @property
     def profit_factor(self) -> float:
+        """Profit Factor en puntos (SOLO REFERENCIA - usar profit_factor_usd)."""
         gross_profit = sum(t.pnl_points for t in self.trades if t.pnl_points > 0)
         gross_loss = abs(sum(t.pnl_points for t in self.trades if t.pnl_points < 0))
+        if gross_loss == 0:
+            return float("inf") if gross_profit > 0 else 0
+        return gross_profit / gross_loss
+    
+    @property
+    def profit_factor_usd(self) -> float:
+        """Profit Factor en USD (MÉTRICA CORRECTA)."""
+        gross_profit = sum(t.pnl_usd for t in self.trades if t.pnl_usd > 0)
+        gross_loss = abs(sum(t.pnl_usd for t in self.trades if t.pnl_usd < 0))
         if gross_loss == 0:
             return float("inf") if gross_profit > 0 else 0
         return gross_profit / gross_loss
@@ -83,7 +94,7 @@ class BacktestResult:
 
     @property
     def max_drawdown_pct(self) -> float:
-        """Calcula el máximo drawdown como porcentaje."""
+        """Calcula el máximo drawdown como porcentaje usando USD."""
         if not self.trades:
             return 0
 
@@ -94,7 +105,7 @@ class BacktestResult:
         for t in sorted(self.trades, key=lambda x: x.entry_time):
             if t.is_open:
                 continue
-            balance += t.pnl_points  # Simplificación
+            balance += t.pnl_usd  # Usar USD en lugar de puntos
             peak = max(peak, balance)
             dd = (peak - balance) / peak if peak > 0 else 0
             max_dd = max(max_dd, dd)
@@ -133,7 +144,8 @@ class BacktestResult:
             f"Total operaciones:       {self.total_trades}",
             f"Ganadoras:               {self.winning_trades} ({self.win_rate:.1%})",
             f"Perdedoras:              {self.losing_trades}",
-            f"Profit Factor:           {self.profit_factor:.2f}",
+            f"Profit Factor (USD):     {self.profit_factor_usd:.2f}  ← MÉTRICA REAL",
+            f"Profit Factor (Puntos):  {self.profit_factor:.2f}  (referencia)",
             "",
             f"Max Drawdown:            {self.max_drawdown_pct:.2%}",
             f"Max pérdidas consecutivas: {self.max_consecutive_losses}",
@@ -177,6 +189,7 @@ class BacktestResult:
                 "exit_price": t.exit_price,
                 "exit_reason": t.exit_reason,
                 "pnl_points": t.pnl_points,
+                "pnl_usd": t.pnl_usd,
                 "pnl_pct": t.pnl_pct,
                 "rr_planned": t.risk_reward_planned,
                 "rr_actual": t.risk_reward_actual,
@@ -391,16 +404,21 @@ class Backtester:
                 trade.risk_reward_actual = trade.pnl_points / risk
                 trade.pnl_pct = (trade.pnl_points / trade.entry_price) * 100
 
-        # Balance final (simplificado: sumando puntos × sizing)
+        # Balance final y cálculo de P&L en USD
         risk_per_trade = initial_balance * sizing_config["risk_per_trade_pct"]
         for trade in trades:
             if trade.direction == "LONG":
                 planned_risk_pts = trade.entry_price - trade.stop_loss
             else:
                 planned_risk_pts = trade.stop_loss - trade.entry_price
+            
             if planned_risk_pts > 0:
+                # Calcular P&L en USD basado en riesgo normalizado
                 pnl_usd = (trade.pnl_points / planned_risk_pts) * risk_per_trade
+                trade.pnl_usd = pnl_usd
                 balance += pnl_usd
+            else:
+                trade.pnl_usd = 0
 
         result = BacktestResult(
             trades=trades,
