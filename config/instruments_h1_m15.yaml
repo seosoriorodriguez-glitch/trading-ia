@@ -1,0 +1,76 @@
+# ============================================================
+# INSTRUMENTOS — Configuración H1+M15
+# ============================================================
+# Parámetros ajustados para timeframes menores.
+# Buffers y offsets reducidos ~1/3 respecto a H4+H1.
+# ============================================================
+
+instruments:
+  US30:
+    name: "Dow Jones Industrial Average"
+    symbol_mt5: "US30"                # ⚠️ Verificar nombre exacto en tu broker
+    symbol_yahoo: "^DJI"
+    asset_class: "index"
+    
+    # Stop Loss
+    sl_buffer_points: 50              # Reducido de 150 a 50 para H1+M15
+    
+    # Take Profit
+    tp_offset_points: 30              # Reducido de 100 a 30
+    
+    # Spread y comisiones
+    typical_spread_points: 3
+    commission_per_lot: 0
+    
+    # Tamaño de contrato
+    point_value: 1.0                  # $1 por punto
+    min_lot_size: 0.01
+    lot_step: 0.01
+
+  NAS100:
+    name: "Nasdaq 100"
+    symbol_mt5: "NAS100"
+    symbol_yahoo: "^IXIC"
+    asset_class: "index"
+    
+    sl_buffer_points: 50              # Ajustado para H1+M15
+    tp_offset_points: 30
+    
+    typical_spread_points: 2
+    commission_per_lot: 0
+    
+    point_value: 1.0
+    min_lot_size: 0.01
+    lot_step: 0.01
+
+  SPX500:
+    name: "S&P 500"
+    symbol_mt5: "SPX500"
+    symbol_yahoo: "^GSPC"
+    asset_class: "index"
+    
+    sl_buffer_points: 15              # SPX500 tiene movimientos más pequeños
+    tp_offset_points: 10
+    
+    typical_spread_points: 0.5
+    commission_per_lot: 0
+    
+    point_value: 1.0
+    min_lot_size: 0.01
+    lot_step: 0.01
+
+  GBPJPY:
+    name: "British Pound / Japanese Yen"
+    symbol_mt5: "GBPJPY"
+    symbol_yahoo: "GBPJPY=X"
+    asset_class: "forex"
+    
+    sl_buffer_points: 20              # Ajustado para H1+M15
+    tp_offset_points: 15
+    
+    typical_spread_points: 3
+    commission_per_lot: 0
+    
+    point_value: 0.01                 # Pips
+    min_lot_size: 0.01
+    lot_step: 0.01

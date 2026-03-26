@@ -24,10 +24,22 @@ def load_yaml(filename: str) -> dict:
 class Config:
     """Configuración centralizada del bot."""
 
-    def __init__(self):
-        self.strategy: dict = load_yaml("strategy_params.yaml")
+    def __init__(self, strategy_config_path: Optional[str] = None, instruments_config_path: Optional[str] = None):
+        # Cargar strategy config (permitir path alternativo)
+        if strategy_config_path:
+            with open(strategy_config_path, "r", encoding="utf-8") as f:
+                self.strategy: dict = yaml.safe_load(f)
+        else:
+            self.strategy: dict = load_yaml("strategy_params.yaml")
+        
+        # Cargar instruments config (permitir path alternativo)
+        if instruments_config_path:
+            with open(instruments_config_path, "r", encoding="utf-8") as f:
+                self.instruments_raw: dict = yaml.safe_load(f)
+        else:
+            self.instruments_raw: dict = load_yaml("instruments.yaml")
+        
         self.ftmo: dict = load_yaml("ftmo_rules.yaml")["ftmo_rules"]
-        self.instruments_raw: dict = load_yaml("instruments.yaml")
         self.instruments: Dict[str, dict] = self.instruments_raw["instruments"]
         self.correlation_groups: dict = self.instruments_raw.get("correlation_groups", {})
 
@@ -78,11 +90,11 @@ class Config:
 _config: Optional[Config] = None
 
 
-def get_config() -> Config:
+def get_config(strategy_config_path: Optional[str] = None, instruments_config_path: Optional[str] = None) -> Config:
     """Obtiene la instancia global de configuración."""
     global _config
-    if _config is None:
-        _config = Config()
+    if _config is None or strategy_config_path or instruments_config_path:
+        _config = Config(strategy_config_path, instruments_config_path)
     return _config
 
 

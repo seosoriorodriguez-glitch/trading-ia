@@ -1,0 +1,117 @@
+# ============================================================
+# ESTRATEGIA S/R INDICES — H1+M15 (Timeframes Menores)
+# ============================================================
+# Variante de la estrategia base para timeframes menores.
+# Zonas detectadas en H1, señales en M15.
+# Parámetros ajustados para mayor frecuencia de trading.
+# ============================================================
+
+# --- Detección de Zonas (H1) ---
+zone_detection:
+  timeframe: "H1"
+  lookback_candles: 500               # ~21 días de mercado (mismo período que H4 con 200)
+  swing_strength: 2                   # Reducido de 3 a 2 (más sensible para H1)
+  min_wick_ratio: 0.30                # Reducido de 0.40 a 0.30 (menos estricto)
+  min_touches: 2                      # Mantener igual
+  min_touch_separation: 3             # Reducido de 5 a 3 (velas más frecuentes)
+  max_zones_active: 6                 # Mantener igual
+  zone_expiry_candles: 200            # Reducido de 300 a 200 (~8 días en H1)
+
+# --- Señales de Entrada (M15) ---
+entry:
+  timeframe: "M15"
+  valid_patterns:
+    - "pin_bar"
+    - "false_breakout_b1"
+  entry_price: "close"
+  entry_type: "market"
+
+  # Pin Bar / Martillo
+  pin_bar:
+    min_wick_to_body_ratio: 1.8       # Reducido de 2.0 a 1.8 (menos estricto)
+    close_in_upper_half: true
+    close_in_lower_half: true
+
+  # Envolvente
+  engulfing:
+    enabled: false
+    body_engulfs_previous: true
+    previous_opposite_color: true
+
+  # Falso quiebre
+  false_breakout:
+    b1_min_body_ratio: 0.55           # Reducido de 0.60 a 0.55
+    b1_min_penetration_points: 3      # Reducido de 5 a 3 (puntos más pequeños en M15)
+
+    b2_enabled: false
+    b2_max_candles_to_return: 2
+    b2_min_body_ratio: 0.50
+
+    prefer_b1_over_b2: true
+
+# --- Stop Loss ---
+stop_loss:
+  method: "zone_edge_plus_buffer"
+  # buffer_points se define por instrumento en instruments.yaml
+  # Para H1+M15, usar ~1/3 del buffer de H4+H1
+
+# --- Take Profit ---
+take_profit:
+  method: "next_zone_with_offset"
+  min_rr_ratio: 2.0                   # Mantener igual (selectividad)
+
+# --- Tamaño de Posición ---
+position_sizing:
+  risk_per_trade_pct: 0.005           # Mantener 0.5%
+  max_simultaneous_trades: 3
+  max_risk_total_pct: 0.015
+  max_correlated_trades: 2
+
+# --- Break Even ---
+break_even:
+  enabled: true
+  trigger_rr: 1.0
+  offset_points: 5                    # Reducido de 10 a 5 (movimientos más pequeños)
+
+# --- Trailing Stop ---
+trailing_stop:
+  enabled: false
+  activation_rr: 1.5
+  trail_distance_points: 50           # Reducido de 100 a 50
+
+# --- Filtros ---
+filters:
+  # Tendencia — filtro inteligente basado en EMA 200
+  trend:
+    enabled: true
+    ema_period: 200
+    ema_timeframe: "H1"               # Cambiar de H4 a H1
+    neutral_zone_pct: 0.005
+    counter_trend_min_touches: 7
+    allow_counter_trend: false        # V4: Solo LONGs
+
+  # Horario — solo operar en sesiones líquidas
+  trading_sessions:
+    london_open: "08:00"
+    ny_open: "13:30"
+    ny_close: "20:00"
+    only_during_sessions: true
+
+  # Spread máximo
+  max_spread_points: 30
+
+  # Volatilidad mínima
+  volatility:
+    atr_period: 14
+    min_atr_multiplier: 0.5
+
+# --- Bot Loop ---
+bot:
+  check_interval_seconds: 60
+  check_on_candle_close: true
+  timezone: "Europe/Prague"
+
+# --- Conexión MT5 ---
+mt5:
+  host: "localhost"
+  port: 8001

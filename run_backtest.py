@@ -120,10 +120,16 @@ def main():
     parser.add_argument("--days", type=int, default=365, help="Días de datos (default: 365)")
     parser.add_argument("--balance", type=float, default=100_000, help="Balance inicial (default: 100000)")
     parser.add_argument("--output", help="Guardar trades en CSV")
+    parser.add_argument("--config", help="Archivo de configuración alternativo (default: config/strategy_params.yaml)")
 
     args = parser.parse_args()
     setup_logging()
-    config = get_config()
+    
+    # Cargar config alternativo si se especifica
+    if args.config:
+        config = get_config(strategy_config_path=args.config)
+    else:
+        config = get_config()
 
     logger = logging.getLogger("backtest")
 
