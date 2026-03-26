@@ -1,0 +1,82 @@
+# ============================================================
+# INSTRUMENTOS - PIVOT SCALPING
+# ============================================================
+
+instruments:
+  US30:
+    enabled: true
+    symbol_mt5: "US30"              # Actualizar con nombre real de MT5
+    symbol_yahoo: "^DJI"
+    
+    # Características del instrumento
+    point_value: 1.0
+    digits: 2
+    contract_size: 1.0
+    
+    # Parámetros de la estrategia
+    sl_buffer_points: 15
+    tp_offset_points: 5
+    
+    # Spread y costos
+    max_spread_points: 5
+    avg_spread_points: 2            # Para backtest
+    
+    # Validación de zonas
+    min_zone_width: 10
+    max_zone_width: 200
+    
+    # Horarios (UTC)
+    trading_hours:
+      monday:    ["00:00", "23:59"]
+      tuesday:   ["00:00", "23:59"]
+      wednesday: ["00:00", "23:59"]
+      thursday:  ["00:00", "23:59"]
+      friday:    ["00:00", "21:00"]  # Cerrar antes del weekend
+  
+  NAS100:
+    enabled: false
+    symbol_mt5: "NAS100"
+    symbol_yahoo: "^IXIC"
+    
+    point_value: 1.0
+    digits: 2
+    contract_size: 1.0
+    
+    sl_buffer_points: 20
+    tp_offset_points: 7
+    
+    max_spread_points: 7
+    avg_spread_points: 3
+    
+    min_zone_width: 15
+    max_zone_width: 300
+  
+  SPX500:
+    enabled: false
+    symbol_mt5: "SPX500"
+    symbol_yahoo: "^GSPC"
+    
+    point_value: 1.0
+    digits: 2
+    contract_size: 1.0
+    
+    sl_buffer_points: 10
+    tp_offset_points: 3
+    
+    max_spread_points: 4
+    avg_spread_points: 1.5
+    
+    min_zone_width: 8
+    max_zone_width: 150
+
+# ============================================================
+# GRUPOS DE CORRELACIÓN
+# ============================================================
+correlation_groups:
+  indices_us:
+    - US30
+    - NAS100
+    - SPX500
+  
+  # Regla: No más de 2 trades simultáneos en el mismo grupo
+  max_trades_per_group: 2

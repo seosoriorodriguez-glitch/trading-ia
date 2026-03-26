@@ -16,25 +16,38 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ticker", required=True)
     parser.add_argument("--days", type=int, default=730)
+    parser.add_argument("--interval", default="1h", 
+                       help="Interval: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     
-    data_dir = Path("data")
-    data_dir.mkdir(exist_ok=True)
+    # Crear directorio del output si es necesario
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Mapeo de intervalos a nombres legibles
+    interval_names = {
+        '1m': 'M1', '2m': 'M2', '5m': 'M5', '15m': 'M15', '30m': 'M30',
+        '60m': 'H1', '90m': 'H1.5', '1h': 'H1', '1d': 'D1', '5d': 'W1',
+        '1wk': 'W1', '1mo': 'MN1', '3mo': 'Q1'
+    }
+    
+    interval_name = interval_names.get(args.interval, args.interval)
     
     print("=" * 60)
     print("  DESCARGA DE DATOS - YAHOO FINANCE")
     print("=" * 60)
     print(f"\nTicker: {args.ticker}")
+    print(f"Intervalo: {interval_name} ({args.interval})")
     print(f"Días: {args.days}\n")
     
-    # Descargar H1
-    print("📥 Descargando datos H1 (1 hora)...")
+    # Descargar datos
+    print(f"📥 Descargando datos {interval_name}...")
     end_date = datetime.now()
     start_date = end_date - timedelta(days=args.days)
     
     data = yf.download(args.ticker, start=start_date, end=end_date, 
-                       interval="1h", progress=False)
+                       interval=args.interval, progress=False)
     
     if data.empty:
         print("❌ No se obtuvieron datos")
@@ -65,33 +78,15 @@ def main():
         data[col] = pd.to_numeric(data[col], errors='coerce')
     data = data.dropna()
     
-    print(f"✅ {len(data)} registros H1")
+    print(f"✅ {len(data)} registros {interval_name}")
     print(f"   Rango: {data['time'].iloc[0]} → {data['time'].iloc[-1]}")
     print(f"   Precio: {data['close'].iloc[-1]:.2f}")
     
-    # Guardar H1
+    # Guardar datos
     data['time'] = pd.to_datetime(data['time']).dt.strftime('%Y-%m-%d %H:%M:%S')
-    filepath_h1 = data_dir / f"{args.output}_H1_{args.days}d.csv"
-    data.to_csv(filepath_h1, index=False)
-    print(f"💾 {filepath_h1}")
-    
-    # Generar H4
-    print("\n📥 Generando H4 desde H1...")
-    data['time'] = pd.to_datetime(data['time'])
-    df_h4 = data.set_index('time').resample('4h').agg({
-        'open': 'first',
-        'high': 'max',
-        'low': 'min',
-        'close': 'last',
-        'volume': 'sum'
-    }).dropna().reset_index()
-    
-    df_h4['time'] = df_h4['time'].dt.strftime('%Y-%m-%d %H:%M:%S')
-    filepath_h4 = data_dir / f"{args.output}_H4_{args.days}d.csv"
-    df_h4.to_csv(filepath_h4, index=False)
-    
-    print(f"✅ {len(df_h4)} registros H4")
-    print(f"💾 {filepath_h4}")
+    filepath = f"{args.output}_{interval_name}_{args.days}d.csv"
+    data.to_csv(filepath, index=False)
+    print(f"💾 {filepath}")
     
     print("\n" + "=" * 60)
     print("✅ COMPLETADO")
