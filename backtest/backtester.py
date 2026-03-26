@@ -318,6 +318,9 @@ class Backtester:
 
             # --- 4. Buscar señales ---
             h1_window = candles_h1[max(0, h1_idx - 1):h1_idx + 1]
+            
+            # Obtener configuración de filtro de tendencia
+            trend_config = self.config.get("filters", {}).get("trend", {})
 
             signals = scan_for_signals(
                 candles_h1=h1_window,
@@ -327,6 +330,8 @@ class Backtester:
                 instrument_config=self.instrument_config,
                 entry_config=entry_config,
                 tp_config=tp_config,
+                candles_h4=relevant_h4,  # Pasar TODAS las H4 hasta ahora, no solo la ventana
+                trend_config=trend_config,
             )
 
             if not signals:

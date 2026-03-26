@@ -56,15 +56,21 @@ class Signal:
 # Detección de patrones de velas H1
 # ============================================================
 
-def is_pin_bar_bullish(candle: Candle, config: dict) -> bool:
+def is_pin_bar_bullish(candle: Candle, zone, config: dict) -> bool:
     """
     Pin bar alcista (martillo): mecha inferior larga, cierre en mitad superior.
     Señal de compra en soporte.
+    
+    Args:
+        candle: Vela a evaluar
+        zone: Zona de soporte (puede ser None para compatibilidad)
+        config: Configuración de pin_bar
     """
     if candle.range_size == 0:
         return False
 
     min_ratio = config.get("min_wick_to_body_ratio", 2.0)
+    max_distance = config.get("max_distance_from_zone", float('inf'))
 
     # Mecha inferior >= 2x el cuerpo
     if candle.body_size == 0:
@@ -75,19 +81,31 @@ def is_pin_bar_bullish(candle: Candle, config: dict) -> bool:
     # Cierre en mitad superior del rango
     mid = (candle.high + candle.low) / 2
     close_in_upper = candle.close >= mid
+    
+    # Verificar proximidad a la zona (si se proporciona)
+    if zone is not None and max_distance < float('inf'):
+        distance_from_zone = candle.close - zone.lower
+        if distance_from_zone > max_distance:
+            return False
 
     return has_wick_ratio and close_in_upper
 
 
-def is_pin_bar_bearish(candle: Candle, config: dict) -> bool:
+def is_pin_bar_bearish(candle: Candle, zone, config: dict) -> bool:
     """
     Pin bar bajista (estrella fugaz): mecha superior larga, cierre en mitad inferior.
     Señal de venta en resistencia.
+    
+    Args:
+        candle: Vela a evaluar
+        zone: Zona de resistencia (puede ser None para compatibilidad)
+        config: Configuración de pin_bar
     """
     if candle.range_size == 0:
         return False
 
     min_ratio = config.get("min_wick_to_body_ratio", 2.0)
+    max_distance = config.get("max_distance_from_zone", float('inf'))
 
     if candle.body_size == 0:
         has_wick_ratio = candle.upper_wick > 0
@@ -96,6 +114,12 @@ def is_pin_bar_bearish(candle: Candle, config: dict) -> bool:
 
     mid = (candle.high + candle.low) / 2
     close_in_lower = candle.close <= mid
+    
+    # Verificar proximidad a la zona (si se proporciona)
+    if zone is not None and max_distance < float('inf'):
+        distance_from_zone = zone.upper - candle.close
+        if distance_from_zone > max_distance:
+            return False
 
     return has_wick_ratio and close_in_lower
 
@@ -266,7 +290,7 @@ def evaluate_zone_for_signal(
 
         # Pin bar alcista (PRIORIDAD 1 - mejor WR: 60%)
         if "pin_bar" in valid_patterns:
-            if is_pin_bar_bullish(current, pin_config) and zone.contains_price(current.low):
+            if is_pin_bar_bullish(current, zone, pin_config) and zone.contains_price(current.low):
                 return (Direction.LONG, SignalType.PIN_BAR, 0.90)
 
         # B1 (PRIORIDAD 2)
@@ -299,7 +323,7 @@ def evaluate_zone_for_signal(
 
         # Pin bar bajista (PRIORIDAD 1 - mejor WR: 60%)
         if "pin_bar" in valid_patterns:
-            if is_pin_bar_bearish(current, pin_config) and zone.contains_price(current.high):
+            if is_pin_bar_bearish(current, zone, pin_config) and zone.contains_price(current.high):
                 return (Direction.SHORT, SignalType.PIN_BAR, 0.90)
 
         # B1 (PRIORIDAD 2)
@@ -389,6 +413,8 @@ def scan_for_signals(
     instrument_config: dict,
     entry_config: dict,
     tp_config: dict,
+    candles_h4: Optional[List[Candle]] = None,
+    trend_config: Optional[dict] = None,
 ) -> List[Signal]:
     """
     Escanea todas las zonas activas buscando señales de entrada.
@@ -401,11 +427,28 @@ def scan_for_signals(
         instrument_config: Config del instrumento
         entry_config: Config de entrada
         tp_config: Config de take profit
+        candles_h4: Velas H4 para cálculo de EMA (opcional)
+        trend_config: Configuración del filtro de tendencia (opcional)
 
     Returns:
         Lista de señales válidas encontradas
     """
+    from core.trend import calculate_ema, should_allow_signal
+    
     signals = []
+    
+    # Calcular EMA 200 si está disponible
+    ema_200 = None
+    if candles_h4 and trend_config and trend_config.get("enabled", False):
+        ema_period = trend_config.get("ema_period", 200)
+        ema_200 = calculate_ema(candles_h4, ema_period)
+        if ema_200:
+            current_price = candles_h1[-1].close
+            from core.trend import get_trend_summary
+            trend = get_trend_summary(current_price, ema_200)
+            logger.info(f"EMA 200: {ema_200:.2f}, Precio: {current_price:.2f}, Tendencia: {trend}")
+        else:
+            logger.warning(f"No se pudo calcular EMA 200 - solo {len(candles_h4)} velas H4 disponibles")
 
     for zone in zones:
         if not zone.is_active:
@@ -418,6 +461,19 @@ def scan_for_signals(
 
         direction, signal_type, confidence = result
         entry_price = candles_h1[-1].close
+        
+        # Aplicar filtro de tendencia
+        if ema_200 is not None and trend_config:
+            allowed, reason = should_allow_signal(
+                direction.value,
+                entry_price,
+                ema_200,
+                zone.touches,
+                trend_config
+            )
+            if not allowed:
+                logger.debug(f"Señal {direction.value} filtrada por tendencia: {reason}")
+                continue
 
         # Calcular SL/TP
         sl_tp = calculate_sl_tp(

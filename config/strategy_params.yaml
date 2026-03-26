@@ -34,6 +34,7 @@ entry:
     min_wick_to_body_ratio: 2.0       # Mecha >= 2x el cuerpo
     close_in_upper_half: true         # Para largos: cierre en mitad superior
     close_in_lower_half: true         # Para cortos: cierre en mitad inferior
+    # max_distance_from_zone desactivado - filtro demasiado restrictivo
 
   # Envolvente
   engulfing:
@@ -86,6 +87,14 @@ trailing_stop:
 
 # --- Filtros ---
 filters:
+  # Tendencia — filtro inteligente basado en EMA 200
+  trend:
+    enabled: true
+    ema_period: 200
+    ema_timeframe: "H4"
+    neutral_zone_pct: 0.005           # ±0.5% alrededor de EMA = zona neutral
+    counter_trend_min_touches: 7      # ⚠️ V3: Contra tendencia solo si zona tiene 7+ toques (muy probada)
+
   # Horario — solo operar en sesiones líquidas
   trading_sessions:
     london_open: "08:00"              # UTC
