@@ -30,6 +30,7 @@ class BacktestTrade:
     signal_type: str = ""
     entry_price: float = 0
     stop_loss: float = 0
+    original_stop_loss: float = 0      # SL original (nunca modificado por break even)
     take_profit: float = 0
     exit_price: float = 0
     exit_reason: str = ""              # tp_hit, sl_hit, break_even, weekend_close
@@ -185,6 +186,7 @@ class BacktestResult:
                 "signal_type": t.signal_type,
                 "entry_price": t.entry_price,
                 "stop_loss": t.stop_loss,
+                "original_stop_loss": t.original_stop_loss,
                 "take_profit": t.take_profit,
                 "exit_price": t.exit_price,
                 "exit_reason": t.exit_reason,
@@ -369,6 +371,7 @@ class Backtester:
                 signal_type=signal.signal_type.value,
                 entry_price=signal.entry_price,
                 stop_loss=signal.stop_loss,
+                original_stop_loss=signal.stop_loss,  # Guardar SL original (nunca modificado)
                 take_profit=signal.take_profit,
                 risk_reward_planned=signal.risk_reward_ratio,
                 zone_touches=signal.zone.touches,
@@ -407,10 +410,11 @@ class Backtester:
         # Balance final y cálculo de P&L en USD
         risk_per_trade = initial_balance * sizing_config["risk_per_trade_pct"]
         for trade in trades:
+            # Usar original_stop_loss para calcular riesgo planificado (no el SL modificado por break even)
             if trade.direction == "LONG":
-                planned_risk_pts = trade.entry_price - trade.stop_loss
+                planned_risk_pts = trade.entry_price - trade.original_stop_loss
             else:
-                planned_risk_pts = trade.stop_loss - trade.entry_price
+                planned_risk_pts = trade.original_stop_loss - trade.entry_price
             
             if planned_risk_pts > 0:
                 # Calcular P&L en USD basado en riesgo normalizado
