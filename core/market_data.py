@@ -6,7 +6,7 @@ Para backtesting, puede trabajar con datos históricos en CSV/DataFrame.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Any
 from dataclasses import dataclass
 
 import pandas as pd
