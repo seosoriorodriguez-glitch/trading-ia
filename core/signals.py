@@ -136,11 +136,17 @@ def is_false_breakout_b1_support(candle: Candle, zone: Zone, config: dict) -> bo
     - La mecha perfora por debajo del soporte
     - El cierre queda dentro de la zona o por encima
     - Cuerpo fuerte en dirección alcista
+    - Penetración mínima para confirmar barrido de liquidez
     """
     min_body = config.get("b1_min_body_ratio", 0.40)
+    min_penetration = config.get("b1_min_penetration_points", 0)
 
     # Mecha penetra por debajo
     penetrates = candle.low < zone.lower
+    
+    # Verificar penetración mínima
+    penetration_distance = zone.lower - candle.low
+    has_min_penetration = penetration_distance >= min_penetration
 
     # Cierre dentro o por encima de la zona
     closes_inside = candle.close >= zone.lower
@@ -148,7 +154,7 @@ def is_false_breakout_b1_support(candle: Candle, zone: Zone, config: dict) -> bo
     # Vela alcista con cuerpo fuerte
     is_strong = candle.is_bullish and candle.body_ratio >= min_body
 
-    return penetrates and closes_inside and is_strong
+    return penetrates and has_min_penetration and closes_inside and is_strong
 
 
 def is_false_breakout_b1_resistance(candle: Candle, zone: Zone, config: dict) -> bool:
@@ -157,14 +163,21 @@ def is_false_breakout_b1_resistance(candle: Candle, zone: Zone, config: dict) ->
     - La mecha perfora por encima de la resistencia
     - El cierre queda dentro de la zona o por debajo
     - Cuerpo fuerte en dirección bajista
+    - Penetración mínima para confirmar barrido de liquidez
     """
     min_body = config.get("b1_min_body_ratio", 0.40)
+    min_penetration = config.get("b1_min_penetration_points", 0)
 
     penetrates = candle.high > zone.upper
+    
+    # Verificar penetración mínima
+    penetration_distance = candle.high - zone.upper
+    has_min_penetration = penetration_distance >= min_penetration
+    
     closes_inside = candle.close <= zone.upper
     is_strong = candle.is_bearish and candle.body_ratio >= min_body
 
-    return penetrates and closes_inside and is_strong
+    return penetrates and has_min_penetration and closes_inside and is_strong
 
 
 def is_false_breakout_b2_support(
@@ -249,21 +262,27 @@ def evaluate_zone_for_signal(
         if not price_in_range:
             return None
 
-        # B1 primero (mayor prioridad)
-        if is_false_breakout_b1_support(current, zone, fb_config):
-            return (Direction.LONG, SignalType.FALSE_BREAKOUT_B1, 0.90)
+        valid_patterns = entry_config.get("valid_patterns", [])
+
+        # Pin bar alcista (PRIORIDAD 1 - mejor WR: 60%)
+        if "pin_bar" in valid_patterns:
+            if is_pin_bar_bullish(current, pin_config) and zone.contains_price(current.low):
+                return (Direction.LONG, SignalType.PIN_BAR, 0.90)
+
+        # B1 (PRIORIDAD 2)
+        if "false_breakout_b1" in valid_patterns:
+            if is_false_breakout_b1_support(current, zone, fb_config):
+                return (Direction.LONG, SignalType.FALSE_BREAKOUT_B1, 0.85)
 
         # B2
-        if is_false_breakout_b2_support(candles_h1[-2:], zone, fb_config):
-            return (Direction.LONG, SignalType.FALSE_BREAKOUT_B2, 0.75)
-
-        # Pin bar alcista
-        if is_pin_bar_bullish(current, pin_config) and zone.contains_price(current.low):
-            return (Direction.LONG, SignalType.PIN_BAR, 0.70)
+        if "false_breakout_b2" in valid_patterns:
+            if is_false_breakout_b2_support(candles_h1[-2:], zone, fb_config):
+                return (Direction.LONG, SignalType.FALSE_BREAKOUT_B2, 0.75)
 
         # Envolvente alcista
-        if is_bullish_engulfing(current, previous) and zone.contains_price(current.low):
-            return (Direction.LONG, SignalType.ENGULFING, 0.65)
+        if "engulfing" in valid_patterns:
+            if is_bullish_engulfing(current, previous) and zone.contains_price(current.low):
+                return (Direction.LONG, SignalType.ENGULFING, 0.65)
 
     # --- RESISTENCIA: buscar señales SHORT ---
     elif zone.zone_type == ZoneType.RESISTANCE:
@@ -276,21 +295,27 @@ def evaluate_zone_for_signal(
         if not price_in_range:
             return None
 
-        # B1 primero
-        if is_false_breakout_b1_resistance(current, zone, fb_config):
-            return (Direction.SHORT, SignalType.FALSE_BREAKOUT_B1, 0.90)
+        valid_patterns = entry_config.get("valid_patterns", [])
+
+        # Pin bar bajista (PRIORIDAD 1 - mejor WR: 60%)
+        if "pin_bar" in valid_patterns:
+            if is_pin_bar_bearish(current, pin_config) and zone.contains_price(current.high):
+                return (Direction.SHORT, SignalType.PIN_BAR, 0.90)
+
+        # B1 (PRIORIDAD 2)
+        if "false_breakout_b1" in valid_patterns:
+            if is_false_breakout_b1_resistance(current, zone, fb_config):
+                return (Direction.SHORT, SignalType.FALSE_BREAKOUT_B1, 0.85)
 
         # B2
-        if is_false_breakout_b2_resistance(candles_h1[-2:], zone, fb_config):
-            return (Direction.SHORT, SignalType.FALSE_BREAKOUT_B2, 0.75)
-
-        # Pin bar bajista
-        if is_pin_bar_bearish(current, pin_config) and zone.contains_price(current.high):
-            return (Direction.SHORT, SignalType.PIN_BAR, 0.70)
+        if "false_breakout_b2" in valid_patterns:
+            if is_false_breakout_b2_resistance(candles_h1[-2:], zone, fb_config):
+                return (Direction.SHORT, SignalType.FALSE_BREAKOUT_B2, 0.75)
 
         # Envolvente bajista
-        if is_bearish_engulfing(current, previous) and zone.contains_price(current.high):
-            return (Direction.SHORT, SignalType.ENGULFING, 0.65)
+        if "engulfing" in valid_patterns:
+            if is_bearish_engulfing(current, previous) and zone.contains_price(current.high):
+                return (Direction.SHORT, SignalType.ENGULFING, 0.65)
 
     return None
 

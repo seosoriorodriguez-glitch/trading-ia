@@ -38,6 +38,7 @@ class BacktestTrade:
     risk_reward_planned: float = 0
     risk_reward_actual: float = 0
     zone_touches: int = 0
+    sl_miss_points: float = 0          # Puntos que faltaron para TP después de SL (si aplica)
     is_open: bool = True
 
 
@@ -180,6 +181,7 @@ class BacktestResult:
                 "rr_planned": t.risk_reward_planned,
                 "rr_actual": t.risk_reward_actual,
                 "zone_touches": t.zone_touches,
+                "sl_miss_points": t.sl_miss_points,
             })
         return pd.DataFrame(records)
 

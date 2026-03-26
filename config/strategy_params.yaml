@@ -22,9 +22,10 @@ entry:
   timeframe: "H1"
   valid_patterns:
     - "pin_bar"
-    - "engulfing"
     - "false_breakout_b1"
-    - "false_breakout_b2"
+    # ⚠️ DESACTIVADOS por bajo rendimiento en backtest v1:
+    # - "engulfing"        # P&L promedio: -4.8 pts
+    # - "false_breakout_b2" # P&L promedio: -90.2 pts
   entry_price: "close"                # Entrar al cierre de la vela de confirmación
   entry_type: "market"                # Orden a mercado
 
@@ -36,16 +37,18 @@ entry:
 
   # Envolvente
   engulfing:
+    enabled: false                    # ⚠️ DESACTIVADO - P&L promedio negativo en backtest v1
     body_engulfs_previous: true       # Cuerpo actual envuelve cuerpo anterior
     previous_opposite_color: true     # Vela anterior debe ser de color opuesto
 
   # Falso quiebre
   false_breakout:
     # B1: Intra-vela (preferida, mayor probabilidad)
-    b1_min_body_ratio: 0.40           # Cuerpo >= 40% del rango
-    b1_min_penetration: 0             # Cualquier penetración cuenta
+    b1_min_body_ratio: 0.60           # ⚠️ OPTIMIZADO: Aumentado de 0.40 a 0.60 (filtrar señales débiles)
+    b1_min_penetration_points: 5      # ⚠️ OPTIMIZADO: Mecha debe superar zona por >= 5 puntos (barrido real)
 
     # B2: Dos velas (respaldo)
+    b2_enabled: false                 # ⚠️ DESACTIVADO - P&L muy negativo en backtest v1
     b2_max_candles_to_return: 2       # Máximo siguiente vela H1
     b2_min_body_ratio: 0.50           # Vela de regreso: cuerpo >= 50% del rango
 
@@ -59,7 +62,7 @@ stop_loss:
 # --- Take Profit ---
 take_profit:
   method: "next_zone_with_offset"     # TP en siguiente zona opuesta - offset
-  min_rr_ratio: 1.5                   # No tomar trades con R:R < 1.5:1
+  min_rr_ratio: 2.0                   # ⚠️ OPTIMIZADO: Aumentado de 1.5 a 2.0 (mayor selectividad)
   # offset_points se define por instrumento
 
 # --- Tamaño de Posición ---

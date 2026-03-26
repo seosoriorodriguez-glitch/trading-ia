@@ -18,7 +18,7 @@ instruments:
     enabled: true
     symbol_mt5: "US30.raw"            # ⚠️ VERIFICAR con verify_mt5.py antes de usar
     description: "Dow Jones Industrial Average"
-    sl_buffer_points: 80              # Puntos extra de SL más allá de la zona
+    sl_buffer_points: 150             # ⚠️ OPTIMIZADO: Aumentado de 80 a 150 (reducir stop-outs prematuros)
     zone_merge_distance: 150          # Puntos para agrupar swings en misma zona
     tp_offset_points: 20              # Puntos antes de la zona opuesta para TP
     max_spread_points: 30
