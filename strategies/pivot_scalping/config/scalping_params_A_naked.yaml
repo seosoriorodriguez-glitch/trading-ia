@@ -1,0 +1,160 @@
+# ============================================================
+# ESTRATEGIA: PIVOT POINTS SCALPING
+# ============================================================
+# Estrategia de scalping basada en Pivot Points puros (High/Low)
+# detectados en M15 con entradas en M5.
+#
+# Versión: 1.0
+# Fecha: 26 Mar 2026
+# ============================================================
+
+# ============================================================
+# DETECCIÓN DE PIVOT POINTS (M15)
+# ============================================================
+pivots:
+  # Número de velas a cada lado para confirmar pivot
+  # Pivot High: high > highs de N velas antes y después
+  # Pivot Low: low < lows de N velas antes y después
+  swing_strength: 3
+  
+  # Zona del pivot = rango completo de la vela [low, high]
+  zone_type: "full_candle"
+  
+  # Validación de toques
+  min_touches: 2                    # Segundo toque activa señal
+  min_touch_separation: 4           # Mínimo 4 velas M15 entre toques (1 hora)
+  max_touches: 6                    # Máximo toques antes de expirar
+  
+  # Expiración
+  expiry_candles: 200               # Expira después de 200 velas M15 (~50 horas)
+  max_active_zones: 6               # Máximo zonas activas simultáneas
+  
+  # Validación de zona
+  min_zone_width: 10                # Ancho mínimo de zona en puntos
+  max_zone_width: 200               # Ancho máximo de zona en puntos
+
+# ============================================================
+# SEÑALES DE ENTRADA (M5)
+# ============================================================
+entry:
+  # Patrones válidos
+  valid_patterns:
+    - 'pin_bar'
+    - 'engulfing'
+    # NO incluir 'inside_bar' - genera falsas en M5
+  
+  # Pin Bar
+  pin_bar:
+    min_wick_to_body_ratio: 2.0     # Mecha >= 2x cuerpo
+    max_body_pct: 0.35              # Cuerpo máximo 35% de vela
+    # Para LONG: mecha inferior larga, cierre en mitad superior
+    # Para SHORT: mecha superior larga, cierre en mitad inferior
+  
+  # Engulfing
+  engulfing:
+    min_body_ratio: 1.0             # Cuerpo debe envolver 100% de vela previa
+    # Para LONG: vela verde envuelve vela roja anterior
+    # Para SHORT: vela roja envuelve vela verde anterior
+
+# ============================================================
+# GESTIÓN DE RIESGO
+# ============================================================
+
+# Stop Loss (dinámico, basado en zona)
+stop_loss:
+  buffer_points: 15                 # Puntos más allá del borde de zona
+  min_risk_points: 10               # NUEVO: No tomar trades con < 10 pts de riesgo
+  # LONG: SL = borde_inferior_zona - buffer_points
+  # SHORT: SL = borde_superior_zona + buffer_points
+
+# Take Profit (por estructura)
+take_profit:
+  method: "structure"               # "structure" o "fixed_rr"
+  
+  # Método primario: siguiente pivot opuesto
+  structure:
+    offset_points: 5                # Offset desde borde del pivot opuesto
+    # LONG: TP = borde_inferior_pivot_high_siguiente - offset
+    # SHORT: TP = borde_superior_pivot_low_siguiente + offset
+  
+  # Método fallback: R:R fijo
+  fallback_rr: 2.0                  # R:R 2:1 si no hay pivot opuesto
+  
+  # Filtro
+  min_rr_ratio: 1.5                 # No tomar trade si R:R < 1.5
+
+# Break Even - DESACTIVADO para Backtest A (estrategia desnuda)
+break_even:
+  enabled: false
+  trigger_rr: 1.0                   # Activar cuando alcanza 1:1
+  offset_points: 3                  # Mover SL a entry + 3 puntos
+
+# Trailing Stop - DESACTIVADO para Backtest A (estrategia desnuda)
+trailing_stop:
+  enabled: false
+  method: "candle_structure"        # "candle_structure" o "fixed_points"
+  activation_rr: 1.0                # Activar después de BE (1:1)
+  
+  # Método por estructura: mover al low/high de última vela M5
+  candle_structure:
+    # LONG: mover SL al low de última vela M5 cerrada a favor
+    # SHORT: mover SL al high de última vela M5 cerrada a favor
+    update_on_new_candle: true
+  
+  # Método fijo (NO USAR - solo referencia)
+  fixed_points:
+    trail_distance: 15              # NO USAR - trailing por estructura es mejor
+
+# ============================================================
+# FILTROS
+# ============================================================
+filters:
+  # Filtro de horario (sesiones de alta liquidez)
+  time:
+    enabled: true
+    sessions:
+      london:
+        start: "08:00"              # UTC
+        end: "11:00"                # UTC
+        skip_first_minutes: 15      # No operar primeros 15 min
+      
+      new_york:
+        start: "13:30"              # UTC
+        end: "19:30"                # UTC
+        skip_first_minutes: 15
+    
+    # Días permitidos (1=Lunes, 5=Viernes)
+    allowed_days: [1, 2, 3, 4, 5]
+  
+  # Filtro de spread
+  spread:
+    enabled: true
+    max_spread_points: 5            # No abrir si spread > 5 puntos
+  
+  # Sin filtro de tendencia (pivot points puros)
+  trend:
+    enabled: false
+
+# ============================================================
+# SIZING Y LÍMITES
+# ============================================================
+sizing:
+  risk_per_trade_pct: 0.005         # 0.5% de riesgo por trade
+  max_simultaneous_trades: 2        # Máximo 2 trades abiertos
+  max_total_risk_pct: 0.01          # Máximo 1% de riesgo total expuesto
+
+# ============================================================
+# COSTOS (para backtest)
+# ============================================================
+costs:
+  avg_spread_points: 2              # Spread promedio para simular costos
+  commission_per_lot: 0             # Comisión (si aplica)
+
+# ============================================================
+# COMPLIANCE FTMO
+# ============================================================
+ftmo:
+  max_daily_drawdown_pct: 0.04      # 4% drawdown diario
+  max_total_drawdown_pct: 0.08      # 8% drawdown total
+  close_before_weekend: true        # Cerrar trades antes del viernes
+  weekend_close_hour: 21            # Hora UTC para cerrar (viernes)

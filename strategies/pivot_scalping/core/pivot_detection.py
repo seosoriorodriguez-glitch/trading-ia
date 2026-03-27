@@ -47,6 +47,7 @@ class PivotPoint:
     Attributes:
         type: Tipo de pivot (HIGH o LOW)
         time: Tiempo de la vela que formó el pivot
+        confirmed_at: Tiempo cuando el pivot se confirma (time + swing_strength velas)
         index: Índice de la vela en el array
         price_high: High de la vela pivote (tope de zona)
         price_low: Low de la vela pivote (base de zona)
@@ -58,6 +59,7 @@ class PivotPoint:
     """
     type: PivotType
     time: datetime
+    confirmed_at: datetime  # NUEVO: cuándo se confirma el pivot
     index: int
     price_high: float
     price_low: float
@@ -152,9 +154,12 @@ def detect_pivot_highs(
             if zone_width < min_zone_width or zone_width > max_zone_width:
                 continue
             
+            # CRÍTICO: El pivot se confirma DESPUÉS de swing_strength velas
+            # Solo se puede usar en backtest después de confirmed_at
             pivot = PivotPoint(
                 type=PivotType.HIGH,
                 time=candle.time,
+                confirmed_at=candles[i + swing_strength].time,  # Confirmado N velas después
                 index=i,
                 price_high=candle.high,
                 price_low=candle.low,
@@ -217,9 +222,12 @@ def detect_pivot_lows(
             if zone_width < min_zone_width or zone_width > max_zone_width:
                 continue
             
+            # CRÍTICO: El pivot se confirma DESPUÉS de swing_strength velas
+            # Solo se puede usar en backtest después de confirmed_at
             pivot = PivotPoint(
                 type=PivotType.LOW,
                 time=candle.time,
+                confirmed_at=candles[i + swing_strength].time,  # Confirmado N velas después
                 index=i,
                 price_high=candle.high,
                 price_low=candle.low,

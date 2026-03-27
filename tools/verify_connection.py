@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Verifica conexión a MetaTrader 5 en Windows y descubre nombres de símbolos.
 
@@ -21,6 +22,13 @@ Requisitos:
 import MetaTrader5 as mt5
 from datetime import datetime
 import sys
+import os
+
+# Configurar encoding para Windows
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
 
 def print_section(title):

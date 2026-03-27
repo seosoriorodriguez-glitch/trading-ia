@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Descarga datos históricos de MetaTrader 5 y los guarda como CSV.
 
@@ -27,6 +28,12 @@ import argparse
 from datetime import datetime, timedelta
 from pathlib import Path
 import sys
+
+# Configurar encoding para Windows
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
 
 # Mapeo de timeframes
