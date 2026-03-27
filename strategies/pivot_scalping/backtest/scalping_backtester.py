@@ -100,6 +100,10 @@ class ScalpingBacktester:
         """
         Inicializa el backtester
         
+        NUEVAS PROTECCIONES ANTI-OVERTRADING:
+        - Una entrada por zona por sesión
+        - Bloqueo permanente de zona después de loss
+        
         Args:
             config: Configuración de la estrategia
             initial_balance: Balance inicial
@@ -116,6 +120,10 @@ class ScalpingBacktester:
         self.trade_counter = 0
         
         self.equity_curve = []
+        
+        # NUEVAS PROTECCIONES ANTI-OVERTRADING
+        self.zone_session_trades = {}  # {zone_id_session: timestamp}
+        self.blocked_zones = {}  # {zone_id: "PERMANENT"}
     
     def run(
         self,
@@ -157,8 +165,15 @@ class ScalpingBacktester:
         print("⚡ Ejecutando backtest...\n")
         
         pending_signal = None  # Señal detectada, esperando siguiente vela para entrar
+        current_day = None  # Para detectar cambio de día
         
         for i, candle_m5 in enumerate(candles_m5):
+            # Reset diario de zonas por sesión
+            candle_day = candle_m5.time.date()
+            if current_day != candle_day:
+                self.zone_session_trades.clear()
+                current_day = candle_day
+            
             # Actualizar pivots activos
             active_pivots = self._get_active_pivots(candle_m5.time)
             self.signal_generator.update_pivots(active_pivots)
@@ -206,8 +221,10 @@ class ScalpingBacktester:
                 if signal:
                     # Filtro de sesión (si está habilitado)
                     if self._is_session_allowed(candle_m5.time):
-                        # NO entrar inmediatamente - esperar siguiente vela
-                        pending_signal = signal
+                        # NUEVAS PROTECCIONES
+                        if self._can_take_trade(signal, candle_m5.time):
+                            # NO entrar inmediatamente - esperar siguiente vela
+                            pending_signal = signal
             
             # Registrar equity
             self._record_equity(candle_m5.time)
@@ -331,6 +348,49 @@ class ScalpingBacktester:
         
         return False  # No está en ninguna sesión permitida
     
+    def _get_current_session(self, time: datetime) -> Optional[str]:
+        """
+        Detecta sesión actual (Londres o NY)
+        Londres: 8-16 UTC
+        NY: 13-21 UTC
+        """
+        hour = time.hour
+        
+        if 8 <= hour < 16:
+            return "LONDON"
+        elif 13 <= hour < 21:
+            return "NY"
+        else:
+            return None  # Fuera de horario
+    
+    def _get_zone_id(self, signal: TradingSignal) -> str:
+        """Genera ID único para una zona pivot"""
+        pivot_type = "HIGH" if signal.type == SignalType.SHORT else "LOW"
+        pivot_price = signal.pivot.price_high if signal.type == SignalType.SHORT else signal.pivot.price_low
+        return f"{pivot_type}_{pivot_price:.1f}"
+    
+    def _can_take_trade(self, signal: TradingSignal, current_time: datetime) -> bool:
+        """
+        Verifica si se puede tomar un trade según las nuevas protecciones
+        
+        PROTECCIÓN 1: Zona bloqueada permanentemente (después de loss)
+        PROTECCIÓN 2: Una entrada por zona por sesión
+        """
+        zone_id = self._get_zone_id(signal)
+        
+        # Protección 1: Zona bloqueada
+        if zone_id in self.blocked_zones:
+            return False
+        
+        # Protección 2: Una entrada por zona por sesión
+        current_session = self._get_current_session(current_time)
+        if current_session:
+            zone_session_id = f"{zone_id}_{current_session}"
+            if zone_session_id in self.zone_session_trades:
+                return False
+        
+        return True
+    
     def _open_trade(self, signal: TradingSignal, entry_time: datetime):
         """Abre un nuevo trade"""
         self.trade_counter += 1
@@ -350,6 +410,13 @@ class ScalpingBacktester:
         )
         
         self.active_trades.append(trade)
+        
+        # Registrar zona operada en esta sesión
+        current_session = self._get_current_session(entry_time)
+        if current_session:
+            zone_id = self._get_zone_id(signal)
+            zone_session_id = f"{zone_id}_{current_session}"
+            self.zone_session_trades[zone_session_id] = entry_time
         
         risk_pts = abs(signal.entry_price - signal.stop_loss)
         print(f"📈 Trade #{trade.id} - {signal.type.value.upper()}")
@@ -527,7 +594,7 @@ class ScalpingBacktester:
         Cierra un trade con normalización por riesgo fijo
         
         Cada trade arriesga exactamente risk_per_trade_pct del balance inicial.
-        El PnL se calcula como: R-multiple × RISK_USD
+        El PnL se calcula como: R-multiple * RISK_USD
         """
         trade.exit_price = exit_price
         trade.exit_time = exit_time
@@ -565,6 +632,12 @@ class ScalpingBacktester:
         # Mover a cerrados
         self.active_trades.remove(trade)
         self.closed_trades.append(trade)
+        
+        # Si fue loss, bloquear zona permanentemente
+        if trade.pnl < 0:
+            zone_id = self._get_zone_id(trade.signal)
+            self.blocked_zones[zone_id] = "PERMANENT"
+            print(f"   🚫 Zona bloqueada: {zone_id}")
         
         result = "✅ WIN" if trade.pnl > 0 else "❌ LOSS"
         print(f"{result} Trade #{trade.id} - {status.value}")

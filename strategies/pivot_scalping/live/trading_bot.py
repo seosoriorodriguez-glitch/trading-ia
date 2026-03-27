@@ -234,7 +234,7 @@ class TradingBot:
             # Actualizar risk manager
             self.risk_manager.on_trade_opened()
             
-            # Guardar trade
+            # Guardar trade (incluyendo signal para tracking)
             entry_price = result.get('price', 0)
             if entry_price == 0:
                 entry_price = result.get('entry_price', signal.entry_price)
@@ -246,7 +246,8 @@ class TradingBot:
                 'sl': result['sl'],
                 'tp': result['tp'],
                 'volume': result['volume'],
-                'entry_time': datetime.now(timezone.utc)
+                'entry_time': datetime.now(timezone.utc),
+                'signal': signal  # Guardar signal para on_trade_closed
             }
             
             self.open_trades[trade_info['ticket']] = trade_info
@@ -321,7 +322,7 @@ class TradingBot:
                 }
                 
                 # Actualizar risk manager
-                self.risk_manager.on_trade_closed(pnl_usd)
+                self.risk_manager.on_trade_closed(pnl_usd=pnl_usd)
                 
                 # Log
                 self.monitor.log_trade_closed(close_info)

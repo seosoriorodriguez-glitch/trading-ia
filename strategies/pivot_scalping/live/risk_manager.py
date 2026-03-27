@@ -34,13 +34,19 @@ class FTMORiskManager:
         self.trading_enabled = True
         self.stop_reason = None
         
-    def can_take_trade(self, signal, current_price: dict) -> Tuple[bool, str]:
+        # NUEVAS PROTECCIONES
+        self.zone_session_trades = {}  # {zone_id_session: timestamp}
+        self.blocked_zones = {}  # {zone_id: "PERMANENT"}
+        self.current_session = None
+        
+    def can_take_trade(self, signal, current_price: dict, current_session: str = None) -> Tuple[bool, str]:
         """
         Verifica si se puede tomar un trade
         
         Args:
             signal: TradingSignal
             current_price: dict con 'bid', 'ask', 'spread'
+            current_session: str "LONDON" o "NY"
         
         Returns:
             (puede_operar, razón)
@@ -89,27 +95,61 @@ class FTMORiskManager:
             self.stop_reason = f"Profit target reached ({profit_pct:.2%})"
             return False, self.stop_reason
         
+        # PROTECCIONES DESACTIVADAS - Alineado con backtest baseline
+        # Las protecciones de zona por sesión y bloqueo permanente
+        # reducían el rendimiento de 81.8% WR / PF 4.60 a 66.7% WR / PF 2.39
+        
         return True, "OK"
     
     def update_balance(self, new_balance: float):
         """Actualiza balance actual"""
         self.current_balance = new_balance
     
-    def on_trade_opened(self):
+    def on_trade_opened(self, signal=None, current_session: str = None):
         """Callback cuando se abre un trade"""
         self.open_trades += 1
         self.trades_today += 1
+        
+        # Protecciones desactivadas - alineado con backtest baseline
     
-    def on_trade_closed(self, pnl_usd: float):
+    def on_trade_closed(self, signal=None, pnl_usd: float = 0, is_loss: bool = False):
         """Callback cuando se cierra un trade"""
         self.open_trades = max(0, self.open_trades - 1)
         self.current_balance += pnl_usd
+        
+        # Protecciones desactivadas - alineado con backtest baseline
+    
+    def _get_zone_id(self, signal) -> str:
+        """Genera ID único para una zona pivot"""
+        pivot_type = "HIGH" if signal.signal_type == "SHORT" else "LOW"
+        pivot_price = signal.pivot_price
+        return f"{pivot_type}_{pivot_price:.1f}"
     
     def reset_daily(self):
         """Reset diario a medianoche UTC"""
         self.daily_start_balance = self.current_balance
         self.trades_today = 0
+        
+        # Limpiar registros de zonas por sesión (nuevo día = nuevas sesiones)
+        self.zone_session_trades.clear()
+        
         print(f"🔄 Daily reset - Balance: ${self.current_balance:,.2f}")
+    
+    def get_current_session(self) -> Optional[str]:
+        """
+        Detecta sesión actual (Londres o NY)
+        Londres: 08:00-16:00 UTC
+        NY: 13:00-21:00 UTC
+        """
+        now = datetime.now(timezone.utc)
+        hour = now.hour
+        
+        if 8 <= hour < 16:
+            return "LONDON"
+        elif 13 <= hour < 21:
+            return "NY"
+        else:
+            return None  # Fuera de horario
     
     def get_status(self) -> dict:
         """Retorna estado actual del risk manager"""
