@@ -76,34 +76,41 @@ def main():
     
     args = parser.parse_args()
     
-    # Telegram
-    telegram_token = None if args.no_telegram else args.telegram_token
-    telegram_chat_id = None if args.no_telegram else args.telegram_chat_id
-    
-    # Crear bot
-    bot = TradingBot(
-        symbol=args.symbol,
-        strategy_config_path=args.strategy,
-        ftmo_config_path=args.ftmo_config,
-        initial_balance=args.balance,
-        dry_run=args.dry_run,
-        telegram_token=telegram_token,
-        telegram_chat_id=telegram_chat_id
-    )
-    
-    # Iniciar
-    print("=" * 60)
-    print("🤖 FTMO TRADING BOT - PIVOT SCALPING")
-    print("=" * 60)
-    print(f"Símbolo: {args.symbol}")
-    print(f"Balance: ${args.balance:,.2f}")
-    print(f"Estrategia: M5/M1 Agresiva")
-    print(f"Modo: {'DRY RUN' if args.dry_run else 'LIVE'}")
-    print(f"Telegram: {'Activado' if not args.no_telegram else 'Desactivado'}")
-    print("=" * 60)
-    print()
-    
-    bot.start()
+    try:
+        # Telegram
+        telegram_token = None if args.no_telegram else args.telegram_token
+        telegram_chat_id = None if args.no_telegram else args.telegram_chat_id
+        
+        # Crear bot
+        print("🔧 Inicializando módulos...", flush=True)
+        bot = TradingBot(
+            symbol=args.symbol,
+            strategy_config_path=args.strategy,
+            ftmo_config_path=args.ftmo_config,
+            initial_balance=args.balance,
+            dry_run=args.dry_run,
+            telegram_token=telegram_token,
+            telegram_chat_id=telegram_chat_id
+        )
+        
+        # Iniciar
+        print("=" * 60, flush=True)
+        print("🤖 FTMO TRADING BOT - PIVOT SCALPING", flush=True)
+        print("=" * 60, flush=True)
+        print(f"Símbolo: {args.symbol}", flush=True)
+        print(f"Balance: ${args.balance:,.2f}", flush=True)
+        print(f"Estrategia: M5/M1 Agresiva", flush=True)
+        print(f"Modo: {'DRY RUN' if args.dry_run else 'LIVE'}", flush=True)
+        print(f"Telegram: {'Activado' if not args.no_telegram else 'Desactivado'}", flush=True)
+        print("=" * 60, flush=True)
+        print(flush=True)
+        
+        bot.start()
+    except Exception as e:
+        print(f"\n❌ ERROR CRÍTICO: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == '__main__':

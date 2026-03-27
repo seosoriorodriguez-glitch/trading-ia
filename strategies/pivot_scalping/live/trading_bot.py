@@ -63,36 +63,40 @@ class TradingBot:
     
     def start(self):
         """Inicia el bot"""
-        print("🚀 Iniciando Trading Bot...")
+        print("🚀 Iniciando Trading Bot...", flush=True)
         
         # Conectar a MT5
+        print("📡 Conectando a MT5...", flush=True)
         if not self.data_feed.connect():
-            print("❌ No se pudo conectar a MT5")
+            print("❌ No se pudo conectar a MT5", flush=True)
             return
         
+        print("✅ MT5 conectado", flush=True)
+        
         if self.dry_run:
-            print("⚠️  Modo DRY RUN - No se ejecutarán órdenes reales")
+            print("⚠️  Modo DRY RUN - No se ejecutarán órdenes reales", flush=True)
         
         # Log inicial
+        print("📊 Obteniendo información de cuenta...", flush=True)
         account = self.data_feed.get_account_info()
         if account:
-            print(f"✅ Cuenta conectada - Balance: ${account['balance']:,.2f}")
+            print(f"✅ Cuenta conectada - Balance: ${account['balance']:,.2f}", flush=True)
             self.risk_manager.update_balance(account['balance'])
         
         # Actualizar pivots inicial
-        print("🔍 Actualizando pivots iniciales...")
+        print("🔍 Actualizando pivots iniciales...", flush=True)
         num_pivots = self.signal_monitor.update_pivots()
-        print(f"✅ {num_pivots} pivots activos")
+        print(f"✅ {num_pivots} pivots activos", flush=True)
         
         # Iniciar loop
         self.running = True
-        print("✅ Bot iniciado - Presiona Ctrl+C para detener")
-        print()
+        print("✅ Bot iniciado - Presiona Ctrl+C para detener", flush=True)
+        print(flush=True)
         
         try:
             self._main_loop()
         except KeyboardInterrupt:
-            print("\n⚠️  Deteniendo bot...")
+            print("\n⚠️  Deteniendo bot...", flush=True)
             self.stop()
     
     def stop(self):
@@ -110,6 +114,8 @@ class TradingBot:
     
     def _main_loop(self):
         """Loop principal del bot"""
+        print("🔄 Entrando al loop principal...", flush=True)
+        
         while self.running:
             now = datetime.now(timezone.utc)
             
@@ -184,7 +190,10 @@ class TradingBot:
             self._execute_trade(signal)
             
         except Exception as e:
-            self.monitor.log_error(f"Error verificando señales: {e}")
+            import traceback
+            full_error = f"Error verificando señales: {e}\n{traceback.format_exc()}"
+            self.monitor.log_error(full_error)
+            print(f"❌ {full_error}", flush=True)
     
     def _execute_trade(self, signal):
         """Ejecuta un trade"""

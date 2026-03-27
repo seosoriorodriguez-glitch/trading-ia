@@ -167,19 +167,19 @@ class TradingMonitor:
         if clear_screen:
             os.system('cls' if os.name == 'nt' else 'clear')
         
-        print("=" * 50)
-        print("🤖 FTMO BOT - US30 Pivot Scalping")
-        print("=" * 50)
-        print()
+        print("=" * 50, flush=True)
+        print("🤖 FTMO BOT - US30 Pivot Scalping", flush=True)
+        print("=" * 50, flush=True)
+        print(flush=True)
         
         # Balance
         balance = status['risk']['balance']
         profit_pct = status['risk']['profit_pct']
         profit_target = status['risk']['profit_target']
         
-        print(f"💰 Balance: ${balance:,.2f} ({profit_pct:+.2%})")
-        print(f"🎯 Target: {profit_target:.1%}")
-        print()
+        print(f"💰 Balance: ${balance:,.2f} ({profit_pct:+.2%})", flush=True)
+        print(f"🎯 Target: {profit_target:.1%}", flush=True)
+        print(flush=True)
         
         # Risk
         daily_dd = status['risk']['daily_dd_pct']
@@ -187,35 +187,35 @@ class TradingMonitor:
         total_dd = status['risk']['total_dd_pct']
         total_limit = status['risk']['total_dd_limit']
         
-        print(f"📊 Daily DD: {daily_dd:.2%} / {daily_limit:.1%}")
-        print(f"📊 Total DD: {total_dd:.2%} / {total_limit:.1%}")
-        print()
+        print(f"📊 Daily DD: {daily_dd:.2%} / {daily_limit:.1%}", flush=True)
+        print(f"📊 Total DD: {total_dd:.2%} / {total_limit:.1%}", flush=True)
+        print(flush=True)
         
         # Trades
         trades_today = status['risk']['trades_today']
         open_trades = status['risk']['open_trades']
         
-        print(f"📈 Trades Hoy: {trades_today}")
-        print(f"📈 Trades Abiertos: {open_trades}")
-        print()
+        print(f"📈 Trades Hoy: {trades_today}", flush=True)
+        print(f"📈 Trades Abiertos: {open_trades}", flush=True)
+        print(flush=True)
         
         # Estrategia
         strategy = status.get('strategy', {})
         pivots = strategy.get('pivots', {})
         
-        print(f"🎯 Estrategia: M5/M1 Agresiva")
-        print(f"🔍 Pivots Activos: {pivots.get('total', 0)} (H:{pivots.get('highs', 0)}, L:{pivots.get('lows', 0)})")
-        print()
+        print(f"🎯 Estrategia: M5/M1 Agresiva", flush=True)
+        print(f"🔍 Pivots Activos: {pivots.get('total', 0)} (H:{pivots.get('highs', 0)}, L:{pivots.get('lows', 0)})", flush=True)
+        print(flush=True)
         
         # Estado
         trading_enabled = status['risk']['trading_enabled']
         stop_reason = status['risk']['stop_reason']
         
         if trading_enabled:
-            print("✅ Trading: ACTIVO")
+            print("✅ Trading: ACTIVO", flush=True)
         else:
-            print(f"🛑 Trading: DETENIDO ({stop_reason})")
+            print(f"🛑 Trading: DETENIDO ({stop_reason})", flush=True)
         
-        print()
-        print(f"⏰ Última actualización: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
-        print("=" * 50)
+        print(flush=True)
+        print(f"⏰ Última actualización: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}", flush=True)
+        print("=" * 50, flush=True)

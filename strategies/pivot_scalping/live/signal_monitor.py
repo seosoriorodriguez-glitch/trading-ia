@@ -84,6 +84,9 @@ class LiveSignalMonitor:
             max_active=pivot_config['max_active_zones']
         )
         
+        # Actualizar pivots en el signal generator
+        self.signal_generator.update_pivots(self.all_pivots)
+        
         self.last_pivot_update = current_time
         
         return len(self.all_pivots)
@@ -95,36 +98,43 @@ class LiveSignalMonitor:
         Returns:
             TradingSignal si hay señal, None si no
         """
-        # Descargar últimas 2 velas M1
-        df_m1 = self.data_feed.get_latest_candles('M1', 2)
-        if df_m1 is None or len(df_m1) < 2:
-            return None
-        
-        # Convertir a Candles (rejection_patterns.Candle solo usa OHLC)
-        current_candle = M1Candle(
-            open=df_m1.iloc[-1]['open'],
-            high=df_m1.iloc[-1]['high'],
-            low=df_m1.iloc[-1]['low'],
-            close=df_m1.iloc[-1]['close']
-        )
-        
-        previous_candle = M1Candle(
-            open=df_m1.iloc[-2]['open'],
-            high=df_m1.iloc[-2]['high'],
-            low=df_m1.iloc[-2]['low'],
-            close=df_m1.iloc[-2]['close']
-        )
-        
-        # Verificar señal (usar timestamp de la última vela M1)
-        current_time = df_m1.iloc[-1]['time']
-        signal = self.signal_generator.check_signal(
-            current_candle,
-            previous_candle,
-            self.all_pivots,
-            current_time
-        )
-        
-        return signal
+        try:
+            # Descargar últimas 2 velas M1
+            df_m1 = self.data_feed.get_latest_candles('M1', 2)
+            if df_m1 is None or len(df_m1) < 2:
+                return None
+            
+            # Convertir a Candles (rejection_patterns.Candle solo usa OHLC)
+            current_candle = M1Candle(
+                open=df_m1.iloc[-1]['open'],
+                high=df_m1.iloc[-1]['high'],
+                low=df_m1.iloc[-1]['low'],
+                close=df_m1.iloc[-1]['close']
+            )
+            
+            previous_candle = M1Candle(
+                open=df_m1.iloc[-2]['open'],
+                high=df_m1.iloc[-2]['high'],
+                low=df_m1.iloc[-2]['low'],
+                close=df_m1.iloc[-2]['close']
+            )
+            
+            # Verificar señal (usar timestamp de la última vela M1)
+            current_time = df_m1.iloc[-1]['time']
+            signal = self.signal_generator.check_signal(
+                current_candle,
+                previous_candle,
+                self.all_pivots,
+                current_time
+            )
+            
+            return signal
+        except Exception as e:
+            # Capturar traceback completo
+            import traceback
+            error_msg = f"Error en check_for_signal: {e}\n{traceback.format_exc()}"
+            print(f"❌ {error_msg}", flush=True)
+            raise
     
     def get_pivot_summary(self) -> dict:
         """Retorna resumen de pivots activos"""
