@@ -63,8 +63,8 @@ entry:
 
 # Stop Loss (dinámico, basado en zona)
 stop_loss:
-  buffer_points: 5                  # AGRESIVO: Solo 5 pts de buffer
-  min_risk_points: 3                # AGRESIVO: Acepta SL de solo 3 pts
+  buffer_points: 20                 # OPTIMIZADO: 20 pts (elimina rechazos broker + mejor PF)
+  min_risk_points: 15               # OPTIMIZADO: Ajustado proporcionalmente
   # LONG: SL = borde_inferior_zona - buffer_points
   # SHORT: SL = borde_superior_zona + buffer_points
 
