@@ -88,6 +88,23 @@ class TradingBot:
         num_pivots = self.signal_monitor.update_pivots()
         print(f"✅ {num_pivots} pivots activos", flush=True)
         
+        # Sincronizar trades existentes en MT5
+        if not self.dry_run:
+            print("🔄 Sincronizando trades existentes en MT5...", flush=True)
+            existing_positions = self.order_executor.get_open_positions()
+            for pos in existing_positions:
+                self.open_trades[pos.ticket] = {
+                    'ticket': pos.ticket,
+                    'type': 'LONG' if pos.type == 0 else 'SHORT',
+                    'price': pos.price_open,
+                    'sl': pos.sl,
+                    'tp': pos.tp,
+                    'volume': pos.volume,
+                    'entry_time': datetime.fromtimestamp(pos.time, tz=timezone.utc)
+                }
+            self.risk_manager.open_trades = len(existing_positions)
+            print(f"✅ {len(existing_positions)} trades pre-existentes sincronizados", flush=True)
+        
         # Iniciar loop
         self.running = True
         print("✅ Bot iniciado - Presiona Ctrl+C para detener", flush=True)
@@ -168,6 +185,11 @@ class TradingBot:
     def _check_signals(self):
         """Verifica señales de entrada"""
         try:
+            # CRÍTICO: Sincronizar con MT5 ANTES de verificar
+            if not self.dry_run:
+                mt5_positions = self.order_executor.get_open_positions()
+                self.risk_manager.open_trades = len(mt5_positions)
+            
             # Obtener señal
             signal = self.signal_monitor.check_for_signal()
             
@@ -213,10 +235,14 @@ class TradingBot:
             self.risk_manager.on_trade_opened()
             
             # Guardar trade
+            entry_price = result.get('price', 0)
+            if entry_price == 0:
+                entry_price = result.get('entry_price', signal.entry_price)
+            
             trade_info = {
                 'ticket': result.get('ticket', 'DRY_RUN'),
                 'type': result['type'],
-                'price': result.get('price', result.get('entry_price')),
+                'price': entry_price,
                 'sl': result['sl'],
                 'tp': result['tp'],
                 'volume': result['volume'],
