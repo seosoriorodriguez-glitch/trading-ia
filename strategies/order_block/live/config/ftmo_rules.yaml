@@ -1,0 +1,24 @@
+ftmo:
+  account_size: 100000  # $100k
+
+  phase_1:
+    profit_target_pct: 0.10   # 10%
+    max_daily_loss_pct: 0.05  # 5%
+    max_total_loss_pct: 0.10  # 10%
+    min_trading_days: 4
+
+  phase_2:
+    profit_target_pct: 0.05   # 5%
+    max_daily_loss_pct: 0.05  # 5%
+    max_total_loss_pct: 0.10  # 10%
+    min_trading_days: 4
+
+  refund: true
+  rewards: 0.90
+
+  close_before_weekend: true
+  weekend_close_hour: 21      # Viernes 21:00 UTC
+
+  risk_per_trade_pct: 0.005   # 0.5% = $500 por trade con $100k
+  max_simultaneous_trades: 2
+  max_spread_points: 5        # No operar si spread > 5 pts

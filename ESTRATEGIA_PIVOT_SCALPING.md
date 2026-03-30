@@ -514,18 +514,20 @@ El bot muestra en consola:
 
 ### Backtest Buffer Comparison (29 días, US30, $100k inicial)
 
+> ⚠️ **ADVERTENCIA:** Los resultados de esta tabla contienen un bug en el backtester (SL invertido). Ver sección 19 para análisis completo.
+
 | Métrica | Buffer 10 | Buffer 15 | Buffer 20 (ACTUAL) |
 |---------|-----------|-----------|---------------------|
 | **Trades** | 34 | 29 | **22** |
-| **Win Rate** | 73.5% | 72.4% | **81.8%** |
-| **Profit Factor** | 2.55 | 2.38 | **4.60** |
-| **Retorno** | +8.10% | +6.29% | **+7.94%** |
-| **Balance Final** | $108,099 | $106,290 | **$107,940** |
+| **Win Rate** | 73.5% | 72.4% | ~~81.8%~~ → **50% real** |
+| **Profit Factor** | 2.55 | 2.38 | ~~4.60~~ → **1.88 real** |
+| **Retorno** | +8.10% | +6.29% | ~~+7.94%~~ → **+1.45% real** |
+| **Balance Final** | $108,099 | $106,290 | ~~**$107,940**~~ → **$101,450 real** |
 | **Avg Win** | $533 | $517 | **$564** |
 | **Avg Loss** | -$580 | -$571 | **-$551** |
-| **Trades/día** | 1.17 | 1.00 | **0.76** |
+| **Trades/día** | 1.17 | 1.00 | ~~0.76~~ → **0.27 real** |
 
-**Conclusión:** Buffer 20 ofrece el mejor balance entre frecuencia y calidad.
+**Conclusión:** Los resultados de Buffer 20 estaban inflados por el bug del backtester. Ver sección 19.
 
 ---
 

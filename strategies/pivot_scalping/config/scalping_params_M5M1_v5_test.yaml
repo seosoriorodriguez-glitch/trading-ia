@@ -1,0 +1,101 @@
+# ============================================================
+# ESTRATEGIA V5 - ORDER BLOCKS
+# ============================================================
+# Zonas: order blocks en M5.
+#   Bullish OB: ultimo candle bajista antes de impulso alcista.
+#   Bearish OB: ultimo candle alcista antes de impulso bajista.
+# SL: debajo del low del OB (bullish) o sobre el high (bearish).
+# Invalidacion: cierre al otro lado de la zona.
+#
+# Version: 5.0 (Experimental)
+# Fecha: 27 Mar 2026
+# ============================================================
+
+order_blocks:
+  # Cuantas velas adelante medir el impulso
+  impulse_candles: 3
+  # Movimiento minimo (pts) para calificar como impulso
+  impulse_points: 50
+  # Maximo de velas antes de que el OB expire por tiempo
+  max_age_candles: 300
+  # Maximos OBs activos por tipo (highs/lows)
+  max_active_zones: 10
+
+# Estos campos los heredamos de V3 para no romper el constructor base
+pivots:
+  swing_strength: 7
+  zone_type: "full_candle"
+  min_touches: 1
+  min_touch_separation: 2
+  max_touches: 10
+  expiry_candles: 200
+  max_active_zones: 10
+  zone_buffer: 20
+  min_touch_age_hours: 0
+
+entry:
+  valid_patterns:
+    - 'pin_bar'
+    - 'engulfing'
+
+  pin_bar:
+    min_wick_to_body_ratio: 2.0
+    max_body_pct: 0.35
+
+  engulfing:
+    min_body_ratio: 1.0
+
+stop_loss:
+  buffer_points: 10          # buffer sobre el high/low del OB
+  min_risk_points: 20
+  structure_buffer: 5
+  swing_lookback: 10
+
+take_profit:
+  method: "structure"
+  structure:
+    offset_points: 3
+  fallback_rr: 1.5
+  min_rr_ratio: 1.2
+
+break_even:
+  enabled: false
+
+trailing_stop:
+  enabled: false
+
+filters:
+  time:
+    enabled: true
+    sessions:
+      london:
+        start: "08:00"
+        end: "11:00"
+        skip_first_minutes: 15
+      new_york:
+        start: "13:30"
+        end: "19:30"
+        skip_first_minutes: 15
+    allowed_days: [1, 2, 3, 4, 5]
+
+  spread:
+    enabled: true
+    max_spread_points: 5
+
+  trend:
+    enabled: false
+
+sizing:
+  risk_per_trade_pct: 0.005
+  max_simultaneous_trades: 2
+  max_total_risk_pct: 0.01
+
+costs:
+  avg_spread_points: 2
+  commission_per_lot: 0
+
+ftmo:
+  max_daily_drawdown_pct: 0.04
+  max_total_drawdown_pct: 0.08
+  close_before_weekend: true
+  weekend_close_hour: 21

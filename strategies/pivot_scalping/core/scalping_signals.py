@@ -140,11 +140,13 @@ class ScalpingSignalGenerator:
     def _touches_zone(self, candle: M5Candle, pivot: PivotPoint) -> bool:
         """Verifica si la vela M5 toca la zona del pivot"""
         if pivot.type == PivotType.HIGH:
-            # Para resistencia, verificar si el high toca la zona
-            return candle.high >= pivot.price_low
+            # Para resistencia, verificar si la vela penetra la zona
+            return (candle.low <= pivot.price_high and 
+                    candle.high >= pivot.price_low)
         else:  # PivotType.LOW
-            # Para soporte, verificar si el low toca la zona
-            return candle.low <= pivot.price_high
+            # Para soporte, verificar si la vela penetra la zona
+            return (candle.high >= pivot.price_low and 
+                    candle.low <= pivot.price_high)
     
     def _validate_signal(
         self,

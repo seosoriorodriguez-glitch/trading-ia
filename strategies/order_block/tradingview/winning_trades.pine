@@ -1,0 +1,781 @@
+//@version=5
+indicator("Winning Trades OB Backtest", overlay=true, max_lines_count=500, max_labels_count=500)
+
+if barstate.islast
+
+    // Trade #4 LONG +1201
+    line.new(timestamp(2025,12,18,12,7,0), 47956.81,
+             timestamp(2025,12,18,12,26,0), 47956.81,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2025,12,18,12,7,0), 47956.81,
+              text='#4 L E:47957 +1201$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2025,12,18,12,7,0), 47929.13,
+             timestamp(2025,12,18,12,26,0), 47929.13,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2025,12,18,12,26,0), 47929.13,
+              text='SL 47929', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2025,12,18,12,7,0), 48026.01,
+             timestamp(2025,12,18,12,26,0), 48026.01,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2025,12,18,12,26,0), 48026.01,
+              text='TP 48026', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #5 LONG +1226
+    line.new(timestamp(2025,12,18,13,23,0), 48128.81,
+             timestamp(2025,12,18,13,31,0), 48128.81,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2025,12,18,13,23,0), 48128.81,
+              text='#5 L E:48129 +1226$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2025,12,18,13,23,0), 48075.81,
+             timestamp(2025,12,18,13,31,0), 48075.81,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2025,12,18,13,31,0), 48075.81,
+              text='SL 48076', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2025,12,18,13,23,0), 48261.31,
+             timestamp(2025,12,18,13,31,0), 48261.31,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2025,12,18,13,31,0), 48261.31,
+              text='TP 48261', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #6 LONG +1228
+    line.new(timestamp(2025,12,22,11,45,0), 48150.03,
+             timestamp(2025,12,22,13,5,0), 48150.03,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2025,12,22,11,45,0), 48150.03,
+              text='#6 L E:48150 +1228$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2025,12,22,11,45,0), 48119.03,
+             timestamp(2025,12,22,13,5,0), 48119.03,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2025,12,22,13,5,0), 48119.03,
+              text='SL 48119', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2025,12,22,11,45,0), 48227.53,
+             timestamp(2025,12,22,13,5,0), 48227.53,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2025,12,22,13,5,0), 48227.53,
+              text='TP 48228', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #9 SHORT +1238
+    line.new(timestamp(2025,12,30,11,10,0), 48481.70,
+             timestamp(2025,12,30,13,32,0), 48481.70,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2025,12,30,11,10,0), 48481.70,
+              text='#9 S E:48482 +1238$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2025,12,30,11,10,0), 48509.70,
+             timestamp(2025,12,30,13,32,0), 48509.70,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2025,12,30,13,32,0), 48509.70,
+              text='SL 48510', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2025,12,30,11,10,0), 48411.70,
+             timestamp(2025,12,30,13,32,0), 48411.70,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2025,12,30,13,32,0), 48411.70,
+              text='TP 48412', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #11 LONG +1238
+    line.new(timestamp(2025,12,31,12,8,0), 48333.80,
+             timestamp(2025,12,31,13,28,0), 48333.80,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2025,12,31,12,8,0), 48333.80,
+              text='#11 L E:48334 +1238$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2025,12,31,12,8,0), 48311.30,
+             timestamp(2025,12,31,13,28,0), 48311.30,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2025,12,31,13,28,0), 48311.30,
+              text='SL 48311', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2025,12,31,12,8,0), 48390.05,
+             timestamp(2025,12,31,13,28,0), 48390.05,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2025,12,31,13,28,0), 48390.05,
+              text='TP 48390', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #13 SHORT +1257
+    line.new(timestamp(2026,1,2,11,15,0), 48269.81,
+             timestamp(2026,1,2,12,50,0), 48269.81,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,1,2,11,15,0), 48269.81,
+              text='#13 S E:48270 +1257$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,1,2,11,15,0), 48299.00,
+             timestamp(2026,1,2,12,50,0), 48299.00,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,2,12,50,0), 48299.00,
+              text='SL 48299', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,1,2,11,15,0), 48196.83,
+             timestamp(2026,1,2,12,50,0), 48196.83,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,2,12,50,0), 48196.83,
+              text='TP 48197', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #16 LONG +1265
+    line.new(timestamp(2026,1,6,13,24,0), 48910.01,
+             timestamp(2026,1,6,13,33,0), 48910.01,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,1,6,13,24,0), 48910.01,
+              text='#16 L E:48910 +1265$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,1,6,13,24,0), 48874.20,
+             timestamp(2026,1,6,13,33,0), 48874.20,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,6,13,33,0), 48874.20,
+              text='SL 48874', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,1,6,13,24,0), 48999.54,
+             timestamp(2026,1,6,13,33,0), 48999.54,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,6,13,33,0), 48999.54,
+              text='TP 49000', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #20 LONG +1263
+    line.new(timestamp(2026,1,9,11,11,0), 49262.30,
+             timestamp(2026,1,9,12,12,0), 49262.30,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,1,9,11,11,0), 49262.30,
+              text='#20 L E:49262 +1263$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,1,9,11,11,0), 49239.30,
+             timestamp(2026,1,9,12,12,0), 49239.30,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,9,12,12,0), 49239.30,
+              text='SL 49239', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,1,9,11,11,0), 49319.80,
+             timestamp(2026,1,9,12,12,0), 49319.80,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,9,12,12,0), 49319.80,
+              text='TP 49320', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #25 SHORT +1240
+    line.new(timestamp(2026,1,12,13,41,0), 49291.70,
+             timestamp(2026,1,12,13,46,0), 49291.70,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,1,12,13,41,0), 49291.70,
+              text='#25 S E:49292 +1240$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,1,12,13,41,0), 49312.71,
+             timestamp(2026,1,12,13,46,0), 49312.71,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,12,13,46,0), 49312.71,
+              text='SL 49313', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,1,12,13,41,0), 49239.17,
+             timestamp(2026,1,12,13,46,0), 49239.17,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,12,13,46,0), 49239.17,
+              text='TP 49239', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #29 LONG +1272
+    line.new(timestamp(2026,1,14,16,15,0), 48917.95,
+             timestamp(2026,1,14,19,32,0), 48917.95,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,1,14,16,15,0), 48917.95,
+              text='#29 L E:48918 +1272$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,1,14,16,15,0), 48835.95,
+             timestamp(2026,1,14,19,32,0), 48835.95,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,14,19,32,0), 48835.95,
+              text='SL 48836', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,1,14,16,15,0), 49122.95,
+             timestamp(2026,1,14,19,32,0), 49122.95,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,14,19,32,0), 49122.95,
+              text='TP 49123', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #31 LONG +1249
+    line.new(timestamp(2026,1,16,16,15,0), 49394.15,
+             timestamp(2026,1,16,17,5,0), 49394.15,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,1,16,16,15,0), 49394.15,
+              text='#31 L E:49394 +1249$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,1,16,16,15,0), 49370.60,
+             timestamp(2026,1,16,17,5,0), 49370.60,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,16,17,5,0), 49370.60,
+              text='SL 49371', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,1,16,16,15,0), 49453.03,
+             timestamp(2026,1,16,17,5,0), 49453.03,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,16,17,5,0), 49453.03,
+              text='TP 49453', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #33 SHORT +1279
+    line.new(timestamp(2026,1,20,12,17,0), 48747.21,
+             timestamp(2026,1,20,12,34,0), 48747.21,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,1,20,12,17,0), 48747.21,
+              text='#33 S E:48747 +1279$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,1,20,12,17,0), 48791.71,
+             timestamp(2026,1,20,12,34,0), 48791.71,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,20,12,34,0), 48791.71,
+              text='SL 48792', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,1,20,12,17,0), 48635.96,
+             timestamp(2026,1,20,12,34,0), 48635.96,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,20,12,34,0), 48635.96,
+              text='TP 48636', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #36 LONG +1277
+    line.new(timestamp(2026,1,22,12,31,0), 49249.41,
+             timestamp(2026,1,22,13,18,0), 49249.41,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,1,22,12,31,0), 49249.41,
+              text='#36 L E:49249 +1277$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,1,22,12,31,0), 49211.91,
+             timestamp(2026,1,22,13,18,0), 49211.91,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,22,13,18,0), 49211.91,
+              text='SL 49212', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,1,22,12,31,0), 49343.16,
+             timestamp(2026,1,22,13,18,0), 49343.16,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,22,13,18,0), 49343.16,
+              text='TP 49343', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #37 LONG +1289
+    line.new(timestamp(2026,1,22,15,56,0), 49492.55,
+             timestamp(2026,1,22,16,31,0), 49492.55,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,1,22,15,56,0), 49492.55,
+              text='#37 L E:49493 +1289$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,1,22,15,56,0), 49459.05,
+             timestamp(2026,1,22,16,31,0), 49459.05,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,22,16,31,0), 49459.05,
+              text='SL 49459', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,1,22,15,56,0), 49576.30,
+             timestamp(2026,1,22,16,31,0), 49576.30,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,22,16,31,0), 49576.30,
+              text='TP 49576', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #38 SHORT +1308
+    line.new(timestamp(2026,1,23,11,43,0), 49277.25,
+             timestamp(2026,1,23,12,26,0), 49277.25,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,1,23,11,43,0), 49277.25,
+              text='#38 S E:49277 +1308$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,1,23,11,43,0), 49314.71,
+             timestamp(2026,1,23,12,26,0), 49314.71,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,23,12,26,0), 49314.71,
+              text='SL 49315', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,1,23,11,43,0), 49183.60,
+             timestamp(2026,1,23,12,26,0), 49183.60,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,23,12,26,0), 49183.60,
+              text='TP 49184', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #40 SHORT +1334
+    line.new(timestamp(2026,1,23,14,25,0), 49141.70,
+             timestamp(2026,1,23,16,56,0), 49141.70,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,1,23,14,25,0), 49141.70,
+              text='#40 S E:49142 +1334$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,1,23,14,25,0), 49198.51,
+             timestamp(2026,1,23,16,56,0), 49198.51,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,23,16,56,0), 49198.51,
+              text='SL 49199', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,1,23,14,25,0), 48999.67,
+             timestamp(2026,1,23,16,56,0), 48999.67,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,23,16,56,0), 48999.67,
+              text='TP 49000', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #44 LONG +1313
+    line.new(timestamp(2026,1,29,13,48,0), 49002.70,
+             timestamp(2026,1,29,13,55,0), 49002.70,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,1,29,13,48,0), 49002.70,
+              text='#44 L E:49003 +1313$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,1,29,13,48,0), 48965.51,
+             timestamp(2026,1,29,13,55,0), 48965.51,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,29,13,55,0), 48965.51,
+              text='SL 48966', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,1,29,13,48,0), 49095.67,
+             timestamp(2026,1,29,13,55,0), 49095.67,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,1,29,13,55,0), 49095.67,
+              text='TP 49096', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #45 LONG +1304
+    line.new(timestamp(2026,2,4,13,23,0), 49297.21,
+             timestamp(2026,2,4,13,27,0), 49297.21,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,2,4,13,23,0), 49297.21,
+              text='#45 L E:49297 +1304$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,2,4,13,23,0), 49277.21,
+             timestamp(2026,2,4,13,27,0), 49277.21,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,4,13,27,0), 49277.21,
+              text='SL 49277', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,2,4,13,23,0), 49347.21,
+             timestamp(2026,2,4,13,27,0), 49347.21,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,4,13,27,0), 49347.21,
+              text='TP 49347', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #48 LONG +1340
+    line.new(timestamp(2026,2,6,14,50,0), 49679.10,
+             timestamp(2026,2,6,15,3,0), 49679.10,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,2,6,14,50,0), 49679.10,
+              text='#48 L E:49679 +1340$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,2,6,14,50,0), 49624.60,
+             timestamp(2026,2,6,15,3,0), 49624.60,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,6,15,3,0), 49624.60,
+              text='SL 49625', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,2,6,14,50,0), 49815.35,
+             timestamp(2026,2,6,15,3,0), 49815.35,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,6,15,3,0), 49815.35,
+              text='TP 49815', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #51 SHORT +1326
+    line.new(timestamp(2026,2,10,10,45,0), 50154.50,
+             timestamp(2026,2,10,11,41,0), 50154.50,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,2,10,10,45,0), 50154.50,
+              text='#51 S E:50154 +1326$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,2,10,10,45,0), 50184.50,
+             timestamp(2026,2,10,11,41,0), 50184.50,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,10,11,41,0), 50184.50,
+              text='SL 50184', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,2,10,10,45,0), 50079.50,
+             timestamp(2026,2,10,11,41,0), 50079.50,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,10,11,41,0), 50079.50,
+              text='TP 50080', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #54 LONG +1340
+    line.new(timestamp(2026,2,11,12,15,0), 50241.40,
+             timestamp(2026,2,11,12,30,0), 50241.40,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,2,11,12,15,0), 50241.40,
+              text='#54 L E:50241 +1340$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,2,11,12,15,0), 50196.31,
+             timestamp(2026,2,11,12,30,0), 50196.31,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,11,12,30,0), 50196.31,
+              text='SL 50196', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,2,11,12,15,0), 50354.13,
+             timestamp(2026,2,11,12,30,0), 50354.13,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,11,12,30,0), 50354.13,
+              text='TP 50354', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #56 SHORT +1343
+    line.new(timestamp(2026,2,13,11,55,0), 49375.81,
+             timestamp(2026,2,13,12,14,0), 49375.81,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,2,13,11,55,0), 49375.81,
+              text='#56 S E:49376 +1343$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,2,13,11,55,0), 49411.81,
+             timestamp(2026,2,13,12,14,0), 49411.81,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,13,12,14,0), 49411.81,
+              text='SL 49412', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,2,13,11,55,0), 49285.81,
+             timestamp(2026,2,13,12,14,0), 49285.81,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,13,12,14,0), 49285.81,
+              text='TP 49286', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #57 SHORT +1344
+    line.new(timestamp(2026,2,16,10,45,0), 49713.55,
+             timestamp(2026,2,16,13,14,0), 49713.55,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,2,16,10,45,0), 49713.55,
+              text='#57 S E:49714 +1344$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,2,16,10,45,0), 49737.60,
+             timestamp(2026,2,16,13,14,0), 49737.60,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,16,13,14,0), 49737.60,
+              text='SL 49738', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,2,16,10,45,0), 49653.43,
+             timestamp(2026,2,16,13,14,0), 49653.43,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,16,13,14,0), 49653.43,
+              text='TP 49653', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #58 SHORT +1368
+    line.new(timestamp(2026,2,17,12,51,0), 49501.81,
+             timestamp(2026,2,17,12,56,0), 49501.81,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,2,17,12,51,0), 49501.81,
+              text='#58 S E:49502 +1368$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,2,17,12,51,0), 49530.41,
+             timestamp(2026,2,17,12,56,0), 49530.41,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,17,12,56,0), 49530.41,
+              text='SL 49530', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,2,17,12,51,0), 49430.31,
+             timestamp(2026,2,17,12,56,0), 49430.31,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,17,12,56,0), 49430.31,
+              text='TP 49430', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #59 SHORT +1335
+    line.new(timestamp(2026,2,17,12,52,0), 49496.81,
+             timestamp(2026,2,17,12,54,0), 49496.81,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,2,17,12,52,0), 49496.81,
+              text='#59 S E:49497 +1335$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,2,17,12,52,0), 49512.31,
+             timestamp(2026,2,17,12,54,0), 49512.31,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,17,12,54,0), 49512.31,
+              text='SL 49512', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,2,17,12,52,0), 49458.06,
+             timestamp(2026,2,17,12,54,0), 49458.06,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,17,12,54,0), 49458.06,
+              text='TP 49458', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #65 LONG +1356
+    line.new(timestamp(2026,2,25,11,31,0), 49314.65,
+             timestamp(2026,2,25,13,0,0), 49314.65,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,2,25,11,31,0), 49314.65,
+              text='#65 L E:49315 +1356$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,2,25,11,31,0), 49291.41,
+             timestamp(2026,2,25,13,0,0), 49291.41,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,25,13,0,0), 49291.41,
+              text='SL 49291', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,2,25,11,31,0), 49372.75,
+             timestamp(2026,2,25,13,0,0), 49372.75,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,25,13,0,0), 49372.75,
+              text='TP 49373', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #66 SHORT +1372
+    line.new(timestamp(2026,2,25,13,40,0), 49402.60,
+             timestamp(2026,2,25,13,42,0), 49402.60,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,2,25,13,40,0), 49402.60,
+              text='#66 S E:49403 +1372$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,2,25,13,40,0), 49425.91,
+             timestamp(2026,2,25,13,42,0), 49425.91,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,25,13,42,0), 49425.91,
+              text='SL 49426', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,2,25,13,40,0), 49344.32,
+             timestamp(2026,2,25,13,42,0), 49344.32,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,25,13,42,0), 49344.32,
+              text='TP 49344', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #67 LONG +1416
+    line.new(timestamp(2026,2,25,15,18,0), 49280.65,
+             timestamp(2026,2,25,15,46,0), 49280.65,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,2,25,15,18,0), 49280.65,
+              text='#67 L E:49281 +1416$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,2,25,15,18,0), 49229.15,
+             timestamp(2026,2,25,15,46,0), 49229.15,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,25,15,46,0), 49229.15,
+              text='SL 49229', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,2,25,15,18,0), 49409.40,
+             timestamp(2026,2,25,15,46,0), 49409.40,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,2,25,15,46,0), 49409.40,
+              text='TP 49409', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #70 SHORT +1432
+    line.new(timestamp(2026,2,27,15,17,0), 48983.85,
+             timestamp(2026,3,1,22,5,0), 48983.85,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,2,27,15,17,0), 48983.85,
+              text='#70 S E:48984 +1432$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,2,27,15,17,0), 49106.90,
+             timestamp(2026,3,1,22,5,0), 49106.90,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,1,22,5,0), 49106.90,
+              text='SL 49107', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,2,27,15,17,0), 48676.22,
+             timestamp(2026,3,1,22,5,0), 48676.22,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,1,22,5,0), 48676.22,
+              text='TP 48676', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #75 LONG +1405
+    line.new(timestamp(2026,3,5,15,41,0), 47923.50,
+             timestamp(2026,3,5,16,4,0), 47923.50,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,3,5,15,41,0), 47923.50,
+              text='#75 L E:47924 +1405$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,3,5,15,41,0), 47875.10,
+             timestamp(2026,3,5,16,4,0), 47875.10,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,5,16,4,0), 47875.10,
+              text='SL 47875', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,3,5,15,41,0), 48044.50,
+             timestamp(2026,3,5,16,4,0), 48044.50,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,5,16,4,0), 48044.50,
+              text='TP 48044', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #78 LONG +1413
+    line.new(timestamp(2026,3,9,15,35,0), 47055.10,
+             timestamp(2026,3,9,16,26,0), 47055.10,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,3,9,15,35,0), 47055.10,
+              text='#78 L E:47055 +1413$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,3,9,15,35,0), 46994.60,
+             timestamp(2026,3,9,16,26,0), 46994.60,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,9,16,26,0), 46994.60,
+              text='SL 46995', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,3,9,15,35,0), 47206.35,
+             timestamp(2026,3,9,16,26,0), 47206.35,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,9,16,26,0), 47206.35,
+              text='TP 47206', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #79 SHORT +1437
+    line.new(timestamp(2026,3,11,15,4,0), 47511.50,
+             timestamp(2026,3,11,15,30,0), 47511.50,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,3,11,15,4,0), 47511.50,
+              text='#79 S E:47512 +1437$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,3,11,15,4,0), 47607.50,
+             timestamp(2026,3,11,15,30,0), 47607.50,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,11,15,30,0), 47607.50,
+              text='SL 47608', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,3,11,15,4,0), 47271.50,
+             timestamp(2026,3,11,15,30,0), 47271.50,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,11,15,30,0), 47271.50,
+              text='TP 47272', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #82 LONG +1432
+    line.new(timestamp(2026,3,16,12,54,0), 46905.81,
+             timestamp(2026,3,16,13,45,0), 46905.81,
+             xloc=xloc.bar_time, color=color.lime, width=2, style=line.style_solid)
+    label.new(timestamp(2026,3,16,12,54,0), 46905.81,
+              text='#82 L E:46906 +1432$',
+              xloc=xloc.bar_time, color=color.lime, textcolor=color.white, size=size.tiny,
+              style=label.style_label_up)
+    line.new(timestamp(2026,3,16,12,54,0), 46846.81,
+             timestamp(2026,3,16,13,45,0), 46846.81,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,16,13,45,0), 46846.81,
+              text='SL 46847', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,3,16,12,54,0), 47053.31,
+             timestamp(2026,3,16,13,45,0), 47053.31,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,16,13,45,0), 47053.31,
+              text='TP 47053', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #84 SHORT +1450
+    line.new(timestamp(2026,3,19,10,45,0), 46159.21,
+             timestamp(2026,3,19,12,31,0), 46159.21,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,3,19,10,45,0), 46159.21,
+              text='#84 S E:46159 +1450$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,3,19,10,45,0), 46257.71,
+             timestamp(2026,3,19,12,31,0), 46257.71,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,19,12,31,0), 46257.71,
+              text='SL 46258', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,3,19,10,45,0), 45912.96,
+             timestamp(2026,3,19,12,31,0), 45912.96,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,19,12,31,0), 45912.96,
+              text='TP 45913', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #87 SHORT +1457
+    line.new(timestamp(2026,3,20,14,6,0), 45868.90,
+             timestamp(2026,3,20,19,24,0), 45868.90,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,3,20,14,6,0), 45868.90,
+              text='#87 S E:45869 +1457$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,3,20,14,6,0), 46027.90,
+             timestamp(2026,3,20,19,24,0), 46027.90,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,20,19,24,0), 46027.90,
+              text='SL 46028', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,3,20,14,6,0), 45471.40,
+             timestamp(2026,3,20,19,24,0), 45471.40,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,20,19,24,0), 45471.40,
+              text='TP 45471', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #90 SHORT +1464
+    line.new(timestamp(2026,3,23,12,42,0), 46536.81,
+             timestamp(2026,3,24,13,41,0), 46536.81,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,3,23,12,42,0), 46536.81,
+              text='#90 S E:46537 +1464$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,3,23,12,42,0), 46829.31,
+             timestamp(2026,3,24,13,41,0), 46829.31,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,24,13,41,0), 46829.31,
+              text='SL 46829', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,3,23,12,42,0), 45805.56,
+             timestamp(2026,3,24,13,41,0), 45805.56,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,24,13,41,0), 45805.56,
+              text='TP 45806', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+
+    // Trade #92 SHORT +1443
+    line.new(timestamp(2026,3,24,10,56,0), 46158.91,
+             timestamp(2026,3,24,12,37,0), 46158.91,
+             xloc=xloc.bar_time, color=color.teal, width=2, style=line.style_solid)
+    label.new(timestamp(2026,3,24,10,56,0), 46158.91,
+              text='#92 S E:46159 +1443$',
+              xloc=xloc.bar_time, color=color.teal, textcolor=color.white, size=size.tiny,
+              style=label.style_label_down)
+    line.new(timestamp(2026,3,24,10,56,0), 46227.41,
+             timestamp(2026,3,24,12,37,0), 46227.41,
+             xloc=xloc.bar_time, color=color.red, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,24,12,37,0), 46227.41,
+              text='SL 46227', xloc=xloc.bar_time, color=color.red,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)
+    line.new(timestamp(2026,3,24,10,56,0), 45987.66,
+             timestamp(2026,3,24,12,37,0), 45987.66,
+             xloc=xloc.bar_time, color=color.green, width=1, style=line.style_dashed)
+    label.new(timestamp(2026,3,24,12,37,0), 45987.66,
+              text='TP 45988', xloc=xloc.bar_time, color=color.green,
+              textcolor=color.white, size=size.tiny, style=label.style_label_left)

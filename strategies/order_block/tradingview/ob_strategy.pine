@@ -1,0 +1,224 @@
+//@version=5
+strategy("Order Block Strategy [Live Config]",
+     overlay        = true,
+     initial_capital = 100000,
+     default_qty_type = strategy.percent_of_equity,
+     default_qty_value = 0.5,
+     commission_type  = strategy.commission.cash_per_contract,
+     commission_value = 0,
+     slippage         = 2,
+     max_boxes_count  = 200,
+     max_lines_count  = 200,
+     max_labels_count = 200)
+
+// ============================================================
+// PARAMETROS (identicos al bot live)
+// ============================================================
+consecutive    = input.int(4,    "Consecutive Candles",  minval=1, maxval=10)
+target_rr      = input.float(2.5,"Target R:R",           minval=1.0, step=0.5)
+buffer_pts     = input.float(20, "Buffer SL (pts)",      minval=1)
+expiry_candles = input.int(100,  "Expiry Candles",       minval=10)
+bos_lookback   = input.int(20,   "BOS Lookback (velas)", minval=5)
+risk_pct       = input.float(0.5,"Risk % por trade",     minval=0.1, step=0.1)
+
+// Sesion NY
+ny_session = input.session("1330-1930", "Sesion NY (hora broker)")
+in_session = not na(time(timeframe.period, ny_session, "UTC"))
+
+// Colores
+bull_color = input.color(color.new(color.green, 70), "Bullish OB")
+bear_color = input.color(color.new(color.red,   70), "Bearish OB")
+mit_color  = input.color(color.new(color.yellow,80), "Mitigated")
+dest_color = input.color(color.new(color.gray,  88), "Destroyed")
+
+// ============================================================
+// DETECCION OB
+// ============================================================
+lookback = consecutive + 1
+
+is_bullish_ob(offset) =>
+    ob_idx = offset + consecutive
+    is_ob  = close[ob_idx] < open[ob_idx]
+    if not is_ob
+        false
+    else
+        ok = true
+        for i = 1 to consecutive
+            if close[ob_idx - i] <= open[ob_idx - i]
+                ok := false
+        ok
+
+is_bearish_ob(offset) =>
+    ob_idx = offset + consecutive
+    is_ob  = close[ob_idx] > open[ob_idx]
+    if not is_ob
+        false
+    else
+        ok = true
+        for i = 1 to consecutive
+            if close[ob_idx - i] >= open[ob_idx - i]
+                ok := false
+        ok
+
+// ============================================================
+// BOS — ventana fija bos_lookback velas
+// ============================================================
+bos_bull = false
+bos_bear = false
+if bar_index >= bos_lookback
+    half         = bos_lookback / 2
+    struct_high  = ta.highest(high, int(half))[int(half)]
+    struct_low   = ta.lowest(low,   int(half))[int(half)]
+    bos_bull    := ta.highest(close, int(half)) > struct_high
+    bos_bear    := ta.lowest(close,  int(half)) < struct_low
+
+// ============================================================
+// DIBUJAR ZONAS OB
+// ============================================================
+if is_bullish_ob(lookback)
+    z_low  = low[lookback  + consecutive]
+    z_high = open[lookback + consecutive]
+    b = box.new(
+         left         = bar_index - lookback - consecutive,
+         top          = z_high,
+         right        = bar_index + expiry_candles,
+         bottom       = z_low,
+         border_color = color.green,
+         bgcolor      = bull_color)
+    // DESTROYED
+    if close < z_low
+        box.set_bgcolor(b, dest_color)
+        box.set_border_color(b, color.gray)
+    // MITIGATED
+    else if low <= z_high and high >= z_low
+        box.set_bgcolor(b, mit_color)
+        box.set_border_color(b, color.yellow)
+
+if is_bearish_ob(lookback)
+    z_low  = open[lookback + consecutive]
+    z_high = high[lookback + consecutive]
+    b = box.new(
+         left         = bar_index - lookback - consecutive,
+         top          = z_high,
+         right        = bar_index + expiry_candles,
+         bottom       = z_low,
+         border_color = color.red,
+         bgcolor      = bear_color)
+    if close > z_high
+        box.set_bgcolor(b, dest_color)
+        box.set_border_color(b, color.gray)
+    else if low <= z_high and high >= z_low
+        box.set_bgcolor(b, mit_color)
+        box.set_border_color(b, color.yellow)
+
+// ============================================================
+// SEÑALES DE ENTRADA
+// ============================================================
+
+// Buscar OB bullish mas reciente activo
+var float bull_zone_low  = na
+var float bull_zone_high = na
+var int   bull_ob_bar    = na
+var bool  bull_used      = false
+
+// Buscar OB bearish mas reciente activo
+var float bear_zone_low  = na
+var float bear_zone_high = na
+var int   bear_ob_bar    = na
+var bool  bear_used      = false
+
+// Actualizar OB activo si se detecta uno nuevo
+if is_bullish_ob(lookback) and not (low[lookback+consecutive] == bull_zone_low)
+    bull_zone_low  := low[lookback + consecutive]
+    bull_zone_high := open[lookback + consecutive]
+    bull_ob_bar    := bar_index - lookback - consecutive
+    bull_used      := false
+
+if is_bearish_ob(lookback) and not (open[lookback+consecutive] == bear_zone_low)
+    bear_zone_low  := open[lookback + consecutive]
+    bear_zone_high := high[lookback + consecutive]
+    bear_ob_bar    := bar_index - lookback - consecutive
+    bear_used      := false
+
+// Invalidar si precio rompe la zona
+if not na(bull_zone_low) and close < bull_zone_low
+    bull_used := true
+
+if not na(bear_zone_high) and close > bear_zone_high
+    bear_used := true
+
+// ============================================================
+// ENTRADAS
+// ============================================================
+can_trade = in_session and strategy.opentrades == 0
+
+// LONG: precio toca zona bullish OB + BOS alcista
+long_signal = can_trade
+     and not bull_used
+     and not na(bull_zone_low)
+     and low  <= bull_zone_high
+     and close >= bull_zone_low
+     and bos_bull
+
+// SHORT: precio toca zona bearish OB + BOS bajista
+short_signal = can_trade
+     and not bear_used
+     and not na(bear_zone_low)
+     and high >= bear_zone_low
+     and close <= bear_zone_high
+     and bos_bear
+
+// Calcular SL y TP
+long_sl  = bull_zone_low  - buffer_pts
+long_tp  = close + (close - long_sl) * target_rr
+short_sl = bear_zone_high + buffer_pts
+short_tp = close - (short_sl - close) * target_rr
+
+// Ejecutar entradas
+if long_signal
+    risk_pts = close - long_sl
+    qty = (strategy.equity * risk_pct / 100) / risk_pts
+    strategy.entry("Long", strategy.long, qty = qty)
+    strategy.exit("Long Exit", "Long", stop = long_sl, limit = long_tp)
+    bull_used := true
+    label.new(bar_index, low - buffer_pts * 2,
+         text      = "L",
+         color     = color.new(color.green, 50),
+         textcolor = color.white,
+         size      = size.small,
+         style     = label.style_label_up)
+
+if short_signal
+    risk_pts = short_sl - close
+    qty = (strategy.equity * risk_pct / 100) / risk_pts
+    strategy.entry("Short", strategy.short, qty = qty)
+    strategy.exit("Short Exit", "Short", stop = short_sl, limit = short_tp)
+    bear_used := true
+    label.new(bar_index, high + buffer_pts * 2,
+         text      = "S",
+         color     = color.new(color.red, 50),
+         textcolor = color.white,
+         size      = size.small,
+         style     = label.style_label_down)
+
+// ============================================================
+// TABLA DE STATS
+// ============================================================
+var table tb = table.new(position.top_right, 2, 6,
+     bgcolor = color.new(color.black, 70), border_width = 1,
+     border_color = color.new(color.white, 60))
+
+if barstate.islast
+    wr = strategy.wintrades / math.max(strategy.closedtrades, 1) * 100
+    table.cell(tb, 0, 0, "OB Strategy (Live)",  text_color = color.white,  text_size = size.small)
+    table.cell(tb, 1, 0, "",                    text_color = color.white,  text_size = size.small)
+    table.cell(tb, 0, 1, "Trades",              text_color = color.silver, text_size = size.tiny)
+    table.cell(tb, 1, 1, str.tostring(strategy.closedtrades), text_color = color.yellow, text_size = size.tiny)
+    table.cell(tb, 0, 2, "Win Rate",            text_color = color.silver, text_size = size.tiny)
+    table.cell(tb, 1, 2, str.tostring(wr, "#.1") + "%", text_color = wr >= 40 ? color.green : color.red, text_size = size.tiny)
+    table.cell(tb, 0, 3, "Net Profit",          text_color = color.silver, text_size = size.tiny)
+    table.cell(tb, 1, 3, str.tostring(strategy.netprofit, "#.0"), text_color = strategy.netprofit >= 0 ? color.green : color.red, text_size = size.tiny)
+    table.cell(tb, 0, 4, "Max DD",              text_color = color.silver, text_size = size.tiny)
+    table.cell(tb, 1, 4, str.tostring(strategy.max_drawdown, "#.2") + "%", text_color = color.orange, text_size = size.tiny)
+    table.cell(tb, 0, 5, "Consecutive",         text_color = color.silver, text_size = size.tiny)
+    table.cell(tb, 1, 5, str.tostring(consecutive) + " | RR " + str.tostring(target_rr), text_color = color.yellow, text_size = size.tiny)

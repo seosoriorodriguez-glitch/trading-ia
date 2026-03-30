@@ -1,0 +1,116 @@
+# ============================================================
+# ESTRATEGIA V3 - PIVOT SCALPING M5/M1 (EXPERIMENTAL)
+# ============================================================
+# Versión de prueba paralela. NO afecta el bot en producción.
+#
+# CAMBIOS RESPECTO A v2 (aggressive):
+#
+# PUNTO 2 — Activación correcta del pivot:
+#   La vela de formación NO cuenta como toque operativo.
+#   Un pivot pasa a operable en su PRIMER retorno posterior.
+#   Equivale a min_touches=1 semánticamente correcto
+#   (antes el backtester contaba la vela pivot como toque 0
+#   y el primer retorno como toque 1, activando sin prueba real).
+#
+# PUNTO 3 — Zona simple:
+#   La zona sigue siendo [low, high] de la vela pivot completa.
+#   No se recorta dinámicamente. Los setups de zona ancha
+#   se rechazan por RR, no modificando la zona.
+#
+# PUNTO 8 — Priorización de zonas:
+#   Si una vela M1 toca múltiples zonas del mismo tipo:
+#     SHORT → usar la zona más alta (mayor resistencia)
+#     LONG  → usar la zona más baja (mayor soporte)
+#   Si hay empate o superposición, elegir la más reciente.
+#   Testar con max_active_zones: 6, 8 y 12.
+#
+# Versión: 3.0 (Experimental — no usar en producción)
+# Fecha: 27 Mar 2026
+# ============================================================
+
+pivots:
+  swing_strength: 7
+  zone_type: "full_candle"
+
+  # V3 — Punto 2: min_touches=1 con semántica corregida.
+  # El backtester v3 garantiza que la vela de formación
+  # no cuenta. El primer retorno posterior = primer toque válido.
+  min_touches: 1
+  min_touch_separation: 2
+  max_touches: 10
+  expiry_candles: 200
+
+  # Punto 8: probar con 6, 8, 12
+  max_active_zones: 12
+
+  # Zona estrecha: nivel exacto del pivot ± zone_buffer
+  zone_buffer: 20
+  # Tiempo mínimo desde el primer toque para operar la zona (horas)
+  min_touch_age_hours: 2
+
+entry:
+  valid_patterns:
+    - 'pin_bar'
+    - 'engulfing'
+
+  pin_bar:
+    min_wick_to_body_ratio: 2.0
+    max_body_pct: 0.35
+
+  engulfing:
+    min_body_ratio: 1.0
+
+stop_loss:
+  buffer_points: 20
+  min_risk_points: 20       # Filtra setups con SL muy ajustado (vulnerable a mechazo)
+  structure_buffer: 5       # Buffer adicional sobre el swing estructural
+  swing_lookback: 10        # Velas M5 hacia atrás para buscar el swing estructural (10 velas = 50 min)
+
+take_profit:
+  method: "structure"
+  structure:
+    offset_points: 3
+  fallback_rr: 1.5
+  min_rr_ratio: 1.2
+
+break_even:
+  enabled: false
+
+trailing_stop:
+  enabled: false
+
+filters:
+  time:
+    enabled: true
+    sessions:
+      london:
+        start: "08:00"
+        end: "11:00"
+        skip_first_minutes: 15
+      new_york:
+        start: "13:30"
+        end: "19:30"
+        skip_first_minutes: 15
+    allowed_days: [1, 2, 3, 4, 5]
+
+  spread:
+    enabled: true
+    max_spread_points: 5
+
+  trend:
+    enabled: false
+
+sizing:
+  risk_per_trade_pct: 0.005
+  max_simultaneous_trades: 2
+  max_total_risk_pct: 0.01
+
+costs:
+  avg_spread_points: 2
+  commission_per_lot: 0
+
+ftmo:
+  max_daily_drawdown_pct: 0.04
+  max_total_drawdown_pct: 0.08
+  close_before_weekend: true
+  weekend_close_hour: 21

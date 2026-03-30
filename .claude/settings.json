@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python strategies/order_block/backtest/run_backtest.py --data-higher data/US30_cash_M5_260d.csv --data-lower data/US30_cash_M1_260d.csv --tf-higher M5 --tf-lower M1 --buffer 40 --output strategies/order_block/backtest/results/ob_buffer40.csv)",
+      "Bash(python -c \":*)",
+      "Bash(python strategies/order_block/backtest/analysis.py)",
+      "Bash(python strategies/order_block/backtest/run_backtest.py --data-higher data/US30_cash_M5_260d.csv --data-lower data/US30_cash_M1_260d.csv --tf-higher M5 --tf-lower M1 --session london --output strategies/order_block/backtest/results/ob_london.csv)",
+      "Bash(python strategies/order_block/backtest/run_backtest.py --data-higher data/US30_cash_M5_260d.csv --data-lower data/US30_cash_M1_260d.csv --tf-higher M5 --tf-lower M1 --session both --output strategies/order_block/backtest/results/ob_london_test.csv)",
+      "Bash(python strategies/order_block/backtest/experimental/bos_fractal_test.py)",
+      "Bash(python strategies/order_block/backtest/experimental/fvg_backtest.py)"
+    ]
+  }
+}

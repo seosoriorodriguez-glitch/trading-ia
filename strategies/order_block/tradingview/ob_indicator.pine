@@ -1,0 +1,113 @@
+//@version=5
+indicator("Order Block Detector", overlay=true, max_boxes_count=200, max_labels_count=200)
+
+// ============================================================
+// PARAMETROS
+// ============================================================
+consecutive    = input.int(4,   "Consecutive Candles", minval=1, maxval=10)
+expiry_candles = input.int(100, "Expiry Candles",      minval=10, maxval=500)
+show_destroyed = input.bool(true, "Mostrar DESTROYED (gris)")
+show_mitigated = input.bool(true, "Mostrar MITIGATED (amarillo)")
+
+bull_color  = input.color(color.new(color.green,  70), "Bullish OB")
+bear_color  = input.color(color.new(color.red,    70), "Bearish OB")
+mit_color   = input.color(color.new(color.yellow, 80), "Mitigated")
+dest_color  = input.color(color.new(color.gray,   88), "Destroyed")
+
+// ============================================================
+// DETECCION OB
+// ============================================================
+is_bullish_ob(offset) =>
+    ob_idx = offset + consecutive
+    is_ob  = close[ob_idx] < open[ob_idx]
+    if not is_ob
+        false
+    else
+        ok = true
+        for i = 1 to consecutive
+            if close[ob_idx - i] <= open[ob_idx - i]
+                ok := false
+        ok
+
+is_bearish_ob(offset) =>
+    ob_idx = offset + consecutive
+    is_ob  = close[ob_idx] > open[ob_idx]
+    if not is_ob
+        false
+    else
+        ok = true
+        for i = 1 to consecutive
+            if close[ob_idx - i] >= open[ob_idx - i]
+                ok := false
+        ok
+
+// ============================================================
+// DIBUJAR ZONAS
+// ============================================================
+lookback = consecutive + 1
+
+// --- BULLISH OB: zona = [low, open] ---
+if is_bullish_ob(lookback)
+    z_low  = low[lookback  + consecutive]
+    z_high = open[lookback + consecutive]
+    b = box.new(
+         left         = bar_index - lookback - consecutive,
+         top          = z_high,
+         right        = bar_index + expiry_candles,
+         bottom       = z_low,
+         border_color = color.green,
+         bgcolor      = bull_color)
+    label.new(
+         x         = bar_index - lookback - consecutive,
+         y         = z_high,
+         text      = "Bull OB",
+         color     = color.new(color.green, 80),
+         textcolor = color.green,
+         size      = size.tiny,
+         style     = label.style_label_right)
+
+    // DESTROYED: cierre bajo zone_low
+    if close < z_low
+        if show_destroyed
+            box.set_bgcolor(b, dest_color)
+            box.set_border_color(b, color.gray)
+        else
+            box.delete(b)
+    // MITIGATED: precio toca la zona
+    else if low <= z_high and high >= z_low
+        if show_mitigated
+            box.set_bgcolor(b, mit_color)
+            box.set_border_color(b, color.yellow)
+
+// --- BEARISH OB: zona = [open, high] ---
+if is_bearish_ob(lookback)
+    z_low  = open[lookback + consecutive]
+    z_high = high[lookback + consecutive]
+    b = box.new(
+         left         = bar_index - lookback - consecutive,
+         top          = z_high,
+         right        = bar_index + expiry_candles,
+         bottom       = z_low,
+         border_color = color.red,
+         bgcolor      = bear_color)
+    label.new(
+         x         = bar_index - lookback - consecutive,
+         y         = z_high,
+         text      = "Bear OB",
+         color     = color.new(color.red, 80),
+         textcolor = color.red,
+         size      = size.tiny,
+         style     = label.style_label_right)
+
+    // DESTROYED: cierre sobre zone_high
+    if close > z_high
+        if show_destroyed
+            box.set_bgcolor(b, dest_color)
+            box.set_border_color(b, color.gray)
+        else
+            box.delete(b)
+    // MITIGATED: precio toca la zona
+    else if low <= z_high and high >= z_low
+        if show_mitigated
+            box.set_bgcolor(b, mit_color)
+            box.set_border_color(b, color.yellow)
