@@ -112,9 +112,9 @@ class FTMORiskManager:
         profit   = (self.current_balance - self.initial_balance) / self.initial_balance
         return {
             "balance":         self.current_balance,
-            "daily_dd_pct":    daily_dd,
+            "daily_dd_pct":    max(0.0, daily_dd),
             "daily_dd_limit":  self.max_daily_dd_pct,
-            "total_dd_pct":    total_dd,
+            "total_dd_pct":    max(0.0, total_dd),
             "total_dd_limit":  self.max_total_dd_pct,
             "profit_pct":      profit,
             "profit_target":   self.profit_target_pct,

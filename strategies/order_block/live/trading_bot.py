@@ -57,7 +57,7 @@ class OrderBlockBot:
 
         # Estado
         self.open_trades: dict = {}   # ticket -> trade_info (posiciones abiertas)
-        self.pending_orders: dict = {} # ticket -> order_info (órdenes LIMIT pendientes)
+        self.pending_orders: dict = {} # ticket -> order_info (órdenes STOP pendientes)
         self.last_m5_update:  Optional[datetime] = None
         self.last_m1_check:   Optional[datetime] = None
         self.last_daily_reset: Optional[datetime] = None
@@ -107,7 +107,7 @@ class OrderBlockBot:
             for order in pending:
                 self.pending_orders[order.ticket] = {
                     "ticket":     order.ticket,
-                    "type":       "LONG" if order.type == mt5.ORDER_TYPE_BUY_LIMIT else "SHORT",
+                    "type":       "LONG" if order.type in (mt5.ORDER_TYPE_BUY_STOP, mt5.ORDER_TYPE_BUY_LIMIT) else "SHORT",
                     "price":      order.price_open,
                     "sl":         order.sl,
                     "tp":         order.tp,
@@ -286,7 +286,7 @@ class OrderBlockBot:
                 "volume":     result["volume"],
                 "entry_time": datetime.now(timezone.utc),
                 "signal":     signal,
-                "order_type": result.get("order_type", "LIMIT"),
+                "order_type": result.get("order_type", "STOP"),
             }
             
             # Guardar como orden pendiente (no cuenta como trade abierto aún)
@@ -313,12 +313,12 @@ class OrderBlockBot:
                     self.risk_manager.on_trade_opened()
                     self.open_trades[ticket] = order_info
                     del self.pending_orders[ticket]
-                    print(f"Orden LIMIT {ticket} ejecutada", flush=True)
+                    print(f"Orden STOP {ticket} ejecutada", flush=True)
                 
                 # Orden fue cancelada o no existe
                 elif ticket not in pending_tickets:
                     del self.pending_orders[ticket]
-                    print(f"Orden LIMIT {ticket} cancelada/expirada", flush=True)
+                    print(f"Orden STOP {ticket} cancelada/expirada", flush=True)
 
         except Exception as e:
             self.monitor.log_error(f"Error monitoreando ordenes pendientes: {e}")

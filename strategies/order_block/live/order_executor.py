@@ -48,13 +48,16 @@ class OrderExecutor:
         if tick is None:
             return False, {"error": "No se pudo obtener precio actual"}
 
-        # LIMIT ORDER: entry_price viene de la señal (zone_high o zone_low)
+        # STOP ORDER: entry está en zone_high (LONG) o zone_low (SHORT),
+        # que está por encima/debajo del precio actual respectivamente.
+        # BUY STOP se ejecuta cuando el precio SUBE al nivel.
+        # SELL STOP se ejecuta cuando el precio BAJA al nivel.
         if signal.direction == "long":
-            order_type   = mt5.ORDER_TYPE_BUY_LIMIT
+            order_type   = mt5.ORDER_TYPE_BUY_STOP
             entry_price  = signal.entry_price  # zone_high
             trade_type   = "LONG"
         else:
-            order_type   = mt5.ORDER_TYPE_SELL_LIMIT
+            order_type   = mt5.ORDER_TYPE_SELL_STOP
             entry_price  = signal.entry_price  # zone_low
             trade_type   = "SHORT"
 
@@ -68,20 +71,20 @@ class OrderExecutor:
                 "tp":          signal.tp,
                 "risk_points": abs(entry_price - signal.sl),
                 "risk_usd":    risk_usd,
-                "order_type":  "LIMIT",
+                "order_type":  "STOP",
             }
 
         request = {
-            "action":      mt5.TRADE_ACTION_PENDING,  # Orden pendiente
+            "action":      mt5.TRADE_ACTION_PENDING,
             "symbol":      self.symbol,
             "volume":      volume,
             "type":        order_type,
             "price":       entry_price,
             "sl":          signal.sl,
             "tp":          signal.tp,
-            "deviation":   0,  # No aplica para órdenes pendientes
+            "deviation":   0,
             "magic":       self.MAGIC,
-            "comment":     f"OB_{trade_type}_LIMIT",
+            "comment":     f"OB_{trade_type}_STOP",
             "type_time":   mt5.ORDER_TIME_GTC,  # Good Till Cancelled
             "type_filling": mt5.ORDER_FILLING_RETURN,
         }
@@ -101,7 +104,7 @@ class OrderExecutor:
             "tp":     signal.tp,
             "type":   trade_type,
             "time":   datetime.now(timezone.utc),
-            "order_type": "LIMIT",
+            "order_type": "STOP",
         }
 
     def get_open_positions(self) -> list:

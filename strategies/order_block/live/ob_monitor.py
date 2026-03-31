@@ -247,7 +247,7 @@ class LiveOBMonitor:
 
     def _calculate_sl_tp_limit(self, ob: OrderBlock, entry_price: float) -> Tuple[Optional[float], Optional[float]]:
         """
-        Calcula SL/TP para órdenes LIMIT.
+        Calcula SL/TP para órdenes STOP pendientes.
         
         LONG (OB Bullish):
           Entry: zone_high
@@ -256,8 +256,8 @@ class LiveOBMonitor:
         
         SHORT (OB Bearish):
           Entry: zone_low
-          TP: zone_low - buffer
-          SL: entry + risk_pts
+          SL: zone_high + buffer
+          TP: entry - risk_pts * target_rr
         """
         buf = self.params["buffer_points"]
         min_risk = self.params["min_risk_points"]
@@ -271,11 +271,10 @@ class LiveOBMonitor:
             risk_pts = abs(entry_price - sl)
             tp = entry_price + risk_pts * target_rr
         else:
-            # SHORT: Entry en zone_low, TP debajo, SL arriba
-            tp = ob.zone_low - buf
-            reward_pts = abs(entry_price - tp)
-            risk_pts = reward_pts / target_rr
-            sl = entry_price + risk_pts
+            # SHORT: Entry en zone_low, SL arriba de zone_high
+            sl = ob.zone_high + buf
+            risk_pts = abs(sl - entry_price)
+            tp = entry_price - risk_pts * target_rr
 
         # Validar filtros de riesgo
         if risk_pts < min_risk or risk_pts > max_risk:
