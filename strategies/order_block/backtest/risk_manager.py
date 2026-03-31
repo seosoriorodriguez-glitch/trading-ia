@@ -21,11 +21,12 @@ def calculate_sl_tp(
     Calcula SL y TP para un trade dado el OB y el precio de entrada.
 
     SL:
-      LONG:  ob.zone_low  - buffer_points
-      SHORT: ob.zone_high + buffer_points
+      LONG:  ob.zone_low  - buffer_points (debajo del entry)
+      SHORT: entry + risk_points * target_rr (arriba del entry)
 
     TP:
-      entry +/- (risk_points * target_rr)
+      LONG:  entry + risk_points * target_rr (arriba del entry)
+      SHORT: ob.zone_high + buffer_points (debajo del entry)
 
     Retorna (sl, tp) o (None, None) si no pasa los filtros de riesgo.
     """
@@ -36,20 +37,26 @@ def calculate_sl_tp(
     min_rr      = params["min_rr_ratio"]
 
     if ob.ob_type == "bullish":
+        # LONG: SL debajo, TP arriba
         sl = ob.zone_low - buf
-        tp = entry_price + (entry_price - sl) * target_rr
+        risk_pts = abs(entry_price - sl)
+        tp = entry_price + risk_pts * target_rr
     else:
-        sl = ob.zone_high + buf
-        tp = entry_price - (sl - entry_price) * target_rr
+        # SHORT: TP debajo, SL arriba (CORREGIDO)
+        tp = ob.zone_low - buf  # TP debajo de la zona
+        reward_pts = abs(entry_price - tp)
+        risk_pts = reward_pts / target_rr  # Risk para lograr el target_rr deseado
+        sl = entry_price + risk_pts
 
-    risk_pts = abs(entry_price - sl)
-
+    # Validar filtros de riesgo
     if risk_pts < min_risk:
         return None, None
     if risk_pts > max_risk:
         return None, None
 
-    rr = abs(tp - entry_price) / risk_pts
+    # Validar R:R mínimo
+    reward_pts = abs(tp - entry_price)
+    rr = reward_pts / risk_pts if risk_pts > 0 else 0
     if rr < min_rr:
         return None, None
 

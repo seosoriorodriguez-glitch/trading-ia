@@ -1,0 +1,165 @@
+//@version=5
+indicator("Últimas 10 Ganadoras - OB Strategy", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=500)
+
+// ============================================================================
+// ÚLTIMAS 10 OPERACIONES GANADORAS - BACKTEST FINAL
+// R:R 3.5 / Buffer 25 / Sin BOS
+// Período: 2026-03-11 a 2026-03-25
+// ============================================================================
+
+// Colores
+color_long = color.new(color.green, 80)
+color_short = color.new(color.red, 80)
+color_entry = color.new(color.blue, 0)
+color_sl = color.new(color.red, 0)
+color_tp = color.new(color.green, 0)
+
+// Trade #161 - SHORT - 2026-03-11 11:04 - $2,192.37 (3.46R)
+if year == 2026 and month == 3 and dayofmonth == 11 and hour == 14 and minute == 4
+    // OB Zone
+    box.new(bar_index, 47840, bar_index + 50, 47817, bgcolor=color_short, border_color=color.red, border_width=1, text="SHORT #161\n$2,192")
+    // Entry
+    line.new(bar_index, 47816.81, bar_index + 100, 47816.81, color=color_entry, width=2, style=line.style_solid)
+    label.new(bar_index, 47816.81, "Entry: 47816.81", color=color_entry, textcolor=color.white, style=label.style_label_left)
+    // SL
+    line.new(bar_index, 47864.81, bar_index + 100, 47864.81, color=color_sl, width=1, style=line.style_dashed)
+    label.new(bar_index, 47864.81, "SL: 47864.81", color=color_sl, textcolor=color.white, style=label.style_label_left, size=size.small)
+    // TP
+    line.new(bar_index, 47648.81, bar_index + 100, 47648.81, color=color_tp, width=1, style=line.style_dashed)
+    label.new(bar_index, 47648.81, "TP: 47648.81", color=color_tp, textcolor=color.white, style=label.style_label_left, size=size.small)
+
+// Trade #170 - LONG - 2026-03-16 13:00 - $2,146.28 (3.47R)
+if year == 2026 and month == 3 and dayofmonth == 16 and hour == 16 and minute == 0
+    // OB Zone
+    box.new(bar_index, 46908, bar_index + 50, 46867, bgcolor=color_long, border_color=color.green, border_width=1, text="LONG #170\n$2,146")
+    // Entry
+    line.new(bar_index, 46907.81, bar_index + 100, 46907.81, color=color_entry, width=2, style=line.style_solid)
+    label.new(bar_index, 46907.81, "Entry: 46907.81", color=color_entry, textcolor=color.white, style=label.style_label_left)
+    // SL
+    line.new(bar_index, 46841.81, bar_index + 100, 46841.81, color=color_sl, width=1, style=line.style_dashed)
+    label.new(bar_index, 46841.81, "SL: 46841.81", color=color_sl, textcolor=color.white, style=label.style_label_left, size=size.small)
+    // TP
+    line.new(bar_index, 47138.81, bar_index + 100, 47138.81, color=color_tp, width=1, style=line.style_dashed)
+    label.new(bar_index, 47138.81, "TP: 47138.81", color=color_tp, textcolor=color.white, style=label.style_label_left, size=size.small)
+
+// Trade #173 - LONG - 2026-03-17 14:27 - $2,146.86 (3.45R)
+if year == 2026 and month == 3 and dayofmonth == 17 and hour == 17 and minute == 27
+    // OB Zone
+    box.new(bar_index, 47090, bar_index + 50, 47078, bgcolor=color_long, border_color=color.green, border_width=1, text="LONG #173\n$2,147")
+    // Entry
+    line.new(bar_index, 47090.31, bar_index + 100, 47090.31, color=color_entry, width=2, style=line.style_solid)
+    label.new(bar_index, 47090.31, "Entry: 47090.31", color=color_entry, textcolor=color.white, style=label.style_label_left)
+    // SL
+    line.new(bar_index, 47052.81, bar_index + 100, 47052.81, color=color_sl, width=1, style=line.style_dashed)
+    label.new(bar_index, 47052.81, "SL: 47052.81", color=color_sl, textcolor=color.white, style=label.style_label_left, size=size.small)
+    // TP
+    line.new(bar_index, 47221.56, bar_index + 100, 47221.56, color=color_tp, width=1, style=line.style_dashed)
+    label.new(bar_index, 47221.56, "TP: 47221.56", color=color_tp, textcolor=color.white, style=label.style_label_left, size=size.small)
+
+// Trade #176 - SHORT - 2026-03-19 10:46 - $2,182.58 (3.48R)
+if year == 2026 and month == 3 and dayofmonth == 19 and hour == 13 and minute == 46
+    // OB Zone
+    box.new(bar_index, 46238, bar_index + 50, 46157, bgcolor=color_short, border_color=color.red, border_width=1, text="SHORT #176\n$2,183")
+    // Entry
+    line.new(bar_index, 46157.21, bar_index + 100, 46157.21, color=color_entry, width=2, style=line.style_solid)
+    label.new(bar_index, 46157.21, "Entry: 46157.21", color=color_entry, textcolor=color.white, style=label.style_label_left)
+    // SL
+    line.new(bar_index, 46262.71, bar_index + 100, 46262.71, color=color_sl, width=1, style=line.style_dashed)
+    label.new(bar_index, 46262.71, "SL: 46262.71", color=color_sl, textcolor=color.white, style=label.style_label_left, size=size.small)
+    // TP
+    line.new(bar_index, 45787.96, bar_index + 100, 45787.96, color=color_tp, width=1, style=line.style_dashed)
+    label.new(bar_index, 45787.96, "TP: 45787.96", color=color_tp, textcolor=color.white, style=label.style_label_left, size=size.small)
+
+// Trade #181 - SHORT - 2026-03-20 13:46 - $2,169.92 (3.47R)
+if year == 2026 and month == 3 and dayofmonth == 20 and hour == 16 and minute == 46
+    // OB Zone
+    box.new(bar_index, 46020, bar_index + 50, 45972, bgcolor=color_short, border_color=color.red, border_width=1, text="SHORT #181\n$2,170")
+    // Entry
+    line.new(bar_index, 45972.21, bar_index + 100, 45972.21, color=color_entry, width=2, style=line.style_solid)
+    label.new(bar_index, 45972.21, "Entry: 45972.21", color=color_entry, textcolor=color.white, style=label.style_label_left)
+    // SL
+    line.new(bar_index, 46045.21, bar_index + 100, 46045.21, color=color_sl, width=1, style=line.style_dashed)
+    label.new(bar_index, 46045.21, "SL: 46045.21", color=color_sl, textcolor=color.white, style=label.style_label_left, size=size.small)
+    // TP
+    line.new(bar_index, 45716.71, bar_index + 100, 45716.71, color=color_tp, width=1, style=line.style_dashed)
+    label.new(bar_index, 45716.71, "TP: 45716.71", color=color_tp, textcolor=color.white, style=label.style_label_left, size=size.small)
+
+// Trade #182 - SHORT - 2026-03-20 14:07 - $2,179.45 (3.49R)
+if year == 2026 and month == 3 and dayofmonth == 20 and hour == 17 and minute == 7
+    // OB Zone
+    box.new(bar_index, 46008, bar_index + 50, 45868, bgcolor=color_short, border_color=color.red, border_width=1, text="SHORT #182\n$2,179")
+    // Entry
+    line.new(bar_index, 45868.40, bar_index + 100, 45868.40, color=color_entry, width=2, style=line.style_solid)
+    label.new(bar_index, 45868.40, "Entry: 45868.40", color=color_entry, textcolor=color.white, style=label.style_label_left)
+    // SL
+    line.new(bar_index, 46032.90, bar_index + 100, 46032.90, color=color_sl, width=1, style=line.style_dashed)
+    label.new(bar_index, 46032.90, "SL: 46032.90", color=color_sl, textcolor=color.white, style=label.style_label_left, size=size.small)
+    // TP
+    line.new(bar_index, 45292.65, bar_index + 100, 45292.65, color=color_tp, width=1, style=line.style_dashed)
+    label.new(bar_index, 45292.65, "TP: 45292.65", color=color_tp, textcolor=color.white, style=label.style_label_left, size=size.small)
+
+// Trade #184 - LONG - 2026-03-23 10:49 - $2,232.97 (3.47R)
+if year == 2026 and month == 3 and dayofmonth == 23 and hour == 13 and minute == 49
+    // OB Zone
+    box.new(bar_index, 45202, bar_index + 50, 45159, bgcolor=color_long, border_color=color.green, border_width=1, text="LONG #184\n$2,233")
+    // Entry
+    line.new(bar_index, 45201.81, bar_index + 100, 45201.81, color=color_entry, width=2, style=line.style_solid)
+    label.new(bar_index, 45201.81, "Entry: 45201.81", color=color_entry, textcolor=color.white, style=label.style_label_left)
+    // SL
+    line.new(bar_index, 45133.81, bar_index + 100, 45133.81, color=color_sl, width=1, style=line.style_dashed)
+    label.new(bar_index, 45133.81, "SL: 45133.81", color=color_sl, textcolor=color.white, style=label.style_label_left, size=size.small)
+    // TP
+    line.new(bar_index, 45439.81, bar_index + 100, 45439.81, color=color_tp, width=1, style=line.style_dashed)
+    label.new(bar_index, 45439.81, "TP: 45439.81", color=color_tp, textcolor=color.white, style=label.style_label_left, size=size.small)
+
+// Trade #189 - SHORT - 2026-03-24 10:48 - $2,229.20 (3.48R)
+if year == 2026 and month == 3 and dayofmonth == 24 and hour == 13 and minute == 48
+    // OB Zone
+    box.new(bar_index, 46207, bar_index + 50, 46150, bgcolor=color_short, border_color=color.red, border_width=1, text="SHORT #189\n$2,229")
+    // Entry
+    line.new(bar_index, 46149.91, bar_index + 100, 46149.91, color=color_entry, width=2, style=line.style_solid)
+    label.new(bar_index, 46149.91, "Entry: 46149.91", color=color_entry, textcolor=color.white, style=label.style_label_left)
+    // SL
+    line.new(bar_index, 46232.41, bar_index + 100, 46232.41, color=color_sl, width=1, style=line.style_dashed)
+    label.new(bar_index, 46232.41, "SL: 46232.41", color=color_sl, textcolor=color.white, style=label.style_label_left, size=size.small)
+    // TP
+    line.new(bar_index, 45861.16, bar_index + 100, 45861.16, color=color_tp, width=1, style=line.style_dashed)
+    label.new(bar_index, 45861.16, "TP: 45861.16", color=color_tp, textcolor=color.white, style=label.style_label_left, size=size.small)
+
+// Trade #190 - SHORT - 2026-03-24 11:47 - $2,225.31 (3.47R)
+if year == 2026 and month == 3 and dayofmonth == 24 and hour == 14 and minute == 47
+    // OB Zone
+    box.new(bar_index, 46213, bar_index + 50, 46172, bgcolor=color_short, border_color=color.red, border_width=1, text="SHORT #190\n$2,225")
+    // Entry
+    line.new(bar_index, 46172.41, bar_index + 100, 46172.41, color=color_entry, width=2, style=line.style_solid)
+    label.new(bar_index, 46172.41, "Entry: 46172.41", color=color_entry, textcolor=color.white, style=label.style_label_left)
+    // SL
+    line.new(bar_index, 46238.41, bar_index + 100, 46238.41, color=color_sl, width=1, style=line.style_dashed)
+    label.new(bar_index, 46238.41, "SL: 46238.41", color=color_sl, textcolor=color.white, style=label.style_label_left, size=size.small)
+    // TP
+    line.new(bar_index, 45941.41, bar_index + 100, 45941.41, color=color_tp, width=1, style=line.style_dashed)
+    label.new(bar_index, 45941.41, "TP: 45941.41", color=color_tp, textcolor=color.white, style=label.style_label_left, size=size.small)
+
+// Trade #193 - SHORT - 2026-03-25 11:39 - $2,278.12 (3.47R)
+if year == 2026 and month == 3 and dayofmonth == 25 and hour == 14 and minute == 39
+    // OB Zone
+    box.new(bar_index, 46681, bar_index + 50, 46643, bgcolor=color_short, border_color=color.red, border_width=1, text="SHORT #193\n$2,278 🏆", text_size=size.normal)
+    // Entry
+    line.new(bar_index, 46642.91, bar_index + 100, 46642.91, color=color_entry, width=2, style=line.style_solid)
+    label.new(bar_index, 46642.91, "Entry: 46642.91", color=color_entry, textcolor=color.white, style=label.style_label_left)
+    // SL
+    line.new(bar_index, 46706.41, bar_index + 100, 46706.41, color=color_sl, width=1, style=line.style_dashed)
+    label.new(bar_index, 46706.41, "SL: 46706.41", color=color_sl, textcolor=color.white, style=label.style_label_left, size=size.small)
+    // TP
+    line.new(bar_index, 46420.66, bar_index + 100, 46420.66, color=color_tp, width=1, style=line.style_dashed)
+    label.new(bar_index, 46420.66, "TP: 46420.66", color=color_tp, textcolor=color.white, style=label.style_label_left, size=size.small)
+
+// Leyenda
+var table legend = table.new(position.top_right, 1, 6, bgcolor=color.new(color.black, 20), border_width=1)
+if barstate.islast
+    table.cell(legend, 0, 0, "📊 ÚLTIMAS 10 GANADORAS", text_color=color.white, text_size=size.normal)
+    table.cell(legend, 0, 1, "R:R: 3.5 | Buffer: 25pts", text_color=color.yellow, text_size=size.small)
+    table.cell(legend, 0, 2, "🟢 Verde = LONG", text_color=color.lime, text_size=size.small)
+    table.cell(legend, 0, 3, "🔴 Rojo = SHORT", text_color=color.red, text_size=size.small)
+    table.cell(legend, 0, 4, "🔵 Azul = Entry", text_color=color.blue, text_size=size.small)
+    table.cell(legend, 0, 5, "Avg Win: $2,164", text_color=color.white, text_size=size.small)

@@ -19,7 +19,8 @@ from typing import List, Optional, Set, Tuple
 from strategies.order_block.backtest.ob_detection import (
     OrderBlock, OBStatus, detect_order_blocks,
 )
-from strategies.order_block.backtest.signals import Signal, check_entry
+from strategies.order_block.backtest.signals import Signal, check_bos
+from strategies.order_block.backtest.risk_manager import is_session_allowed
 
 
 # Numero de velas M5 a descargar para deteccion + contexto de expiry
@@ -164,7 +165,14 @@ class LiveOBMonitor:
     def check_for_signal(self, balance: float) -> Optional[Signal]:
         """
         Descarga las ultimas M1 cerradas, verifica si alguna toca un OB activo
-        y retorna una Signal si todos los filtros pasan.
+        y retorna una Signal LIMIT si todos los filtros pasan.
+        
+        LOGICA LIMIT:
+        - Vela M1 cierra DENTRO de la zona OB
+        - Se genera señal con entry_price en:
+          * zone_high para OB Bullish (LONG)
+          * zone_low para OB Bearish (SHORT)
+        - La orden permanece activa hasta que OB se destruya/expire
         """
         bos_lb = self.params.get("bos_lookback", 20)
         needed = bos_lb + 3
@@ -174,8 +182,7 @@ class LiveOBMonitor:
             return None
 
         # La ultima fila puede ser la vela en formacion; usamos [-2] como "ultima cerrada"
-        candle      = df_m1.iloc[-2].to_dict()
-        prev_candle = df_m1.iloc[-3].to_dict()
+        candle = df_m1.iloc[-2].to_dict()
 
         # Ventana de velas M1 cerradas para BOS (excluye la actual)
         recent_candles = [
@@ -187,18 +194,113 @@ class LiveOBMonitor:
         if isinstance(candle["time"], pd.Timestamp):
             candle["time"] = candle["time"].to_pydatetime()
 
-        signal = check_entry(
-            candle         = candle,
-            prev_candle    = prev_candle,
-            recent_candles = recent_candles,
-            active_obs     = self.active_obs,
-            n_open_trades  = 0,   # gestionado externamente (trading_bot lo controla)
-            params         = self.params,
-            balance        = balance,
-            trend_bias     = self.trend_bias,
+        candle_time = candle["time"]
+        candle_close = candle["close"]
+
+        # Filtro horario
+        if not is_session_allowed(candle_time, self.params):
+            return None
+
+        # Buscar OB activo que la vela M1 toque
+        candidates = sorted(
+            [ob for ob in self.active_obs if ob.status == OBStatus.FRESH],
+            key=lambda o: o.confirmed_at,
+            reverse=True,
         )
 
-        return signal
+        for ob in candidates:
+            # Verificar si vela M1 cierra DENTRO de la zona
+            if ob.ob_type == "bullish":
+                # LONG: vela debe cerrar dentro [zone_low, zone_high]
+                if candle_close < ob.zone_low or candle_close > ob.zone_high:
+                    continue
+                direction = "long"
+                entry_price = ob.zone_high  # LIMIT en el extremo superior
+            else:
+                # SHORT: vela debe cerrar dentro [zone_low, zone_high]
+                if candle_close < ob.zone_low or candle_close > ob.zone_high:
+                    continue
+                direction = "short"
+                entry_price = ob.zone_low  # LIMIT en el extremo inferior
+
+            # Filtro BOS (si está activado)
+            if self.params.get("require_bos", False):
+                if not check_bos(recent_candles, direction, self.params):
+                    continue
+
+            # Calcular SL/TP con la lógica LIMIT
+            sl, tp = self._calculate_sl_tp_limit(ob, entry_price)
+            if sl is None:
+                continue
+
+            return Signal(
+                direction   = direction,
+                entry_price = entry_price,  # zone_high (LONG) o zone_low (SHORT)
+                sl          = sl,
+                tp          = tp,
+                ob          = ob,
+                candle_time = candle_time,
+                session     = self._which_session(candle_time),
+            )
+
+        return None
+
+    def _calculate_sl_tp_limit(self, ob: OrderBlock, entry_price: float) -> Tuple[Optional[float], Optional[float]]:
+        """
+        Calcula SL/TP para órdenes LIMIT.
+        
+        LONG (OB Bullish):
+          Entry: zone_high
+          SL: zone_low - buffer
+          TP: entry + risk_pts * target_rr
+        
+        SHORT (OB Bearish):
+          Entry: zone_low
+          TP: zone_low - buffer
+          SL: entry + risk_pts
+        """
+        buf = self.params["buffer_points"]
+        min_risk = self.params["min_risk_points"]
+        max_risk = self.params["max_risk_points"]
+        target_rr = self.params["target_rr"]
+        min_rr = self.params["min_rr_ratio"]
+
+        if ob.ob_type == "bullish":
+            # LONG: Entry en zone_high, SL debajo de zone_low
+            sl = ob.zone_low - buf
+            risk_pts = abs(entry_price - sl)
+            tp = entry_price + risk_pts * target_rr
+        else:
+            # SHORT: Entry en zone_low, TP debajo, SL arriba
+            tp = ob.zone_low - buf
+            reward_pts = abs(entry_price - tp)
+            risk_pts = reward_pts / target_rr
+            sl = entry_price + risk_pts
+
+        # Validar filtros de riesgo
+        if risk_pts < min_risk or risk_pts > max_risk:
+            return None, None
+
+        # Validar R:R mínimo
+        reward_pts = abs(tp - entry_price)
+        rr = reward_pts / risk_pts if risk_pts > 0 else 0
+        if rr < min_rr:
+            return None, None
+
+        return sl, tp
+
+    def _which_session(self, dt: datetime) -> str:
+        """Retorna el nombre de la sesión activa o 'unknown'."""
+        from datetime import timedelta
+        for name, sess in self.params["sessions"].items():
+            h_s, m_s = sess["start"].split(":")
+            h_e, m_e = sess["end"].split(":")
+            sess_start = dt.replace(hour=int(h_s), minute=int(m_s), second=0, microsecond=0)
+            sess_end = dt.replace(hour=int(h_e), minute=int(m_e), second=0, microsecond=0)
+            trade_from = sess_start + timedelta(minutes=sess["skip_minutes"])
+            if trade_from <= dt < sess_end:
+                return name
+        return "unknown"
 
     def mark_mitigated(self, ob: OrderBlock):
         """Marca un OB como usado para no generar nuevas entradas sobre el mismo nivel."""

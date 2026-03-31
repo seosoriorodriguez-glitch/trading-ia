@@ -30,7 +30,7 @@ class OrderExecutor:
 
     def execute_signal(self, signal, risk_usd: float, dry_run: bool = False) -> Tuple[bool, dict]:
         """
-        Ejecuta una senal de trading.
+        Ejecuta una senal de trading con ORDEN LIMIT PENDIENTE.
 
         Args:
             signal:   Signal (direction, entry_price, sl, tp, ...)
@@ -48,13 +48,14 @@ class OrderExecutor:
         if tick is None:
             return False, {"error": "No se pudo obtener precio actual"}
 
+        # LIMIT ORDER: entry_price viene de la señal (zone_high o zone_low)
         if signal.direction == "long":
-            order_type   = mt5.ORDER_TYPE_BUY
-            entry_price  = tick.ask
+            order_type   = mt5.ORDER_TYPE_BUY_LIMIT
+            entry_price  = signal.entry_price  # zone_high
             trade_type   = "LONG"
         else:
-            order_type   = mt5.ORDER_TYPE_SELL
-            entry_price  = tick.bid
+            order_type   = mt5.ORDER_TYPE_SELL_LIMIT
+            entry_price  = signal.entry_price  # zone_low
             trade_type   = "SHORT"
 
         if dry_run:
@@ -67,21 +68,22 @@ class OrderExecutor:
                 "tp":          signal.tp,
                 "risk_points": abs(entry_price - signal.sl),
                 "risk_usd":    risk_usd,
+                "order_type":  "LIMIT",
             }
 
         request = {
-            "action":      mt5.TRADE_ACTION_DEAL,
+            "action":      mt5.TRADE_ACTION_PENDING,  # Orden pendiente
             "symbol":      self.symbol,
             "volume":      volume,
             "type":        order_type,
             "price":       entry_price,
             "sl":          signal.sl,
             "tp":          signal.tp,
-            "deviation":   10,
+            "deviation":   0,  # No aplica para órdenes pendientes
             "magic":       self.MAGIC,
-            "comment":     f"OB_{trade_type}",
-            "type_time":   mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC,
+            "comment":     f"OB_{trade_type}_LIMIT",
+            "type_time":   mt5.ORDER_TIME_GTC,  # Good Till Cancelled
+            "type_filling": mt5.ORDER_FILLING_RETURN,
         }
 
         result = mt5.order_send(request)
@@ -94,11 +96,12 @@ class OrderExecutor:
         return True, {
             "ticket": result.order,
             "volume": result.volume,
-            "price":  result.price,
+            "price":  entry_price,  # Precio LIMIT
             "sl":     signal.sl,
             "tp":     signal.tp,
             "type":   trade_type,
             "time":   datetime.now(timezone.utc),
+            "order_type": "LIMIT",
         }
 
     def get_open_positions(self) -> list:
@@ -107,6 +110,40 @@ class OrderExecutor:
         if positions is None:
             return []
         return [p for p in positions if p.magic == self.MAGIC]
+
+    def get_pending_orders(self) -> list:
+        """Órdenes pendientes de esta estrategia (filtradas por magic number)."""
+        orders = mt5.orders_get(symbol=self.symbol)
+        if orders is None:
+            return []
+        return [o for o in orders if o.magic == self.MAGIC]
+
+    def cancel_order(self, ticket: int, dry_run: bool = False) -> Tuple[bool, dict]:
+        """Cancela una orden pendiente."""
+        if dry_run:
+            return True, {"dry_run": True, "ticket": ticket}
+
+        request = {
+            "action": mt5.TRADE_ACTION_REMOVE,
+            "order": ticket,
+        }
+
+        result = mt5.order_send(request)
+        if result is None:
+            return False, {"error": "order_send returned None"}
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            return False, {"error": f"Cancel failed: {result.retcode}"}
+
+        return True, {"ticket": ticket}
+
+    def cancel_all_orders(self, dry_run: bool = False) -> int:
+        """Cancela todas las órdenes pendientes de esta estrategia."""
+        cancelled = 0
+        for order in self.get_pending_orders():
+            ok, _ = self.cancel_order(order.ticket, dry_run)
+            if ok:
+                cancelled += 1
+        return cancelled
 
     def close_position(self, ticket: int, dry_run: bool = False) -> Tuple[bool, dict]:
         position = mt5.positions_get(ticket=ticket)

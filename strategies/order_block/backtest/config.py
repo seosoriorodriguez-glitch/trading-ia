@@ -18,10 +18,10 @@ DEFAULT_PARAMS = {
     "entry_method": "aggressive",   # Al primer cierre que toca la zona
 
     # --- Risk Management ---
-    "buffer_points": 20,            # Buffer del SL fuera del extremo de la zona
+    "buffer_points": 25,            # Buffer del SL fuera del extremo de la zona (optimizado: 25 vs 20)
     "min_risk_points": 15,          # Riesgo minimo aceptable (pts)
     "max_risk_points": 300,         # Riesgo maximo aceptable (pts)
-    "target_rr": 2.5,               # R:R objetivo para TP
+    "target_rr": 3.5,               # R:R objetivo para TP (optimizado: 3.5 vs 2.5)
     "min_rr_ratio": 1.2,            # R:R minimo para aceptar el trade
     "risk_per_trade_pct": 0.005,    # 0.5% del balance por trade
     "max_simultaneous_trades": 2,
@@ -33,7 +33,7 @@ DEFAULT_PARAMS = {
     # --- Filtros horarios (UTC) ---
     # NY completa hasta cierre oficial: 13:30-20:00 UTC (9:30 AM - 4:00 PM EST)
     # skip_minutes=15: evita volatilidad errática de los primeros 15 min post-apertura
-    # Backtest 101d: WR 42.7%, retorno +24.4%, DD max 4.07% (vs 19.5% con cierre a 19:30)
+    # Optimizado 104d: R:R 3.5 / Buffer 25 → WR 29.4%, retorno +30.91%, DD max 6.62%
     "sessions": {
         "new_york": {"start": "13:30", "end": "20:00", "skip_minutes": 15},
     },
@@ -50,8 +50,8 @@ DEFAULT_PARAMS = {
     "engulfing_body_ratio": 1.0,
 
     # --- Filtro 2: BOS — Break of Structure ---
-    # Activado: 240 trades en 99d, WR 37.1%, retorno +27.1%
-    "require_bos": True,
+    # Desactivado: Sin BOS genera más trades y mejor retorno (+30.91% vs +23.57%)
+    "require_bos": False,
     "bos_lookback": 20,
 
     # --- Balance inicial ---

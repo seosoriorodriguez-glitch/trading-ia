@@ -56,7 +56,8 @@ class OrderBlockBot:
         self.monitor      = TradingMonitor()
 
         # Estado
-        self.open_trades: dict = {}   # ticket -> trade_info
+        self.open_trades: dict = {}   # ticket -> trade_info (posiciones abiertas)
+        self.pending_orders: dict = {} # ticket -> order_info (órdenes LIMIT pendientes)
         self.last_m5_update:  Optional[datetime] = None
         self.last_m1_check:   Optional[datetime] = None
         self.last_daily_reset: Optional[datetime] = None
@@ -82,8 +83,9 @@ class OrderBlockBot:
         n = self.ob_monitor.update_obs()
         print(f"OBs activos iniciales: {n}", flush=True)
 
-        # Sincronizar posiciones existentes
+        # Sincronizar posiciones y órdenes existentes
         if not self.dry_run:
+            # Posiciones abiertas
             existing = self.executor.get_open_positions()
             for pos in existing:
                 self.open_trades[pos.ticket] = {
@@ -99,6 +101,22 @@ class OrderBlockBot:
             if existing:
                 print(f"{len(existing)} posiciones pre-existentes sincronizadas", flush=True)
 
+            # Órdenes pendientes
+            import MetaTrader5 as mt5
+            pending = self.executor.get_pending_orders()
+            for order in pending:
+                self.pending_orders[order.ticket] = {
+                    "ticket":     order.ticket,
+                    "type":       "LONG" if order.type == mt5.ORDER_TYPE_BUY_LIMIT else "SHORT",
+                    "price":      order.price_open,
+                    "sl":         order.sl,
+                    "tp":         order.tp,
+                    "volume":     order.volume_initial,
+                    "entry_time": datetime.fromtimestamp(order.time_setup, tz=timezone.utc),
+                }
+            if pending:
+                print(f"{len(pending)} ordenes pendientes sincronizadas", flush=True)
+
         if self.dry_run:
             print("MODO DRY RUN - no se enviaran ordenes reales", flush=True)
 
@@ -113,6 +131,9 @@ class OrderBlockBot:
 
     def stop(self):
         self.running = False
+        if self.pending_orders:
+            print(f"Cancelando {len(self.pending_orders)} ordenes pendientes...", flush=True)
+            self.executor.cancel_all_orders(self.dry_run)
         if self.open_trades:
             print(f"Cerrando {len(self.open_trades)} trades abiertos...", flush=True)
             self.executor.close_all_positions(self.dry_run)
@@ -148,6 +169,7 @@ class OrderBlockBot:
                 if (self.last_m5_update is None
                         or (now - self.last_m5_update).total_seconds() > 290):
                     self._update_obs()
+                    self._cancel_invalid_orders()  # Cancelar órdenes de OBs destruidos
                     self.last_m5_update = now
 
             # Verificar senales en cada vela M1 (cada 1 min, en los primeros 10 seg)
@@ -164,8 +186,9 @@ class OrderBlockBot:
                     self._print_dashboard()
                     self.last_dashboard = now
 
-            # Monitorear trades abiertos
+            # Monitorear órdenes pendientes y trades abiertos
             if not self.dry_run:
+                self._monitor_pending_orders()
                 self._monitor_open_trades()
 
             time.sleep(1)
@@ -179,6 +202,36 @@ class OrderBlockBot:
             n = self.ob_monitor.update_obs()
         except Exception as e:
             self.monitor.log_error(f"Error actualizando OBs: {e}")
+
+    def _cancel_invalid_orders(self):
+        """
+        Cancela órdenes pendientes cuyos OBs ya no están activos (destruidos/expirados).
+        """
+        try:
+            active_ob_keys = {
+                (ob.ob_type, round(ob.zone_high, 2), round(ob.zone_low, 2), ob.confirmed_at)
+                for ob in self.ob_monitor.active_obs
+                if ob.status == "fresh"
+            }
+
+            for ticket, order_info in list(self.pending_orders.items()):
+                signal = order_info.get("signal")
+                if signal is None:
+                    continue
+
+                ob = signal.ob
+                ob_key = (ob.ob_type, round(ob.zone_high, 2), round(ob.zone_low, 2), ob.confirmed_at)
+
+                # Si el OB ya no está activo, cancelar la orden
+                if ob_key not in active_ob_keys:
+                    if not self.dry_run:
+                        ok, _ = self.executor.cancel_order(ticket, self.dry_run)
+                        if ok:
+                            print(f"Orden {ticket} cancelada (OB destruido/expirado)", flush=True)
+                    del self.pending_orders[ticket]
+
+        except Exception as e:
+            self.monitor.log_error(f"Error cancelando ordenes invalidas: {e}")
 
     def _check_signals(self):
         try:
@@ -220,13 +273,11 @@ class OrderBlockBot:
                 self.monitor.log_error(f"Error al ejecutar trade: {result.get('error')}")
                 return
 
-            self.risk_manager.on_trade_opened()
-
             # Marcar OB como mitigado (no re-entrar)
             self.ob_monitor.mark_mitigated(signal.ob)
 
             entry_price = result.get("price") or result.get("entry_price") or signal.entry_price
-            trade_info  = {
+            order_info  = {
                 "ticket":     result.get("ticket", "DRY_RUN"),
                 "type":       result["type"],
                 "price":      entry_price,
@@ -235,12 +286,42 @@ class OrderBlockBot:
                 "volume":     result["volume"],
                 "entry_time": datetime.now(timezone.utc),
                 "signal":     signal,
+                "order_type": result.get("order_type", "LIMIT"),
             }
-            self.open_trades[trade_info["ticket"]] = trade_info
-            self.monitor.log_trade_opened(trade_info)
+            
+            # Guardar como orden pendiente (no cuenta como trade abierto aún)
+            self.pending_orders[order_info["ticket"]] = order_info
+            self.monitor.log_trade_opened(order_info)
 
         except Exception as e:
             self.monitor.log_error(f"Error ejecutando trade: {e}")
+
+    def _monitor_pending_orders(self):
+        """
+        Monitorea órdenes pendientes:
+        - Si se ejecutaron (ahora son posiciones) -> moverlas a open_trades
+        - Si fueron canceladas -> eliminarlas
+        """
+        try:
+            pending_tickets = {o.ticket for o in self.executor.get_pending_orders()}
+            positions = self.executor.get_open_positions()
+            position_tickets = {p.ticket for p in positions}
+
+            for ticket, order_info in list(self.pending_orders.items()):
+                # Orden se ejecutó -> ahora es posición
+                if ticket in position_tickets:
+                    self.risk_manager.on_trade_opened()
+                    self.open_trades[ticket] = order_info
+                    del self.pending_orders[ticket]
+                    print(f"Orden LIMIT {ticket} ejecutada", flush=True)
+                
+                # Orden fue cancelada o no existe
+                elif ticket not in pending_tickets:
+                    del self.pending_orders[ticket]
+                    print(f"Orden LIMIT {ticket} cancelada/expirada", flush=True)
+
+        except Exception as e:
+            self.monitor.log_error(f"Error monitoreando ordenes pendientes: {e}")
 
     def _monitor_open_trades(self):
         try:
