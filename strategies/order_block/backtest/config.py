@@ -30,12 +30,13 @@ DEFAULT_PARAMS = {
     "avg_spread_points": 2,         # Spread simulado (pts)
     "point_value": 1.0,             # US30: 1 punto = $1 por lote
 
-    # --- Filtros horarios (UTC) ---
-    # NY completa hasta cierre oficial: 13:30-20:00 UTC (9:30 AM - 4:00 PM EST)
-    # skip_minutes=15: evita volatilidad errática de los primeros 15 min post-apertura
-    # Optimizado 104d: R:R 3.5 / Buffer 25 → WR 29.4%, retorno +30.91%, DD max 6.62%
+    # --- Filtros horarios (servidor MT5 = UTC+3 para FTMO) ---
+    # Ventana optima: 13:30-23:00 UTC+3 = 10:30-20:00 UTC real
+    # Captura: segunda mitad de Londres + NY completa
+    # Backtest 518d: +87.6% / DD 17.1% / 1313 trades
+    # skip_minutes=15: evita volatilidad erratica de los primeros 15 min post-apertura
     "sessions": {
-        "new_york": {"start": "13:30", "end": "20:00", "skip_minutes": 15},
+        "new_york": {"start": "13:30", "end": "23:00", "skip_minutes": 15},
     },
 
     # --- Filtro de tendencia: EMA 4H ---

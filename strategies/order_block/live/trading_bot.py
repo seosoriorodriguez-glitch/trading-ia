@@ -19,7 +19,7 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from strategies.order_block.live.data_feed    import LiveDataFeed
-from strategies.order_block.live.ob_monitor   import LiveOBMonitor
+from strategies.order_block.live.ob_monitor   import LiveOBMonitor, _ob_key
 from strategies.order_block.live.order_executor import OrderExecutor
 from strategies.order_block.live.risk_manager import FTMORiskManager
 from strategies.order_block.live.monitor      import TradingMonitor
@@ -248,8 +248,16 @@ class OrderBlockBot:
             if not can:
                 return
 
+            # OBs que ya tienen orden pendiente — no duplicar
+            obs_with_pending = {
+                _ob_key(info["signal"].ob)
+                for info in self.pending_orders.values()
+                if info.get("signal") is not None
+            }
+
             signal = self.ob_monitor.check_for_signal(
                 balance = self.risk_manager.current_balance,
+                skip_ob_keys = obs_with_pending,
             )
             if signal is None:
                 return
@@ -272,9 +280,6 @@ class OrderBlockBot:
             if not ok:
                 self.monitor.log_error(f"Error al ejecutar trade: {result.get('error')}")
                 return
-
-            # Marcar OB como mitigado (no re-entrar)
-            self.ob_monitor.mark_mitigated(signal.ob)
 
             entry_price = result.get("price") or result.get("entry_price") or signal.entry_price
             order_info  = {
@@ -310,6 +315,9 @@ class OrderBlockBot:
             for ticket, order_info in list(self.pending_orders.items()):
                 # Orden se ejecutó -> ahora es posición
                 if ticket in position_tickets:
+                    signal = order_info.get("signal")
+                    if signal is not None:
+                        self.ob_monitor.mark_mitigated(signal.ob)
                     self.risk_manager.on_trade_opened()
                     self.open_trades[ticket] = order_info
                     del self.pending_orders[ticket]

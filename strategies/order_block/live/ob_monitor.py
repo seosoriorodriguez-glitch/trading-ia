@@ -162,7 +162,7 @@ class LiveOBMonitor:
     # Verificacion de senal (llamar cada vez que cierra una vela M1)
     # ------------------------------------------------------------------
 
-    def check_for_signal(self, balance: float) -> Optional[Signal]:
+    def check_for_signal(self, balance: float, skip_ob_keys: set = None) -> Optional[Signal]:
         """
         Descarga las ultimas M1 cerradas, verifica si alguna toca un OB activo
         y retorna una Signal LIMIT si todos los filtros pasan.
@@ -173,7 +173,12 @@ class LiveOBMonitor:
           * zone_high para OB Bullish (LONG)
           * zone_low para OB Bearish (SHORT)
         - La orden permanece activa hasta que OB se destruya/expire
+        
+        Args:
+            skip_ob_keys: OBs que ya tienen orden pendiente (no generar señal duplicada)
         """
+        if skip_ob_keys is None:
+            skip_ob_keys = set()
         bos_lb = self.params.get("bos_lookback", 20)
         needed = bos_lb + 3
 
@@ -209,6 +214,9 @@ class LiveOBMonitor:
         )
 
         for ob in candidates:
+            if _ob_key(ob) in skip_ob_keys:
+                continue
+
             # Verificar si vela M1 cierra DENTRO de la zona
             if ob.ob_type == "bullish":
                 # LONG: vela debe cerrar dentro [zone_low, zone_high]
