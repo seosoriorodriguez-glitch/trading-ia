@@ -14,6 +14,7 @@ from strategies.order_block.live.ob_monitor import LiveOBMonitor
 
 # Conectar
 feed = LiveDataFeed("US30.cash")
+mt5.initialize(path=r"C:\Program Files\MT5_US30\terminal64.exe")
 if not feed.connect():
     print("No se pudo conectar a MT5")
     sys.exit()
