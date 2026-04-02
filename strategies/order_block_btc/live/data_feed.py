@@ -18,7 +18,7 @@ class LiveDataFeed:
         self.mt5_connected = False
 
     def connect(self) -> bool:
-        if not mt5.initialize():
+        if not mt5.initialize(path=r"C:\Program Files\MT5_BTCUSD\terminal64.exe"):
             print(f"ERROR inicializando MT5: {mt5.last_error()}")
             return False
         self.mt5_connected = True
