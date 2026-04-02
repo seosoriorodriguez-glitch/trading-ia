@@ -1,0 +1,25 @@
+ftmo:
+  account_size: 100000  # $100k
+
+  phase_1:
+    profit_target_pct: 0.10   # 10%
+    max_daily_loss_pct: 0.05  # 5%
+    max_total_loss_pct: 0.10  # 10%
+    min_trading_days: 4
+
+  phase_2:
+    profit_target_pct: 0.05   # 5%
+    max_daily_loss_pct: 0.05  # 5%
+    max_total_loss_pct: 0.10  # 10%
+    min_trading_days: 4
+
+  refund: true
+  rewards: 0.90
+
+  # BTC opera 24/7 incluyendo fines de semana - no cerrar antes del fin de semana
+  close_before_weekend: false
+  weekend_close_hour: 21      # Ignorado si close_before_weekend es false
+
+  risk_per_trade_pct: 0.005   # 0.5% por trade (igual que US30)
+  max_simultaneous_trades: 2
+  max_spread_points: 50       # BTC tiene spread mas alto que US30 (~10-20 pts normales)
