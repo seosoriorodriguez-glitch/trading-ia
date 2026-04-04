@@ -21,7 +21,7 @@ Comparacion vs Bot 1 (NY 13:30-23:00):
 
 LONDON_PARAMS = {
     # --- Deteccion OB (M5) ---
-    "consecutive_candles": 3,         # Igual que Bot 1
+    "consecutive_candles": 4,         # Igual que Bot 1
     "min_impulse_pct": 0.0,           # Desactivado
     "zone_type": "half_candle",       # [low, open] bull / [open, high] bear
     "max_atr_mult": 3.5,
@@ -33,15 +33,15 @@ LONDON_PARAMS = {
 
     # --- Risk Management ---
     "buffer_points": 35,              # Optimizado para London (vs 25 del Bot 1)
-    "min_risk_points": 20,            # Igual que Bot 1
-    "max_risk_points": 200,           # Igual que Bot 1
+    "min_risk_points": 15,            # Igual que Bot 1
+    "max_risk_points": 300,           # Igual que Bot 1
     "target_rr": 2.5,                 # Optimizado para London (vs 3.5 del Bot 1)
     "min_rr_ratio": 1.2,
     "risk_per_trade_pct": 0.005,      # 0.5% del balance por trade
     "max_simultaneous_trades": 2,
 
     # --- Costos ---
-    "avg_spread_points": 3,           # US30 spread real en ICMarkets ~3 pts
+    "avg_spread_points": 2,           # Igual que Bot 1 (spread simulado)
     "point_value": 1.0,               # US30: 1 punto = $1 por lote
 
     # --- Sesion London: 10:00-19:00 UTC+3 (hora servidor MT5/FTMO) ---
