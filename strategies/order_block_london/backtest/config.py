@@ -42,6 +42,7 @@ LONDON_PARAMS = {
 
     # --- Costos ---
     "avg_spread_points": 2,           # Igual que Bot 1 (spread simulado)
+    "slippage_points": 2,             # Slippage en entrada + salida SL (pts); TP no tiene slippage
     "point_value": 1.0,               # US30: 1 punto = $1 por lote
 
     # --- Sesion London: 10:00-19:00 UTC+3 (hora servidor MT5/FTMO) ---

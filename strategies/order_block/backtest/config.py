@@ -28,6 +28,7 @@ DEFAULT_PARAMS = {
 
     # --- Costos ---
     "avg_spread_points": 2,         # Spread simulado (pts)
+    "slippage_points": 2,           # Slippage en entrada + salida SL (pts); TP no tiene slippage
     "point_value": 1.0,             # US30: 1 punto = $1 por lote
 
     # --- Filtros horarios (servidor MT5 = UTC+3 para FTMO) ---

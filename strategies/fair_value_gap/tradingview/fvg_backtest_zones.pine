@@ -1,0 +1,134 @@
+//@version=6
+indicator("FVG Backtest Zones", overlay=true, max_boxes_count=500, max_lines_count=500)
+
+// ============================================================
+// INPUTS
+// ============================================================
+threshold_pct  = input.float(0.0,  "Threshold %", minval=0.0, maxval=1.0, step=0.01,
+     tooltip="0 = sin filtro (LuxAlgo default). 0.05 = gap minimo 0.05% del precio")
+show_mitigated = input.bool(true,  "Mostrar mitigadas",  group="Visualizacion")
+show_sessions  = input.bool(true,  "Mostrar sesiones",   group="Visualizacion")
+extend_bars    = input.int(10,     "Extender zonas (barras)", minval=1, group="Visualizacion")
+bull_css       = input.color(color.new(#089981, 75), "Bullish FVG",      group="Colores")
+bear_css       = input.color(color.new(#f23645, 75), "Bearish FVG",      group="Colores")
+bull_mit_css   = input.color(color.new(#089981, 90), "Bullish mitigada", group="Colores")
+bear_mit_css   = input.color(color.new(#f23645, 90), "Bearish mitigada", group="Colores")
+
+// ============================================================
+// DETECCION FVG — logica identica al backtester Python
+// ref  = barra [2]  |  mid = barra [1]  |  curr = barra [0]
+//
+// Bullish: low[0] > high[2]  AND  close[1] > high[2]
+//   zone_low  = high[2]
+//   zone_high = low[0]
+//
+// Bearish: high[0] < low[2]  AND  close[1] < low[2]
+//   zone_low  = high[0]
+//   zone_high = low[2]
+// ============================================================
+threshold = threshold_pct / 100.0
+
+bull_fvg = low  > high[2]
+         and close[1] > high[2]
+         and (low - high[2]) / high[2] > threshold
+
+bear_fvg = high < low[2]
+         and close[1] < low[2]
+         and (low[2] - high) / high > threshold
+
+// ============================================================
+// TRACKING DE ZONAS
+// ============================================================
+type fvg_zone
+    box   b
+    float zh
+    float zl
+    bool  is_bull
+    bool  mitigated
+
+var fvg_zone[] zones = array.new<fvg_zone>()
+
+// Duracion de una vela en ms (para calcular borde derecho por tiempo)
+bar_ms = timeframe.in_seconds() * 1000
+
+// Nueva zona bullish — anclada por tiempo (xloc.bar_time)
+if bull_fvg
+    left_t  = time[2]
+    right_t = time + bar_ms * extend_bars
+    b = box.new(int(left_t), low, int(right_t), high[2],
+         border_color=na, bgcolor=bull_css, xloc=xloc.bar_time)
+    array.push(zones, fvg_zone.new(b, low, high[2], true, false))
+
+// Nueva zona bearish — anclada por tiempo (xloc.bar_time)
+if bear_fvg
+    left_t  = time[2]
+    right_t = time + bar_ms * extend_bars
+    b = box.new(int(left_t), low[2], int(right_t), high,
+         border_color=na, bgcolor=bear_css, xloc=xloc.bar_time)
+    array.push(zones, fvg_zone.new(b, low[2], high, false, false))
+
+// Mitigacion — el box es fijo (no se extiende), solo cambia color si se mitiga
+if array.size(zones) > 0
+    for i = array.size(zones) - 1 to 0
+        z = array.get(zones, i)
+        if not z.mitigated
+            if z.is_bull and close < z.zl
+                z.mitigated := true
+                if show_mitigated
+                    box.set_bgcolor(z.b, bull_mit_css)
+                else
+                    box.delete(z.b)
+                    array.remove(zones, i)
+
+            else if not z.is_bull and close > z.zh
+                z.mitigated := true
+                if show_mitigated
+                    box.set_bgcolor(z.b, bear_mit_css)
+                else
+                    box.delete(z.b)
+                    array.remove(zones, i)
+
+// ============================================================
+// SESIONES (MT5 UTC+3)
+// ============================================================
+london_session = time(timeframe.period, "1000-1900:23456", "GMT+3")
+ny_session     = time(timeframe.period, "1630-2300:23456", "GMT+3")
+
+bgcolor(show_sessions and not na(london_session) ? color.new(#1976D2, 95) : na, title="London")
+bgcolor(show_sessions and not na(ny_session)     ? color.new(#FF6F00, 95) : na, title="NY")
+
+// ============================================================
+// LABEL INFO
+// ============================================================
+var label info_label = na
+
+bull_active = 0
+bear_active = 0
+bull_total  = 0
+bear_total  = 0
+
+if array.size(zones) > 0
+    for z in zones
+        if z.is_bull
+            bull_total += 1
+            if not z.mitigated
+                bull_active += 1
+        else
+            bear_total += 1
+            if not z.mitigated
+                bear_active += 1
+
+if barstate.islast
+    label.delete(info_label)
+    txt = "Bull activas: " + str.tostring(bull_active) + " / " + str.tostring(bull_total) + "   Bear activas: " + str.tostring(bear_active) + " / " + str.tostring(bear_total)
+    info_label := label.new(bar_index, high, txt,
+         style=label.style_label_left,
+         color=color.new(#1e222d, 10),
+         textcolor=color.white,
+         size=size.small)
+
+// ============================================================
+// ALERTAS
+// ============================================================
+alertcondition(bull_fvg, "Bullish FVG detectado", "Nuevo FVG alcista")
+alertcondition(bear_fvg, "Bearish FVG detectado", "Nuevo FVG bajista")

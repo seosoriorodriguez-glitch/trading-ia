@@ -326,10 +326,18 @@ class OrderBlockBacktesterLimitOrders:
     def _execute_order(self, order: PendingOrder, execution_time: datetime):
         """Ejecuta una orden LIMIT"""
         self._trade_counter += 1
+
+        # Slippage en entrada: LONG paga más, SHORT recibe menos
+        slip = self.params.get("slippage_points", 0)
+        if order.direction == "long":
+            effective_entry = order.entry_price + slip
+        else:
+            effective_entry = order.entry_price - slip
+
         trade = Trade(
             trade_id=self._trade_counter,
             direction=order.direction,
-            entry_price=order.entry_price,
+            entry_price=effective_entry,
             original_sl=order.sl,
             sl=order.sl,
             tp=order.tp,
@@ -341,7 +349,7 @@ class OrderBlockBacktesterLimitOrders:
             balance_at_entry=self.balance
         )
         self._active_trades.append(trade)
-        
+
         # Marcar OB como mitigado
         order.ob.status = OBStatus.MITIGATED
 
@@ -369,17 +377,24 @@ class OrderBlockBacktesterLimitOrders:
 
     def _close_trade(self, trade: Trade, exit_price: float, exit_time: datetime, reason: str):
         """Cierra un trade"""
+        # Slippage en salida: solo en SL (ejecucion de mercado), no en TP (orden limite)
+        slip = self.params.get("slippage_points", 0)
+        if reason == "sl" and slip > 0:
+            effective_exit = exit_price - slip if trade.direction == "long" else exit_price + slip
+        else:
+            effective_exit = exit_price
+
         pnl_usd, pnl_r, pnl_points = calc_pnl(
             entry_price=trade.entry_price,
-            exit_price=exit_price,
+            exit_price=effective_exit,
             original_sl=trade.original_sl,
             entry_price_original=trade.entry_price,
             direction=trade.direction,
             balance=trade.balance_at_entry,
             params=self.params,
         )
-        
-        trade.exit_price = exit_price
+
+        trade.exit_price = effective_exit
         trade.exit_time = exit_time
         trade.exit_reason = reason
         trade.pnl_usd = pnl_usd
