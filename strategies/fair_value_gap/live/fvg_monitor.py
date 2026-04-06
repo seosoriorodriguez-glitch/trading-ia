@@ -67,13 +67,18 @@ class LiveFVGMonitor:
         if df_m5 is None or len(df_m5) < 20:
             return len(self.active_fvgs)
 
-        now = df_m5.iloc[-1]["time"]
+        # Excluir la ultima fila: es la vela M5 actualmente abierta (no cerrada).
+        # detect_fvgs necesita solo velas cerradas para que zone_high/zone_low
+        # sean definitivos y confirmed_at refleje el cierre real de la vela 3.
+        df_m5_closed = df_m5.iloc[:-1].reset_index(drop=True)
+
+        now = df_m5_closed.iloc[-1]["time"]
         if isinstance(now, pd.Timestamp):
             now = now.to_pydatetime()
 
-        all_fvgs = detect_fvgs(df_m5, self.params)
-        self.active_fvgs = self._build_active_fvgs(all_fvgs, df_m5, now)
-        self.trend_bias = self._compute_trend_bias(df_m5)
+        all_fvgs = detect_fvgs(df_m5_closed, self.params)
+        self.active_fvgs = self._build_active_fvgs(all_fvgs, df_m5_closed, now)
+        self.trend_bias = self._compute_trend_bias(df_m5_closed)
 
         self.last_fvg_update = now
         return len(self.active_fvgs)

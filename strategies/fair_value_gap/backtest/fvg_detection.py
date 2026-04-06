@@ -40,7 +40,7 @@ ANTI LOOK-AHEAD:
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
 
@@ -97,6 +97,14 @@ def detect_fvgs(df: pd.DataFrame, params: dict) -> List[FairValueGap]:
     atr  = _compute_atr(df)
     fvgs: List[FairValueGap] = []
 
+    # Inferir duracion de 1 vela del TF mayor para calcular el cierre
+    if len(df) >= 2:
+        dt0 = pd.Timestamp(df.iloc[0]["time"])
+        dt1 = pd.Timestamp(df.iloc[1]["time"])
+        candle_duration = dt1 - dt0
+    else:
+        candle_duration = timedelta(minutes=5)
+
     # Patron de 3 velas: ref=[i-1], mid=[i], curr=[i+1]
     # Necesitamos curr=[i+1], asi que iteramos hasta len-2
     limit = len(df) - 1
@@ -106,9 +114,10 @@ def detect_fvgs(df: pd.DataFrame, params: dict) -> List[FairValueGap]:
         mid  = df.iloc[i]       # barra [1] de Pine: vela impulsiva central
         curr = df.iloc[i + 1]   # barra [0] de Pine: confirma el gap
 
-        # confirmed_at = tiempo de curr (la 3ra vela del patron)
-        # El backtester solo activa el FVG cuando ya paso esa vela
-        confirmed_at = curr["time"]
+        # confirmed_at = CIERRE de curr (la 3ra vela del patron).
+        # El FVG solo es operable DESPUES de que la vela confirmadora cierra,
+        # porque zone_high/zone_low dependen del high/low final de curr.
+        confirmed_at = curr["time"] + candle_duration
 
         atr_val = atr.iloc[i]
         if pd.isna(atr_val) or atr_val == 0:
