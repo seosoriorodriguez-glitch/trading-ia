@@ -35,10 +35,13 @@ US30_PARAMS = {
     "point_value": 1.0,            # US30: 1 punto = $1 por lote
 
     # --- Filtros horarios (servidor MT5 = UTC+3 para FTMO) ---
+    # Asia:   00:00-09:45 UTC+3  (Tokyo/Sydney — cubre FVGs formados en sesiones anteriores)
     # London: 10:00-19:00 UTC+3 = 07:00-16:00 UTC
     # NY:     16:30-23:00 UTC+3 = 13:30-20:00 UTC
     # Overlap London-NY: 16:30-19:00 UTC+3 (zona mas activa)
+    # Lunes a viernes — cobertura 24h
     "sessions": {
+        "asia":     {"start": "00:00", "end": "09:45", "skip_minutes": 0},
         "london":   {"start": "10:00", "end": "19:00", "skip_minutes": 15},
         "new_york": {"start": "16:30", "end": "23:00", "skip_minutes": 15},
     },
