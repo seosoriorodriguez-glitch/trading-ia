@@ -10,7 +10,7 @@ US30_PARAMS = {
     # threshold_pct: tamano minimo del gap como % del precio (0 = sin filtro, igual que LuxAlgo default)
     # Ejemplo: 0.05 significa que el gap debe ser >= 0.05% del precio de referencia
     "threshold_pct": 0.0,          # % minimo de gap (0 = desactivado, LuxAlgo default)
-    "min_zone_points": 0.0,        # Tamano minimo absoluto del gap en puntos (0 = desactivado)
+    "min_zone_points": 5.0,        # Tamano minimo absoluto del gap en puntos (filtra gaps que el spread se come)
     "max_atr_mult": 3.5,           # Gap maximo permitido = ATR(14) * max_atr_mult
     "expiry_candles": 100,         # Velas del TF mayor sin toque -> FVG expira
     "max_active_fvgs": 10,         # Maximo FVGs activos simultaneos (los mas recientes)

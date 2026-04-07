@@ -1,0 +1,3 @@
+[13:02:36] Backtest done in 1234.3s, 2219 trades
+[13:02:36] CSV saved: strategies/fair_value_gap/backtest/results/fvg_live_exact.csv
+[13:02:36] DONE OK
