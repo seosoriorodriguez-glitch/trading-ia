@@ -27,7 +27,7 @@ US30_PARAMS = {
     "target_rr": 2.0,              # R:R objetivo para TP (validado backtest 518d)
     "min_rr_ratio": 1.2,           # R:R minimo para aceptar el trade
     "risk_per_trade_pct": 0.005,   # 0.5% del balance por trade (usar fijo en live)
-    "max_simultaneous_trades": 2,
+    "max_simultaneous_trades": 1,
 
     # --- Costos ---
     "avg_spread_points": 2,        # Spread simulado (pts)
