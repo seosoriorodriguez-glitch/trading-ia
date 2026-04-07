@@ -219,10 +219,15 @@ class OrderBlockLondonBot:
                 for info in self.pending_orders.values()
                 if info.get("signal") is not None
             }
+            obs_with_open = {
+                _ob_key(info["signal"].ob)
+                for info in self.open_trades.values()
+                if info.get("signal") is not None
+            }
 
             signal = self.ob_monitor.check_for_signal(
                 balance      = self.risk_manager.current_balance,
-                skip_ob_keys = obs_with_pending,
+                skip_ob_keys = obs_with_pending | obs_with_open,
             )
             if signal is None:
                 return

@@ -242,10 +242,15 @@ class FVGBot:
                 for info in self.pending_orders.values()
                 if info.get("pending_stop") is not None
             }
+            fvgs_with_open = {
+                _fvg_key(info["pending_stop"].fvg)
+                for info in self.open_trades.values()
+                if info.get("pending_stop") is not None
+            }
 
             pending_stop = self.fvg_monitor.check_for_trigger(
                 balance        = self.risk_manager.current_balance,
-                skip_fvg_keys  = fvgs_with_pending,
+                skip_fvg_keys  = fvgs_with_pending | fvgs_with_open,
             )
             if pending_stop is None:
                 return
