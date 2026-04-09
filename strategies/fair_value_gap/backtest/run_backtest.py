@@ -39,7 +39,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from strategies.fair_value_gap.backtest.config import US30_PARAMS, NAS100_PARAMS
+from strategies.fair_value_gap.backtest.config import US30_PARAMS, NAS100_PARAMS, XAUUSD_PARAMS
 from strategies.fair_value_gap.backtest.data_loader import load_csv, validate_alignment
 from strategies.fair_value_gap.backtest.backtester import FVGBacktester
 
@@ -47,6 +47,7 @@ from strategies.fair_value_gap.backtest.backtester import FVGBacktester
 SYMBOL_PARAMS = {
     "US30":   US30_PARAMS,
     "NAS100": NAS100_PARAMS,
+    "XAUUSD": XAUUSD_PARAMS,
 }
 
 
@@ -61,7 +62,7 @@ def main():
     parser.add_argument("--tf-lower",    default="M1",
                         help="Nombre del TF menor para el reporte (default: M1)")
     parser.add_argument("--symbol",      default="US30",
-                        choices=["US30", "NAS100"],
+                        choices=["US30", "NAS100", "XAUUSD"],
                         help="Activo a backtestear (default: US30)")
     parser.add_argument("--output",      default=None,
                         help="CSV de salida con trades (opcional)")

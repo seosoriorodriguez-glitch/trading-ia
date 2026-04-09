@@ -123,5 +123,59 @@ NAS100_PARAMS = {
     "symbol": "NAS100",
 }
 
+# Configuracion base para XAUUSD (Oro)
+XAUUSD_PARAMS = {
+    # --- Deteccion FVG (TF mayor) ---
+    "threshold_pct": 0.0,
+    "min_zone_points": 1.0,         # Oro: 1 punto = $1, gaps reales son mas grandes
+    "max_atr_mult": 3.5,
+    "expiry_candles": 100,
+    "max_active_fvgs": 10,
+
+    # --- Entrada (TF menor) ---
+    "entry_method": "conservative",
+
+    # --- Risk Management ---
+    "buffer_points": 3,             # Oro: precio ~$3000-4500, buffer en puntos (1pt=$1)
+    "min_risk_points": 5,           # Riesgo minimo 5 pts = $5 por lote
+    "max_risk_points": 150,         # Riesgo maximo 150 pts
+    "target_rr": 2.0,
+    "min_rr_ratio": 1.2,
+    "risk_per_trade_pct": 0.005,
+    "max_simultaneous_trades": 1,
+
+    # --- Costos ---
+    "avg_spread_points": 3,         # Spread tipico XAUUSD ~3 pts
+    "slippage_points": 2,
+    "point_value": 1.0,             # XAUUSD: 1 punto = $1 por lote (lote=100oz)
+
+    # --- Filtros horarios (UTC+3 servidor MT5) ---
+    "sessions": {
+        "asia":     {"start": "00:00", "end": "09:45", "skip_minutes": 30},
+        "london":   {"start": "10:00", "end": "19:00", "skip_minutes": 15},
+        "new_york": {"start": "16:30", "end": "23:00", "skip_minutes": 15},
+    },
+
+    # --- Filtros opcionales ---
+    "require_rejection": False,
+    "pin_bar_wick_ratio": 2.0,
+    "pin_bar_max_body_pct": 0.40,
+    "engulfing_body_ratio": 1.0,
+
+    "require_bos": False,
+    "bos_lookback": 20,
+
+    "ema_trend_filter": False,
+    "ema_4h_period": 20,
+
+    # --- Reglas FTMO ---
+    "ftmo_daily_loss_pct": 4.0,
+    "ftmo_max_dd_pct": 0.0,
+
+    # --- Balance inicial ---
+    "initial_balance": 100_000.0,
+    "symbol": "XAUUSD",
+}
+
 # Alias por defecto
 DEFAULT_PARAMS = US30_PARAMS
