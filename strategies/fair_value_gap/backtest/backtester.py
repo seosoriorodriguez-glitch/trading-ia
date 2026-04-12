@@ -116,6 +116,7 @@ class FVGBacktester:
             _ema_times, _ema_values = [], []
 
         import bisect
+        from datetime import timedelta
 
         higher_ptr   = 0
         higher_rows  = df_higher.to_dict("records")
@@ -123,6 +124,12 @@ class FVGBacktester:
         active_fvgs: List[FairValueGap] = []
         higher_candle_count: dict = {}
         max_active   = self.params["max_active_fvgs"]
+
+        # Duracion de 1 vela del TF mayor (para anti look-ahead en entradas)
+        if n_higher >= 2:
+            _h_duration = higher_rows[1]["time"] - higher_rows[0]["time"]
+        else:
+            _h_duration = timedelta(minutes=5)
 
         lower_rows = df_lower.to_dict("records")
         bos_lb     = self.params.get("bos_lookback", 20)
@@ -255,7 +262,15 @@ class FVGBacktester:
                 self._pending_stops = still_pending
 
             # 3b. Detectar nuevos triggers / entradas
-            fresh_active = [f for f in active_fvgs if f.status == FVGStatus.FRESH]
+            # Anti look-ahead: en live, el bot detecta FVGs al CIERRE de la M5.
+            # confirmed_at = cierre de la 3ra vela (= apertura de la siguiente M5).
+            # El trigger M1 solo puede ocurrir en M1 candles de la M5 POSTERIOR,
+            # es decir, current_time >= confirmed_at + _h_duration.
+            fresh_active = [
+                f for f in active_fvgs
+                if f.status == FVGStatus.FRESH
+                and current_time >= f.confirmed_at + _h_duration
+            ]
 
             if entry_method == "conservative":
                 # Solo crear trigger si no hay ya un pending para ese FVG
