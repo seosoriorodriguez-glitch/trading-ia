@@ -22,7 +22,7 @@ BB_PARAMS = {
     "max_atr_mult":       999.0,   # Filtro ATR maximo (999 = desactivado)
     "expiry_candles":     100,     # Velas M5 sin toque → BB expira
     "max_active_obs":     10,      # Max OBs activos en deteccion
-    "max_active_bbs":     10,      # Max BBs activos en backtest
+    "max_active_bbs":     3,       # Max BBs activos (los 3 mas recientes)
 
     # --- Entrada (M1) conservadora ---
     # Vela M1 cierra DENTRO del BB → orden STOP en borde

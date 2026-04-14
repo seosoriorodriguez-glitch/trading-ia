@@ -1,0 +1,130 @@
+//@version=6
+indicator("Breaker Blocks (3 consecutivas)", overlay=true, max_boxes_count=500)
+
+// === Parámetros ===
+expiryBars   = input.int(100, "Expiry (barras sin toque)")
+barsForward  = input.int(15, "Extension visual (barras)")
+
+// === Detección OB (3 consecutivas) ===
+threeBull = close > open and close[1] > open[1] and close[2] > open[2]
+threeBear = close < open and close[1] < open[1] and close[2] < open[2]
+
+newBull = threeBull and not threeBull[1]
+newBear = threeBear and not threeBear[1]
+
+// === Arrays para trackear OBs activos ===
+var float[] obHigh     = array.new_float()
+var float[] obLow      = array.new_float()
+var string[] obType    = array.new_string()
+var int[] obBar        = array.new_int()
+
+// === Arrays para BBs activos ===
+var float[] bbHigh     = array.new_float()
+var float[] bbLow      = array.new_float()
+var string[] bbDir     = array.new_string()
+var int[] bbBar        = array.new_int()
+var box[] bbBox        = array.new_box()
+
+// === Registrar nuevos OBs ===
+if newBull
+    zH = high[3]
+    zL = low[3]
+    mid = (zH + zL) / 2
+    array.push(obHigh, mid)
+    array.push(obLow, zL)
+    array.push(obType, "bullish")
+    array.push(obBar, bar_index - 3)
+
+if newBear
+    zH = high[3]
+    zL = low[3]
+    mid = (zH + zL) / 2
+    array.push(obHigh, zH)
+    array.push(obLow, mid)
+    array.push(obType, "bearish")
+    array.push(obBar, bar_index - 3)
+
+// === Verificar destrucción de OBs → crear Breaker Blocks ===
+if array.size(obHigh) > 0
+    for i = array.size(obHigh) - 1 to 0
+        oH = array.get(obHigh, i)
+        oL = array.get(obLow, i)
+        oT = array.get(obType, i)
+        oB = array.get(obBar, i)
+
+        age = bar_index - oB
+
+        // Expirado
+        if age >= expiryBars
+            array.remove(obHigh, i)
+            array.remove(obLow, i)
+            array.remove(obType, i)
+            array.remove(obBar, i)
+            continue
+
+        // Bullish OB destruido (close < zone_low) → nace BB SHORT
+        if oT == "bullish" and close < oL
+            array.push(bbHigh, oH)
+            array.push(bbLow, oL)
+            array.push(bbDir, "short")
+            array.push(bbBar, bar_index)
+            bx = box.new(bar_index, oH, bar_index + barsForward, oL,
+                 bgcolor=color.new(color.red, 82), border_color=color.red, border_width=1)
+            array.push(bbBox, bx)
+
+            array.remove(obHigh, i)
+            array.remove(obLow, i)
+            array.remove(obType, i)
+            array.remove(obBar, i)
+            continue
+
+        // Bearish OB destruido (close > zone_high) → nace BB LONG
+        if oT == "bearish" and close > oH
+            array.push(bbHigh, oH)
+            array.push(bbLow, oL)
+            array.push(bbDir, "long")
+            array.push(bbBar, bar_index)
+            bx = box.new(bar_index, oH, bar_index + barsForward, oL,
+                 bgcolor=color.new(color.lime, 82), border_color=color.lime, border_width=1)
+            array.push(bbBox, bx)
+
+            array.remove(obHigh, i)
+            array.remove(obLow, i)
+            array.remove(obType, i)
+            array.remove(obBar, i)
+            continue
+
+// === Gestionar BBs activos: invalidar o extender ===
+if array.size(bbHigh) > 0
+    for i = array.size(bbHigh) - 1 to 0
+        bH  = array.get(bbHigh, i)
+        bL  = array.get(bbLow, i)
+        bD  = array.get(bbDir, i)
+        bB  = array.get(bbBar, i)
+        bBx = array.get(bbBox, i)
+
+        age = bar_index - bB
+
+        // Invalidación: close cruza al otro lado de la zona (igual que bot live)
+        destroyed = false
+        if bD == "long" and close < bL
+            destroyed := true
+        if bD == "short" and close > bH
+            destroyed := true
+
+        // Expiry
+        if destroyed or age >= expiryBars
+            box.set_right(bBx, bar_index)
+            box.set_bgcolor(bBx, color.new(color.gray, 92))
+            box.set_border_color(bBx, color.gray)
+            box.set_border_style(bBx, line.style_dotted)
+
+            array.remove(bbHigh, i)
+            array.remove(bbLow, i)
+            array.remove(bbDir, i)
+            array.remove(bbBar, i)
+            array.remove(bbBox, i)
+            continue
+
+        // Extender caja
+        box.set_right(bBx, bar_index + 5)
