@@ -30,6 +30,7 @@ from strategies.fair_value_gap.live.order_executor  import OrderExecutor
 from strategies.fair_value_gap.live.risk_manager    import FTMORiskManager
 from strategies.fair_value_gap.live.monitor         import TradingMonitor
 from strategies.fair_value_gap.backtest.config      import US30_PARAMS
+import copy
 
 
 class FVGBot:
@@ -53,8 +54,12 @@ class FVGBot:
         with open(ftmo_config_path, "r", encoding="utf-8") as f:
             ftmo_cfg = yaml.safe_load(f)
 
+        # Params live: solo los 3 FVGs mas recientes (siguen tendencia actual)
+        live_params = copy.deepcopy(US30_PARAMS)
+        live_params["max_active_fvgs"] = 3
+
         self.data_feed    = LiveDataFeed(symbol)
-        self.fvg_monitor  = LiveFVGMonitor(US30_PARAMS, self.data_feed)
+        self.fvg_monitor  = LiveFVGMonitor(live_params, self.data_feed)
         self.executor     = OrderExecutor(symbol)
         self.risk_manager = FTMORiskManager(ftmo_cfg, initial_balance)
         self.monitor      = TradingMonitor()
