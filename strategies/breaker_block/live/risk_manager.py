@@ -44,11 +44,8 @@ class FTMORiskManager:
             self.stop_reason = f"Daily DD {daily_dd:.2%}"
             return False, self.stop_reason
 
-        total_dd = (self.initial_balance - self.current_balance) / self.initial_balance
-        if total_dd >= self.max_total_dd_pct - 0.005:
-            self.trading_enabled = False
-            self.stop_reason = f"Total DD {total_dd:.2%}"
-            return False, self.stop_reason
+        # Total DD desactivado — solo rige el limite diario
+        # FTMO cierra la cuenta si supera 10%, pero el bot no se detiene antes
 
         profit = (self.current_balance - self.initial_balance) / self.initial_balance
         if profit >= self.profit_target_pct:

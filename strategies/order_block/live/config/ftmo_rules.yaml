@@ -20,5 +20,5 @@ ftmo:
   weekend_close_hour: 21      # Viernes 21:00 UTC
 
   risk_per_trade_pct: 0.005   # 0.5% = $500 por trade con $100k
-  max_simultaneous_trades: 2
+  max_simultaneous_trades: 1
   max_spread_points: 5        # No operar si spread > 5 pts

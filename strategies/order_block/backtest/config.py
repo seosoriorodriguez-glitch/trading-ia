@@ -24,7 +24,7 @@ DEFAULT_PARAMS = {
     "target_rr": 3.5,               # R:R objetivo para TP (optimizado: 3.5 vs 2.5)
     "min_rr_ratio": 1.2,            # R:R minimo para aceptar el trade
     "risk_per_trade_pct": 0.005,    # 0.5% del balance por trade
-    "max_simultaneous_trades": 2,
+    "max_simultaneous_trades": 1,
 
     # --- Costos ---
     "avg_spread_points": 2,         # Spread simulado (pts)
