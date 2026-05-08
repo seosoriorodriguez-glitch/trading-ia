@@ -235,10 +235,11 @@ class OrderBlockBot:
 
     def _check_signals(self):
         try:
-            # Sincronizar trades abiertos con MT5
+            # Sincronizar trades abiertos con MT5 (posiciones + órdenes pendientes)
             if not self.dry_run:
                 mt5_positions = self.executor.get_open_positions()
-                self.risk_manager.open_trades = len(mt5_positions)
+                mt5_pending   = self.executor.get_pending_orders()
+                self.risk_manager.open_trades = len(mt5_positions) + len(mt5_pending)
 
             current_price = self.data_feed.get_current_price()
             if current_price is None:
