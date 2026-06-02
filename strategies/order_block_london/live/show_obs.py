@@ -53,8 +53,10 @@ def main():
         if isinstance(last_time, pd.Timestamp):
             last_time = last_time.to_pydatetime()
         in_session = is_session_allowed(last_time, LONDON_PARAMS)
+        _s = LONDON_PARAMS["sessions"]["london"]
+        _win = f"{_s['start']}-{_s['end']} (skip {_s['skip_minutes']}m)"
         print(f"  Hora MT5:      {last_time.strftime('%Y-%m-%d %H:%M')} (UTC+3)")
-        print(f"  En sesion:     {'SI (London 10:15-19:00)' if in_session else 'NO (fuera de horario)'}")
+        print(f"  En sesion:     {'SI (London ' + _win + ')' if in_session else 'NO (fuera de horario)'}")
 
     bias = monitor.trend_bias or "sin filtro"
     print(f"  Trend bias:    {bias}")

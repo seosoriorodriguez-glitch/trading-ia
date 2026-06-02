@@ -62,7 +62,13 @@ class OrderBlockLondonBot:
 
     def start(self):
         print("Iniciando Order Block London Bot...", flush=True)
-        print(f"Sesion: London 10:00-19:00 UTC+3 | RR=2.5 | Buffer=35", flush=True)
+        _sess = LONDON_PARAMS["sessions"]["london"]
+        print(
+            f"Sesion: London {_sess['start']}-{_sess['end']} UTC+3 "
+            f"(skip {_sess['skip_minutes']}m) | RR={LONDON_PARAMS['target_rr']} "
+            f"| Buffer={LONDON_PARAMS['buffer_points']}",
+            flush=True,
+        )
 
         if not self.data_feed.connect():
             print("No se pudo conectar a MT5", flush=True)
