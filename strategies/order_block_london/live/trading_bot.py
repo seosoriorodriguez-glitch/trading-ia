@@ -60,6 +60,7 @@ class OrderBlockLondonBot:
         self.last_daily_reset: Optional[datetime] = None
         self.last_dashboard:   Optional[datetime] = None
         self.last_weekend_close: Optional[datetime] = None
+        self.last_news_cancel:   Optional[datetime] = None
 
     def start(self):
         print("Iniciando Order Block London Bot...", flush=True)
@@ -151,6 +152,7 @@ class OrderBlockLondonBot:
                 self.last_daily_reset = now
 
             self._check_weekend_close(now)
+            self._check_news_blackout(now)
 
             account = self.data_feed.get_account_info()
             if account:
@@ -211,6 +213,26 @@ class OrderBlockLondonBot:
                     f"{len(pos)} posiciones cerradas (viernes {now.hour:02d}:{now.minute:02d} UTC)")
         except Exception as e:
             self.monitor.log_error(f"Error en cierre de fin de semana: {e}")
+
+    def _check_news_blackout(self, now: datetime):
+        """Filtro de noticias (FTMO 5.15.3). Durante la ventana ET no se abren
+        trades nuevos (lo bloquea can_take_trade) y ademas se CANCELAN las ordenes
+        STOP pendientes, para que ninguna se llene justo en el minuto de la noticia.
+        Re-chequea cada 10s mientras dure la ventana."""
+        if not self.risk_manager.in_news_window():
+            return
+        if (self.last_news_cancel is not None
+                and (now - self.last_news_cancel).total_seconds() < 10):
+            return
+        self.last_news_cancel = now
+        try:
+            pend = self.executor.get_pending_orders()
+            if pend:
+                print(f"[NOTICIAS] Cancelando {len(pend)} pendientes (ventana de noticia)...", flush=True)
+                self.executor.cancel_all_orders(self.dry_run)
+                self.pending_orders.clear()
+        except Exception as e:
+            self.monitor.log_error(f"Error cancelando pendientes por noticia: {e}")
 
     def _update_obs(self):
         try:

@@ -23,3 +23,11 @@ ftmo:
   risk_per_trade_pct: 0.005   # 0.5% = $50 por trade con $10k
   max_simultaneous_trades: 2
   max_spread_points: 5        # No operar si spread > 5 pts
+
+  # --- Filtro de noticias (regla FTMO 5.15.3, cuenta Standard) ---
+  # No abrir trades NI dejar pendientes vivas en la ventana. Hora NUEVA YORK (ET):
+  # se ancla a la hora real de la noticia US y se ajusta solo con el DST de EE.UU.
+  # (independiente del horario del servidor/Europa que usan las sesiones).
+  news_filter: true
+  news_blackout_et:
+    - "08:26-08:34"   # noticias macro de las 8:30 ET (NFP, CPI, PPI, Retail, GDP, PCE)

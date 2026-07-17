@@ -3,8 +3,22 @@
 FTMO Risk Manager para la estrategia Order Block London.
 Mismas reglas FTMO que Bot 1: daily DD 5%, total DD 10%, profit target 10%.
 """
-from datetime import datetime, timezone
-from typing import Tuple
+from datetime import datetime, timezone, timedelta
+from typing import Tuple, List
+
+
+def us_eastern_now() -> datetime:
+    """Hora actual en Nueva York (ET), calculada a mano desde UTC para no depender
+    de la base de zonas horarias del sistema (Windows). EDT (UTC-4) del 2do domingo
+    de marzo al 1er domingo de noviembre; EST (UTC-5) el resto."""
+    utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    y = utc.year
+    mar1 = datetime(y, 3, 1)
+    dst_start = mar1 + timedelta(days=(6 - mar1.weekday()) % 7 + 7, hours=7)   # 2do dom mar, 07:00 UTC
+    nov1 = datetime(y, 11, 1)
+    dst_end = nov1 + timedelta(days=(6 - nov1.weekday()) % 7, hours=6)         # 1er dom nov, 06:00 UTC
+    offset = -4 if dst_start <= utc < dst_end else -5
+    return utc + timedelta(hours=offset)
 
 
 class FTMORiskManager:
@@ -29,10 +43,29 @@ class FTMORiskManager:
         self.close_before_weekend = cfg["close_before_weekend"]
         self.weekend_close_hour  = cfg["weekend_close_hour"]
 
+        # Filtro de noticias (ventanas en minutos-del-dia, hora ET)
+        self.news_filter = cfg.get("news_filter", False)
+        self.news_windows: List[Tuple[int, int]] = []
+        for w in cfg.get("news_blackout_et", []):
+            a, b = w.split("-")
+            ah, am = a.split(":")
+            bh, bm = b.split(":")
+            self.news_windows.append((int(ah) * 60 + int(am), int(bh) * 60 + int(bm)))
+
         self.open_trades    = 0
         self.trades_today   = 0
         self.trading_enabled = True
         self.stop_reason: str = ""
+
+    def in_news_window(self) -> bool:
+        """True si la hora ET actual cae en una ventana de noticias bloqueada."""
+        if not self.news_filter or not self.news_windows:
+            return False
+        et = us_eastern_now()
+        if et.weekday() >= 5:            # fin de semana, sin noticias
+            return False
+        m = et.hour * 60 + et.minute
+        return any(lo <= m <= hi for lo, hi in self.news_windows)
 
     def can_take_trade(self, current_price: dict) -> Tuple[bool, str]:
         if not self.trading_enabled:
@@ -61,6 +94,9 @@ class FTMORiskManager:
 
         if current_price["spread"] > self.max_spread:
             return False, f"Spread alto ({current_price['spread']:.1f} pts)"
+
+        if self.in_news_window():
+            return False, "Ventana de noticias (FTMO 5.15.3)"
 
         now = datetime.now(timezone.utc)
         if self.close_before_weekend and now.weekday() == 4 and now.hour >= self.weekend_close_hour:
