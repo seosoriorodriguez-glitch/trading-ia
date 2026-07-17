@@ -59,6 +59,7 @@ class OrderBlockLondonBot:
         self.last_m1_check:    Optional[datetime] = None
         self.last_daily_reset: Optional[datetime] = None
         self.last_dashboard:   Optional[datetime] = None
+        self.last_weekend_close: Optional[datetime] = None
 
     def start(self):
         print("Iniciando Order Block London Bot...", flush=True)
@@ -149,6 +150,8 @@ class OrderBlockLondonBot:
                 self.risk_manager.reset_daily()
                 self.last_daily_reset = now
 
+            self._check_weekend_close(now)
+
             account = self.data_feed.get_account_info()
             if account:
                 self.risk_manager.update_balance(account["balance"])
@@ -177,6 +180,37 @@ class OrderBlockLondonBot:
                 self._monitor_open_trades()
 
             time.sleep(1)
+
+    def _check_weekend_close(self, now: datetime):
+        """Cierre de fin de semana (regla FTMO 5.15.2: no mantener posiciones
+        fuera del horario del instrumento). El viernes a partir de
+        weekend_close_hour (UTC) cierra TODAS las posiciones y cancela las
+        pendientes. Se re-chequea cada 15s por si algo queda abierto."""
+        rm = self.risk_manager
+        is_close_window = (rm.close_before_weekend
+                           and now.weekday() == 4          # viernes
+                           and now.hour >= rm.weekend_close_hour)
+        if not is_close_window:
+            return
+        if (self.last_weekend_close is not None
+                and (now - self.last_weekend_close).total_seconds() < 15):
+            return
+        self.last_weekend_close = now
+        try:
+            pend = self.executor.get_pending_orders()
+            pos  = self.executor.get_open_positions()
+            if pend:
+                print(f"[FIN DE SEMANA] Cancelando {len(pend)} pendientes...", flush=True)
+                self.executor.cancel_all_orders(self.dry_run)
+                self.pending_orders.clear()
+            if pos:
+                print(f"[FIN DE SEMANA] Cerrando {len(pos)} posiciones abiertas...", flush=True)
+                self.executor.close_all_positions(self.dry_run)
+                self.monitor.log_risk_alert(
+                    "Cierre fin de semana",
+                    f"{len(pos)} posiciones cerradas (viernes {now.hour:02d}:{now.minute:02d} UTC)")
+        except Exception as e:
+            self.monitor.log_error(f"Error en cierre de fin de semana: {e}")
 
     def _update_obs(self):
         try:

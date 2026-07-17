@@ -17,7 +17,8 @@ ftmo:
   rewards: 0.90
 
   close_before_weekend: true
-  weekend_close_hour: 21      # Viernes 21:00 UTC
+  weekend_close_hour: 19      # Viernes 19:00 UTC = 15:00 NY = 22:00 servidor
+                              # (cierra TODO ~1h antes del cierre del US30, regla FTMO 5.15.2)
 
   risk_per_trade_pct: 0.005   # 0.5% = $50 por trade con $10k
   max_simultaneous_trades: 2
