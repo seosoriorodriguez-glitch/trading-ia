@@ -39,6 +39,10 @@ def main():
                         help="Balance inicial (default: 10000)")
     parser.add_argument("--ftmo-config", default=None,
                         help="Ruta al YAML de reglas FTMO")
+    parser.add_argument("--terminal-path", default=None,
+                        help=r"Ruta al terminal64.exe de la instancia MT5 "
+                             r"(default: C:\Program Files\MT5_BTCUSD\terminal64.exe). "
+                             r"Usar otra para correr una 2a cuenta en paralelo.")
     parser.add_argument("--dry-run",  action="store_true",
                         help="Modo simulacion: no envia ordenes reales a MT5")
     args = parser.parse_args()
@@ -48,6 +52,7 @@ def main():
         ftmo_config_path = args.ftmo_config,
         dry_run          = args.dry_run,
         initial_balance  = args.balance,
+        terminal_path    = args.terminal_path,
     )
     bot.start()
 

@@ -35,10 +35,12 @@ class OrderBlockLondonBot:
         ftmo_config_path: str   = None,
         dry_run:          bool  = False,
         initial_balance:  float = 10_000.0,
+        terminal_path:    str   = None,
     ):
         self.symbol  = symbol
         self.dry_run = dry_run
         self.running = False
+        self.initial_balance = initial_balance
 
         if ftmo_config_path is None:
             ftmo_config_path = str(
@@ -47,7 +49,7 @@ class OrderBlockLondonBot:
         with open(ftmo_config_path, "r", encoding="utf-8") as f:
             ftmo_cfg = yaml.safe_load(f)
 
-        self.data_feed    = LiveDataFeed(symbol)
+        self.data_feed    = LiveDataFeed(symbol, terminal_path)
         self.ob_monitor   = LiveOBMonitor(LONDON_PARAMS, self.data_feed)
         self.executor     = OrderExecutor(symbol)
         self.risk_manager = FTMORiskManager(ftmo_cfg, initial_balance)
@@ -72,14 +74,29 @@ class OrderBlockLondonBot:
             flush=True,
         )
 
+        print(f"Terminal MT5: {self.data_feed.terminal_path}", flush=True)
         if not self.data_feed.connect():
             print("No se pudo conectar a MT5", flush=True)
             return
 
         account = self.data_feed.get_account_info()
         if account:
+            print(f"Cuenta MT5: #{account['login']}  |  Balance: ${account['balance']:,.2f}",
+                  flush=True)
+            # --- SEGURIDAD: la cuenta conectada debe cuadrar con --balance ---
+            # Evita correr tamaño de $100k en cuenta de $10k (o viceversa) por
+            # emparejar mal --balance con --terminal-path.
+            ratio = account["balance"] / self.initial_balance if self.initial_balance else 0
+            if ratio < 0.5 or ratio > 2.0:
+                print("=" * 60, flush=True)
+                print("ABORTADO: el balance de la cuenta NO cuadra con --balance", flush=True)
+                print(f"   Cuenta #{account['login']} tiene ${account['balance']:,.2f}", flush=True)
+                print(f"   pero --balance = ${self.initial_balance:,.2f}", flush=True)
+                print("   Revisa que --terminal-path y --balance sean de la MISMA cuenta.", flush=True)
+                print("=" * 60, flush=True)
+                self.data_feed.disconnect()
+                return
             self.risk_manager.update_balance(account["balance"])
-            print(f"Cuenta: ${account['balance']:,.2f}", flush=True)
 
         n = self.ob_monitor.update_obs()
         print(f"OBs activos iniciales: {n}", flush=True)

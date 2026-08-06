@@ -14,13 +14,16 @@ import time
 class LiveDataFeed:
     """Feed de datos en tiempo real desde MT5."""
 
-    def __init__(self, symbol: str = "US30.cash"):
+    DEFAULT_TERMINAL = r"C:\Program Files\MT5_BTCUSD\terminal64.exe"
+
+    def __init__(self, symbol: str = "US30.cash", terminal_path: str = None):
         self.symbol = symbol
+        self.terminal_path = terminal_path or self.DEFAULT_TERMINAL
         self.mt5_connected = False
 
     def connect(self) -> bool:
-        # Instancia MT5_BTCUSD — misma que usaba el bot BTC, ahora para London US30
-        if not mt5.initialize(path=r"C:\Program Files\MT5_BTCUSD\terminal64.exe"):
+        # Ruta del terminal MT5 (configurable para correr varias cuentas en paralelo)
+        if not mt5.initialize(path=self.terminal_path):
             print(f"ERROR inicializando MT5: {mt5.last_error()}")
             return False
         self.mt5_connected = True
@@ -86,6 +89,7 @@ class LiveDataFeed:
         if account is None:
             return None
         return {
+            "login":       account.login,
             "balance":     account.balance,
             "equity":      account.equity,
             "margin":      account.margin,
