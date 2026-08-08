@@ -37,10 +37,10 @@ DARWINEX_PARAMS = {
     "max_risk_points": 300,
     "target_rr": 2.5,
     "min_rr_ratio": 1.2,
-    "risk_per_trade_pct": 0.001,      # 0.1% — bajado por leverage 20:1 de Darwinex
-                                      #        (a 0.5% no entraria por margen).
-                                      #        LIVE usa el valor del YAML, no este.
-    "max_simultaneous_trades": 1,     # 1 en Darwinex (margen ajustado por 20:1)
+    "risk_per_trade_pct": 0.0005,     # 0.05% — bajado para que 2 simultaneos quepan
+                                      #         en margen (leverage 20:1). La magnitud
+                                      #         se normaliza en el DARWIN. LIVE usa YAML.
+    "max_simultaneous_trades": 2,     # 2 simultaneos, como FTMO (replica fiel)
 
     # --- Costos ---
     "avg_spread_points": 2,

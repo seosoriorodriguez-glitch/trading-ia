@@ -25,10 +25,12 @@ ftmo:
 
   # --- Riesgo ajustado a las caracteristicas de Darwinex ---
   # Leverage 20:1 (ESMA) + WS30 a $0.1/punto => margen ~$2,702/lote.
-  # A 0.5% muchos trades no entrarian por margen. 0.1% entra comodo y mantiene
-  # un riesgo CONSISTENTE (que es lo que premia el motor de riesgo de Darwinex).
-  risk_per_trade_pct: 0.001   # 0.1% = $100 por trade con $100k
-  max_simultaneous_trades: 1  # 1 simultaneo (margen ajustado por leverage 20:1)
+  # La MAGNITUD del % se normaliza en el DARWIN (VaR objetivo), asi que bajamos
+  # el riesgo por trade lo justo para que 2 SIMULTANEOS quepan en margen y
+  # replicar la estructura de FTMO (2 trades) tal cual. Verificado con margen
+  # real: 0.05% x 2 trades cabe para stops tipicos (>=35pts por el buffer).
+  risk_per_trade_pct: 0.0005  # 0.05% = $50 por trade con $100k (se normaliza)
+  max_simultaneous_trades: 2  # 2 simultaneos, como FTMO (replica fiel)
   max_spread_points: 10       # WS30 (digits 0): spread en puntos enteros
 
   # --- Filtro de noticias (opcional en Darwinex; lo mantenemos por prudencia) ---
