@@ -1,0 +1,37 @@
+# Reglas de riesgo para el bot DARWINEX (cuenta Zero, simbolo WS30).
+# Copia independiente de order_block_london/live/config/ftmo_rules.yaml.
+# Darwinex Zero NO tiene las reglas FTMO (daily DD 5%, etc.), pero mantenemos
+# protecciones propias + un target alto para que el track record sea CONTINUO.
+ftmo:
+  account_size: 100000  # cuenta virtual Darwinex Zero $100k
+
+  phase_1:
+    profit_target_pct: 100.0  # ~nunca parar por profit (track record continuo)
+    max_daily_loss_pct: 0.04  # proteccion propia (no es regla Darwinex)
+    max_total_loss_pct: 0.10  # proteccion propia
+    min_trading_days: 0
+
+  phase_2:
+    profit_target_pct: 100.0
+    max_daily_loss_pct: 0.04
+    max_total_loss_pct: 0.10
+    min_trading_days: 0
+
+  refund: false
+  rewards: 0.0
+
+  close_before_weekend: true
+  weekend_close_hour: 19      # Viernes 19:00 UTC = 15:00 NY (intradia, no swing)
+
+  # --- Riesgo ajustado a las caracteristicas de Darwinex ---
+  # Leverage 20:1 (ESMA) + WS30 a $0.1/punto => margen ~$2,702/lote.
+  # A 0.5% muchos trades no entrarian por margen. 0.1% entra comodo y mantiene
+  # un riesgo CONSISTENTE (que es lo que premia el motor de riesgo de Darwinex).
+  risk_per_trade_pct: 0.001   # 0.1% = $100 por trade con $100k
+  max_simultaneous_trades: 1  # 1 simultaneo (margen ajustado por leverage 20:1)
+  max_spread_points: 10       # WS30 (digits 0): spread en puntos enteros
+
+  # --- Filtro de noticias (opcional en Darwinex; lo mantenemos por prudencia) ---
+  news_filter: true
+  news_blackout_et:
+    - "08:26-08:34"   # macro 8:30 ET (NFP, CPI, PPI, Retail, GDP, PCE)
