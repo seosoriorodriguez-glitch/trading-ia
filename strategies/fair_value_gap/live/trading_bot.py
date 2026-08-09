@@ -42,10 +42,12 @@ class FVGBot:
         ftmo_config_path: str   = None,
         dry_run:          bool  = False,
         initial_balance:  float = 10_000.0,
+        terminal_path:    str   = None,
     ):
         self.symbol  = symbol
         self.dry_run = dry_run
         self.running = False
+        self.initial_balance = initial_balance
 
         if ftmo_config_path is None:
             ftmo_config_path = str(
@@ -58,7 +60,7 @@ class FVGBot:
         live_params = copy.deepcopy(US30_PARAMS)
         live_params["max_active_fvgs"] = 3
 
-        self.data_feed    = LiveDataFeed(symbol)
+        self.data_feed    = LiveDataFeed(symbol, terminal_path)
         self.fvg_monitor  = LiveFVGMonitor(live_params, self.data_feed)
         self.executor     = OrderExecutor(symbol)
         self.risk_manager = FTMORiskManager(ftmo_cfg, initial_balance)
@@ -70,6 +72,7 @@ class FVGBot:
         self.last_m1_check:    Optional[datetime] = None
         self.last_daily_reset: Optional[datetime] = None
         self.last_dashboard:   Optional[datetime] = None
+        self.last_weekend_close: Optional[datetime] = None
 
     # ------------------------------------------------------------------
     # Inicio / parada
@@ -84,8 +87,20 @@ class FVGBot:
 
         account = self.data_feed.get_account_info()
         if account:
+            print(f"Cuenta MT5: #{account.get('login','?')}  |  Balance: ${account['balance']:,.2f}",
+                  flush=True)
+            # --- SEGURIDAD: el balance de la cuenta debe cuadrar con --balance ---
+            ratio = account["balance"] / self.initial_balance if self.initial_balance else 0
+            if ratio < 0.5 or ratio > 2.0:
+                print("=" * 60, flush=True)
+                print("ABORTADO: el balance de la cuenta NO cuadra con --balance", flush=True)
+                print(f"   Cuenta #{account.get('login','?')} tiene ${account['balance']:,.2f}", flush=True)
+                print(f"   pero --balance = ${self.initial_balance:,.2f}", flush=True)
+                print("   Revisa que --terminal-path y --balance sean de la MISMA cuenta.", flush=True)
+                print("=" * 60, flush=True)
+                self.data_feed.disconnect()
+                return
             self.risk_manager.update_balance(account["balance"])
-            print(f"Cuenta: ${account['balance']:,.2f}", flush=True)
 
         n = self.fvg_monitor.update_fvgs()
         print(f"FVGs activos iniciales: {n}", flush=True)
@@ -161,6 +176,8 @@ class FVGBot:
                 self.risk_manager.reset_daily()
                 self.last_daily_reset = now
 
+            self._check_weekend_close(now)
+
             account = self.data_feed.get_account_info()
             if account:
                 self.risk_manager.update_balance(account["balance"])
@@ -189,6 +206,36 @@ class FVGBot:
                 self._monitor_open_trades()
 
             time.sleep(1)
+
+    def _check_weekend_close(self, now: datetime):
+        """Cierre de fin de semana (regla FTMO 5.15.2, cuenta Standard). El viernes
+        a partir de weekend_close_hour (UTC) cierra TODAS las posiciones y cancela
+        las pendientes. Se re-chequea cada 15s."""
+        rm = self.risk_manager
+        is_close_window = (rm.close_before_weekend
+                           and now.weekday() == 4
+                           and now.hour >= rm.weekend_close_hour)
+        if not is_close_window:
+            return
+        if (self.last_weekend_close is not None
+                and (now - self.last_weekend_close).total_seconds() < 15):
+            return
+        self.last_weekend_close = now
+        try:
+            pend = self.executor.get_pending_orders()
+            pos  = self.executor.get_open_positions()
+            if pend:
+                print(f"[FIN DE SEMANA] Cancelando {len(pend)} pendientes...", flush=True)
+                self.executor.cancel_all_orders(self.dry_run)
+                self.pending_orders.clear()
+            if pos:
+                print(f"[FIN DE SEMANA] Cerrando {len(pos)} posiciones abiertas...", flush=True)
+                self.executor.close_all_positions(self.dry_run)
+                self.monitor.log_risk_alert(
+                    "Cierre fin de semana",
+                    f"{len(pos)} posiciones cerradas (viernes {now.hour:02d}:{now.minute:02d} UTC)")
+        except Exception as e:
+            self.monitor.log_error(f"Error en cierre de fin de semana: {e}")
 
     # ------------------------------------------------------------------
     # Acciones internas
@@ -240,6 +287,14 @@ class FVGBot:
 
             can, reason = self.risk_manager.can_take_trade(current_price)
             if not can:
+                return
+
+            # --- FIX concurrencia: contar ABIERTAS + PENDIENTES contra el limite ---
+            # Antes solo se contaban las posiciones LLENAS. Con entrada conservative
+            # (ordenes STOP), las pendientes se acumulaban y podian llenarse varias
+            # juntas, superando max_simultaneous (el bug del 6x en el live).
+            n_committed = len(self.open_trades) + len(self.pending_orders)
+            if n_committed >= self.risk_manager.max_simultaneous:
                 return
 
             fvgs_with_pending = {

@@ -1,5 +1,5 @@
 ftmo:
-  account_size: 10000  # $10k FTMO Challenge
+  account_size: 200000  # $200k FTMO Free Trial (test FVG) — el sizing usa --balance
 
   phase_1:
     profit_target_pct: 0.10   # 10%

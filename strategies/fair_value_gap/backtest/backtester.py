@@ -231,6 +231,19 @@ class FVGBacktester:
                     self._active_trades = []
                     self._pending_stops = []
 
+            # ---- Cierre de fin de semana (opcional, param-gated) ----
+            # El viernes a partir de weekend_close_hour (hora servidor) cierra todo
+            # y no abre nada mas (evita holds de 2-3 dias sobre el fin de semana).
+            if (self.params.get("close_before_weekend", False)
+                    and current_time.weekday() == 4
+                    and current_time.hour >= self.params.get("weekend_close_hour", 19)):
+                for trade in self._active_trades:
+                    self._close_trade(trade, candle_close, current_time, "weekend_close")
+                self._active_trades = []
+                self._pending_stops = []
+                self._equity_curve.append((current_time, self.balance))
+                continue
+
             # ---- 3. Procesar pending stops + buscar nueva entrada ----
             # No abrir si el dia esta bloqueado por FTMO o la estrategia pausada
             if self._daily_blocked or self._strategy_paused:

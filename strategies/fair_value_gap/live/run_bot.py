@@ -4,13 +4,16 @@ Punto de entrada del FVG Bot.
 
 Uso:
     # Demo (sin ordenes reales):
-    python strategies/fair_value_gap/live/run_bot.py --dry-run
+    python strategies/fair_value_gap/live/run_bot.py --dry-run --balance 200000
 
-    # Produccion ($10k FTMO Challenge):
-    python strategies/fair_value_gap/live/run_bot.py --balance 10000
+    # Free Trial $200k (terminal MT5_FVG por defecto):
+    python strategies/fair_value_gap/live/run_bot.py --balance 200000
 
-    # Simbolo alternativo:
-    python strategies/fair_value_gap/live/run_bot.py --symbol NAS100.cash --balance 10000
+    # Apuntar a otra instancia MT5:
+    python strategies/fair_value_gap/live/run_bot.py --balance 200000 \
+        --terminal-path "C:\\Program Files\\MT5_FVG\\terminal64.exe"
+
+Para detener: crear STOP_FVG.txt en la raiz del proyecto.
 """
 import sys
 if sys.platform == "win32":
@@ -34,6 +37,9 @@ def main():
                         help="Balance inicial (default: 10000)")
     parser.add_argument("--ftmo-config", default=None,
                         help="Ruta al YAML de reglas FTMO (default: config/ftmo_rules.yaml)")
+    parser.add_argument("--terminal-path", default=None,
+                        help=r"Ruta al terminal64.exe de la instancia MT5 "
+                             r"(default: C:\Program Files\MT5_FVG\terminal64.exe).")
     parser.add_argument("--dry-run",  action="store_true",
                         help="Modo simulacion: no envia ordenes reales a MT5")
     args = parser.parse_args()
@@ -43,6 +49,7 @@ def main():
         ftmo_config_path = args.ftmo_config,
         dry_run          = args.dry_run,
         initial_balance  = args.balance,
+        terminal_path    = args.terminal_path,
     )
     bot.start()
 
