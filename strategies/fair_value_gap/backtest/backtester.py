@@ -274,6 +274,14 @@ class FVGBacktester:
                         still_pending.append(pending)
                 self._pending_stops = still_pending
 
+                # (B) fiel-al-live opcional: al llenarse una orden y alcanzar el
+                # limite, CANCELAR el resto de pendientes (la primera que entra
+                # neutraliza las demas). Es el punto medio entre encolar todas (C)
+                # y tener solo 1 pendiente (A / cap_pending_at_max).
+                if (self.params.get("cancel_pending_on_fill", False)
+                        and len(self._active_trades) >= self.params["max_simultaneous_trades"]):
+                    self._pending_stops = []
+
             # 3b. Detectar nuevos triggers / entradas
             # Anti look-ahead: en live, el bot detecta FVGs al CIERRE de la M5.
             # confirmed_at = cierre de la 3ra vela (= apertura de la siguiente M5).
@@ -286,18 +294,26 @@ class FVGBacktester:
             ]
 
             if entry_method == "conservative":
-                # Solo crear trigger si no hay ya un pending para ese FVG
-                pending_fvg_ids = {id(p.fvg) for p in self._pending_stops}
-                trigger = check_conservative_trigger(
-                    candle         = lower_row,
-                    prev_candle    = prev_candle,
-                    recent_candles = recent_candles,
-                    active_fvgs    = [f for f in fresh_active if id(f) not in pending_fvg_ids],
-                    params         = self.params,
-                    trend_bias     = trend_bias,
-                )
-                if trigger is not None:
-                    self._pending_stops.append(trigger)
+                # Modo FIEL-AL-LIVE (cap_pending_at_max): el bot live solo mantiene
+                # UNA STOP a la vez, asi que NO crea nuevas pendientes si
+                # abiertas+pendientes ya alcanzan el limite. Sin el flag, el backtest
+                # encola varias pendientes y llena 1 a la vez (comportamiento original).
+                committed = len(self._active_trades) + len(self._pending_stops)
+                cap = (self.params.get("cap_pending_at_max", False)
+                       and committed >= self.params["max_simultaneous_trades"])
+                if not cap:
+                    # Solo crear trigger si no hay ya un pending para ese FVG
+                    pending_fvg_ids = {id(p.fvg) for p in self._pending_stops}
+                    trigger = check_conservative_trigger(
+                        candle         = lower_row,
+                        prev_candle    = prev_candle,
+                        recent_candles = recent_candles,
+                        active_fvgs    = [f for f in fresh_active if id(f) not in pending_fvg_ids],
+                        params         = self.params,
+                        trend_bias     = trend_bias,
+                    )
+                    if trigger is not None:
+                        self._pending_stops.append(trigger)
             else:
                 signal = check_entry(
                     candle         = lower_row,
