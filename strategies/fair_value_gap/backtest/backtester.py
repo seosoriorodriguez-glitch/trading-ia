@@ -18,8 +18,8 @@ from typing import List, Optional
 import pandas as pd
 
 from .fvg_detection import FairValueGap, FVGStatus, detect_fvgs
-from .signals import Signal, PendingStop, check_entry, check_conservative_trigger
-from .risk_manager import calc_pnl
+from .signals import Signal, PendingStop, check_entry, check_conservative_trigger, _which_session
+from .risk_manager import calc_pnl, calculate_sl_tp
 
 
 # --------------------------------------------------------------------------
@@ -76,6 +76,7 @@ class FVGBacktester:
         self._daily_blocked    = False      # True = limite diario alcanzado, no abrir trades
         self._ftmo_violations  = []         # log de dias bloqueados
         self._strategy_paused  = False      # True = DD total superado
+        self._armed_ids        = set()      # (rearm) FVGs que dispararon al menos una vez
 
     # ------------------------------------------------------------------
     # Loop principal
@@ -301,6 +302,7 @@ class FVGBacktester:
                 committed = len(self._active_trades) + len(self._pending_stops)
                 cap = (self.params.get("cap_pending_at_max", False)
                        and committed >= self.params["max_simultaneous_trades"])
+                trigger = None
                 if not cap:
                     # Solo crear trigger si no hay ya un pending para ese FVG
                     pending_fvg_ids = {id(p.fvg) for p in self._pending_stops}
@@ -314,6 +316,37 @@ class FVGBacktester:
                     )
                     if trigger is not None:
                         self._pending_stops.append(trigger)
+
+                # (REARM) opcional: mantener orden en TODAS las zonas frescas ya
+                # "armadas" (que dispararon una vez) cuando hay cupo libre. Imita a
+                # C de forma SEGURA: se combina con cancel_pending_on_fill (cancela al
+                # llenarse) + re-pone al liberarse el cupo -> captura las ganadoras
+                # tardias SIN llenar varias en el barrido.
+                if self.params.get("rearm_pendings", False):
+                    if trigger is not None:
+                        self._armed_ids.add(id(trigger.fvg))
+                    if len(self._active_trades) < self.params["max_simultaneous_trades"]:
+                        have = {id(p.fvg) for p in self._pending_stops}
+                        for f in fresh_active:
+                            if id(f) not in self._armed_ids or id(f) in have:
+                                continue
+                            d = "long" if f.fvg_type == "bullish" else "short"
+                            if trend_bias is not None and d != trend_bias:
+                                continue
+                            ep = f.zone_high if d == "long" else f.zone_low
+                            # FIEL AL LIVE: una STOP de compra debe estar POR ENCIMA del
+                            # precio actual (y la de venta por debajo). Si el precio ya
+                            # paso el nivel, MT5 no dejaria re-poner la orden -> saltar.
+                            if (d == "long" and candle_close >= ep) or \
+                               (d == "short" and candle_close <= ep):
+                                continue
+                            sl, tp = calculate_sl_tp(f, ep, self.params)
+                            if sl is None:
+                                continue
+                            self._pending_stops.append(PendingStop(
+                                direction=d, entry_price=ep, sl=sl, tp=tp, fvg=f,
+                                trigger_time=current_time,
+                                session=_which_session(current_time, self.params)))
             else:
                 signal = check_entry(
                     candle         = lower_row,
