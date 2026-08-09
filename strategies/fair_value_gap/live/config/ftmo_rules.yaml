@@ -20,7 +20,6 @@ ftmo:
   weekend_close_hour: 21      # Viernes 21:00 UTC
 
   risk_per_trade_pct: 0.005   # 0.5% del balance inicial
-  max_simultaneous_trades: 3  # "natural": hasta 3 abiertas (1 por zona, rota al cerrar).
-                              # El fix de concurrencia cuenta abiertas+pendientes <= 3,
-                              # asi que es imposible pasar de 3 (acotado por max_active_fvgs=3).
+  max_simultaneous_trades: 1  # A: 1 orden a la vez (rentable reciente + menor DD que natural).
+                              # Config interina mientras la investigacion busca una robusta.
   max_spread_points: 5        # No operar si spread > 5 pts
