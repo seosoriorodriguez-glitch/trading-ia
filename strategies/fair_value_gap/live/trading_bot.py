@@ -289,11 +289,16 @@ class FVGBot:
             if not can:
                 return
 
-            # --- FIX concurrencia: contar ABIERTAS + PENDIENTES contra el limite ---
-            # Antes solo se contaban las posiciones LLENAS. Con entrada conservative
-            # (ordenes STOP), las pendientes se acumulaban y podian llenarse varias
-            # juntas, superando max_simultaneous (el bug del 6x en el live).
-            n_committed = len(self.open_trades) + len(self.pending_orders)
+            # --- FIX concurrencia: contar ABIERTAS + PENDIENTES (estado REAL de MT5,
+            # filtrado por magic) contra el limite. Antes solo se contaban las
+            # posiciones LLENAS; con entrada conservative (ordenes STOP) las
+            # pendientes se acumulaban y podian llenarse varias juntas, superando
+            # max_simultaneous (el bug del 6x que revento el challenge).
+            if not self.dry_run:
+                n_committed = (len(self.executor.get_open_positions())
+                               + len(self.executor.get_pending_orders()))
+            else:
+                n_committed = len(self.open_trades) + len(self.pending_orders)
             if n_committed >= self.risk_manager.max_simultaneous:
                 return
 
