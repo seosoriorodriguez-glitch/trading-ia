@@ -33,6 +33,16 @@ recalibrados por activo según rango M5 mediano. Script: `journal/analysis/ob_mu
 | US2000 Russell | 1.09 | 0.97/1.23 | ❌ | +31% | 33% | 🟡 marginal |
 | BTCUSD | 1.06 | 1.27/0.88 | ❌ | +17% | 30% | 🔴 no robusto (+comisión) |
 | CADJPY | 0.81 | 0.85/0.78 | ❌ | -44% | 79% | 🔴 pierde (costo>rango) |
+| GBPJPY | 0.99 | 0.91/1.07 | ❌ | -4% | 19% | 🔴 no transfiere (JPY) |
+| XAGUSD (plata) | 0.88 | 0.76/1.01 | ❌ | -23% | 41% | 🔴 no transfiere (rango minúsculo) |
+
+**VEREDICTO MULTI-ACTIVO FINAL:** la OB solo transfiere a **US30 y ORO** (rango M5 >> costo).
+Plata, GBPJPY, CADJPY, BTC, Russell FALLAN (rango chico → el spread se come el edge, o no robustos).
+El éxito manual del usuario en JPY/plata era discrecional, no edge de OB automatizable.
+
+**MENÚ ORO (todas robustas):** London 0.5% ~+75%/año DD~9-12% (challenge rápido) | London 0.4%
+~+60%/año DD~7-9.6% (funded) | NY 0.3% ~+85%/año DD~9% (máx retorno, opera tarde).
+Recomendado: London 0.5% challenge → 0.4% funded. US30 London (prod) = ganadora intocable.
 
 **ORO CONFIRMADO:** aguanta costo duplicado (0.20→0.40) y sigue robusto. La OB transfiere a
 instrumentos volátiles con rango >> costo (US30, oro; mean-reversion en zonas). Falla en JPY

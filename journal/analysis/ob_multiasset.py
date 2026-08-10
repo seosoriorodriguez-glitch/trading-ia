@@ -27,6 +27,8 @@ ASSETS = {
     "US30":   ("data/US30_icm_M5_518d.csv", "data/US30_icm_M1_500k.csv", 3.0),
     "XAUUSD_F": ("data/XAUUSD_icm_M5_fresh.csv", "data/XAUUSD_icm_M1_fresh.csv", 0.40),
     "US30_F":   ("data/US30_icm_M5_fresh.csv",   "data/US30_icm_M1_fresh.csv",   2.0),
+    "GBPJPY":   ("data/GBPJPY_icm_M5.csv",       "data/GBPJPY_icm_M1.csv",       0.02),
+    "XAGUSD":   ("data/XAGUSD_icm_M5.csv",       "data/XAGUSD_icm_M1.csv",       0.025),
 }
 SESSIONS = {
     "london": {"london":   {"start": "10:00", "end": "17:00", "skip_minutes": 15}},
