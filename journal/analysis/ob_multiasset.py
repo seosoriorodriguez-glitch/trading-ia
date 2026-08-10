@@ -55,7 +55,7 @@ p["max_risk_points"]  = round(med * 15.3, 5)
 p["avg_spread_points"]= spread
 p["slippage_points"]  = round(med * 0.10, 5)
 p["sessions"]         = SESSIONS[sess]
-p["target_rr"]        = 3.5
+p["target_rr"]        = float(sys.argv[4]) if len(sys.argv) > 4 else 3.5
 p["initial_balance"]  = 100_000.0
 
 print(f"=== OB {asset} | sesion={sess} | M5+M1 (motor real) ===")
