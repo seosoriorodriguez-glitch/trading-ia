@@ -22,11 +22,29 @@ class OrderExecutor:
 
     def _usd_per_point(self) -> float:
         """USD que gana/pierde 1 lote por cada 1.0 de movimiento de precio.
-        Se lee de MT5 (tick_value / tick_size). Para XAUUSD ~= 100;
-        para US30.cash FTMO = 1.0. Si no se puede leer, cae a 1.0."""
+        Para XAUUSD ~= 100; para US30.cash FTMO = 1.0.
+
+        ORDEN de fuentes (robusto contra tick_value=0 que reporta algun broker):
+          1) tick_value / tick_size  (si AMBOS son > 0)
+          2) order_calc_profit de 1 lote moviendo 1.0  (verdad del broker)
+          3) trade_contract_size      (XAUUSD USD = 100)
+          4) 1.0 (ultimo recurso)
+        """
         info = mt5.symbol_info(self.symbol)
-        if info is not None and info.trade_tick_size:
+        # 1) tick_value / tick_size
+        if info is not None and info.trade_tick_size and info.trade_tick_value:
             return info.trade_tick_value / info.trade_tick_size
+        # 2) order_calc_profit: profit de 1 lote LONG moviendose +1.0 de precio
+        tick = mt5.symbol_info_tick(self.symbol)
+        if tick is not None:
+            price = tick.ask or tick.bid
+            if price:
+                prof = mt5.order_calc_profit(mt5.ORDER_TYPE_BUY, self.symbol, 1.0, price, price + 1.0)
+                if prof:
+                    return abs(prof)
+        # 3) contract_size (para XAUUSD en USD = 100 oz -> $100 por 1.0)
+        if info is not None and info.trade_contract_size:
+            return float(info.trade_contract_size)
         return 1.0
 
     def calculate_volume(self, entry_price: float, sl: float, risk_usd: float) -> float:
