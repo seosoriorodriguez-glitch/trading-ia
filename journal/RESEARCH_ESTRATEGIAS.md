@@ -23,6 +23,24 @@ Datos: `data/US30_icm_M5_518d.csv` (99,935 velas M5, Oct 2024 - Mar 2026) + M1 5
 **Patrón aprendido:** robusto en el Dow ≈ modesto (~5-15%/año). Rápido ≈ frágil/espejismo.
 La OB siendo rápida Y robusta es un gem raro.
 
+### OB en OTROS ACTIVOS (motor real dual M5+M1, data ICM, robustez por mitades)
+Regla dura: SIEMPRE M5+M1, nunca M5-only. Params de escala (buffer/min/max_risk/spread)
+recalibrados por activo según rango M5 mediano. Script: `journal/analysis/ob_multiasset.py`.
+
+| Activo | PF (costo real) | 1a/2a | Robusta | Retorno/año 0.5% | DD | Veredicto |
+|---|---|---|---|---|---|---|
+| 🥇 **ORO XAUUSD** | **1.37** | 1.28/1.46 | ✅ SÍ | ~+194% | 22% | 🟢 **SEGUNDO MERCADO REAL** |
+| US2000 Russell | 1.09 | 0.97/1.23 | ❌ | +31% | 33% | 🟡 marginal |
+| BTCUSD | 1.06 | 1.27/0.88 | ❌ | +17% | 30% | 🔴 no robusto (+comisión) |
+| CADJPY | 0.81 | 0.85/0.78 | ❌ | -44% | 79% | 🔴 pierde (costo>rango) |
+
+**ORO CONFIRMADO:** aguanta costo duplicado (0.20→0.40) y sigue robusto. La OB transfiere a
+instrumentos volátiles con rango >> costo (US30, oro; mean-reversion en zonas). Falla en JPY
+tranquilos (costo relativo alto) y en no-robustos (BTC, Russell).
+**⚠️ DD oro 22% a 0.5% → REVIENTA FTMO (límite 10%). Correr a ~0.20-0.25% riesgo → DD ~9%.**
+Pendiente descargar de ICM y testear: GBPJPY (más volátil que CADJPY), XAGUSD (plata), CADCHF.
+Pendiente: desglose de sesión (london/ny/both) para oro. Ver [[backtest-procedure]].
+
 **INSIGHT CLAVE (validado con test OB-reacción vs Breaker-continuación, mismo método M5):**
 El **Dow es MEAN-REVERTING en las zonas** — las zonas AGUANTAN (fadearlas = OB reacción → PF 1.03
 robusta) y las rupturas FALLAN/whipsaw (perseguirlas = Breaker continuación → PF 0.88 pierde).
