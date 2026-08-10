@@ -25,10 +25,17 @@ except ImportError:
 # ---------------------------------------------------------------------------
 DOWNLOADS = [
     # (symbol, timeframe, max_bars, output_filename)
+    # --- Actualizar hasta hoy (validacion multi-activo OB) ---
     ("US30",   mt5.TIMEFRAME_M1,  2_000_000, "data/US30_icm_M1.csv"),
     ("US30",   mt5.TIMEFRAME_M5,  2_000_000, "data/US30_icm_M5.csv"),
-    ("NAS100", mt5.TIMEFRAME_M1,  2_000_000, "data/NAS100_icm_M1.csv"),
-    ("NAS100", mt5.TIMEFRAME_M5,  2_000_000, "data/NAS100_icm_M5.csv"),
+    ("XAUUSD", mt5.TIMEFRAME_M1,  2_000_000, "data/XAUUSD_icm_M1.csv"),   # ORO (ganador)
+    ("XAUUSD", mt5.TIMEFRAME_M5,  2_000_000, "data/XAUUSD_icm_M5.csv"),
+    ("XAGUSD", mt5.TIMEFRAME_M1,  2_000_000, "data/XAGUSD_icm_M1.csv"),   # PLATA (nuevo)
+    ("XAGUSD", mt5.TIMEFRAME_M5,  2_000_000, "data/XAGUSD_icm_M5.csv"),
+    ("GBPJPY", mt5.TIMEFRAME_M1,  2_000_000, "data/GBPJPY_icm_M1.csv"),   # JPY volatil (nuevo)
+    ("GBPJPY", mt5.TIMEFRAME_M5,  2_000_000, "data/GBPJPY_icm_M5.csv"),
+    ("CADCHF", mt5.TIMEFRAME_M1,  2_000_000, "data/CADCHF_icm_M1.csv"),   # (nuevo)
+    ("CADCHF", mt5.TIMEFRAME_M5,  2_000_000, "data/CADCHF_icm_M5.csv"),
 ]
 
 TF_NAMES = {

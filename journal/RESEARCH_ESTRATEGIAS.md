@@ -37,9 +37,22 @@ recalibrados por activo según rango M5 mediano. Script: `journal/analysis/ob_mu
 **ORO CONFIRMADO:** aguanta costo duplicado (0.20→0.40) y sigue robusto. La OB transfiere a
 instrumentos volátiles con rango >> costo (US30, oro; mean-reversion en zonas). Falla en JPY
 tranquilos (costo relativo alto) y en no-robustos (BTC, Russell).
-**⚠️ DD oro 22% a 0.5% → REVIENTA FTMO (límite 10%). Correr a ~0.20-0.25% riesgo → DD ~9%.**
-Pendiente descargar de ICM y testear: GBPJPY (más volátil que CADJPY), XAGUSD (plata), CADCHF.
-Pendiente: desglose de sesión (london/ny/both) para oro. Ver [[backtest-procedure]].
+
+**Desglose sesión ORO (@0.40, 517d) — las TRES robustas:**
+| Sesión | PF | 1a/2a | Retorno/año 0.5% | DD | Ret/DD |
+|---|---|---|---|---|---|
+| London | 1.35 | 1.24/1.46 | +82% | 12.0% | 6.8 |
+| **NY** ⭐ | 1.36 | 1.25/1.49 | +142% | 15.5% | 9.2 (mejor) |
+| both | 1.37 | 1.28/1.46 | +194% | 22.0% | 8.8 |
+
+**PRUEBA DE CONFIANZA (backtest no falla):** US30 (probado en vivo) por el MISMO runner nuevo →
+NY +84.7%/DD18.9% vs histórico conocido +87.6%/DD17.1% = reproduce. London +65%/DD8.2% robusto.
+El motor es de fiar → el oro también.
+
+**⚠️ DD oro a 0.5% pasa el límite FTMO (10%). Config recomendada: ORO sesión NY, riesgo 0.25%
+→ DD ~8%, ~+42%/año.** (DD real suele salir < backtest; US30 vivo -8% vs backtest 18.9%.)
+Pendiente: re-descargar ICM hasta HOY (data actual termina 2026-04) y testear GBPJPY/XAGUSD/CADCHF.
+Ver [[backtest-procedure]].
 
 **INSIGHT CLAVE (validado con test OB-reacción vs Breaker-continuación, mismo método M5):**
 El **Dow es MEAN-REVERTING en las zonas** — las zonas AGUANTAN (fadearlas = OB reacción → PF 1.03

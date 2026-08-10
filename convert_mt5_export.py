@@ -1,66 +1,68 @@
 # -*- coding: utf-8 -*-
 """
-Convierte CSVs exportados desde MT5 (formato <DATE> <TIME> <OPEN>...)
-al formato esperado por data_loader.py (time, open, high, low, close, volume).
+Convierte un export manual de barras de MT5 (Symbols -> Bars -> Export Bars)
+al formato del backtest: time,open,high,low,close,volume
+
+Maneja: separador TAB/coma/;  |  columnas <DATE>/<TIME> separadas o 'time' combinada
+        |  fechas con puntos (2024.01.02) o guiones  |  tickvol/vol -> volume
 
 Uso:
-    python convert_mt5_export.py
+    python convert_mt5_export.py <archivo_raw.csv> <salida.csv>
+    # ej:
+    python convert_mt5_export.py XAUUSD_M1_raw.csv data/XAUUSD_icm_M1.csv
 """
-
-import pandas as pd
+import sys
 from pathlib import Path
+import pandas as pd
 
-CONVERSIONS = [
-    (
-        r"C:\Users\sosor\OneDrive\Documentos\velas m1\US30_M1_202512162255_202603311830.csv",
-        "data/US30_icm_M1_105d.csv",
-    ),
-    (
-        r"C:\Users\sosor\OneDrive\Documentos\velas m1\US30_M5_202410290605_202603311830.csv",
-        "data/US30_icm_M5_518d.csv",
-    ),
-]
+if len(sys.argv) < 3:
+    print("Uso: python convert_mt5_export.py <raw.csv> <salida.csv>")
+    sys.exit(1)
 
+src, dst = sys.argv[1], sys.argv[2]
 
-def convert(src: str, dst: str):
-    src_path = Path(src)
-    dst_path = Path(dst)
-    dst_path.parent.mkdir(parents=True, exist_ok=True)
+# 1) Detectar separador (MT5 suele usar TAB; a veces coma)
+with open(src, "r", encoding="utf-8-sig", errors="ignore") as f:
+    head = f.readline()
+sep = "\t" if head.count("\t") >= head.count(",") else ","
+if head.count(";") > head.count(sep):
+    sep = ";"
 
-    df = pd.read_csv(src_path, sep="\t")
+df = pd.read_csv(src, sep=sep, encoding="utf-8-sig")
 
-    # Renombrar columnas MT5 -> data_loader
-    df.columns = [c.strip("<>").lower() for c in df.columns]
-    # Ahora: date, time, open, high, low, close, tickvol, vol, spread
+# 2) Normalizar nombres: quitar <> y espacios, minusculas
+df.columns = [c.strip().strip("<>").lower() for c in df.columns]
 
-    # Combinar date + time en columna time
-    df["time"] = pd.to_datetime(df["date"] + " " + df["time"], format="%Y.%m.%d %H:%M:%S")
-    df = df.rename(columns={"tickvol": "volume"})
-    df = df[["time", "open", "high", "low", "close", "volume"]]
-    df = df.sort_values("time").reset_index(drop=True)
+# 3) Construir columna 'time'
+if "date" in df.columns and "time" in df.columns:
+    t = df["date"].astype(str).str.strip() + " " + df["time"].astype(str).str.strip()
+elif "date" in df.columns:
+    t = df["date"].astype(str).str.strip()
+elif "time" in df.columns:
+    t = df["time"].astype(str).str.strip()
+elif "datetime" in df.columns:
+    t = df["datetime"].astype(str).str.strip()
+else:
+    raise SystemExit(f"No encuentro columna de fecha/hora. Columnas: {list(df.columns)}")
 
-    t0   = df["time"].iloc[0]
-    t1   = df["time"].iloc[-1]
-    days = (t1 - t0).days
+# fechas con puntos -> guiones para parseo robusto
+t = t.str.replace(".", "-", regex=False)
+df["time"] = pd.to_datetime(t, errors="coerce")
 
-    df.to_csv(dst_path, index=False)
-    print(f"OK: {src_path.name}")
-    print(f"    {len(df):,} velas | {t0.date()} -> {t1.date()} ({days} dias)")
-    print(f"    -> {dst_path}")
+# 4) Volumen: tickvol preferido, si no vol/volume
+vol_col = next((c for c in ("tickvol", "vol", "volume") if c in df.columns), None)
+df["volume"] = df[vol_col] if vol_col else 0
 
+# 5) Validar OHLC presentes
+for c in ("open", "high", "low", "close"):
+    if c not in df.columns:
+        raise SystemExit(f"Falta columna {c}. Columnas: {list(df.columns)}")
 
-def main():
-    print("=" * 55)
-    print("  Convirtiendo exports MT5 -> formato backtest")
-    print("=" * 55)
-    for src, dst in CONVERSIONS:
-        print()
-        convert(src, dst)
-    print()
-    print("Listo. Usa estos archivos en run_backtest.py:")
-    for _, dst in CONVERSIONS:
-        print(f"  load_csv('{dst}')")
+out = df[["time", "open", "high", "low", "close", "volume"]].dropna(subset=["time"])
+out = out.sort_values("time").drop_duplicates(subset=["time"]).reset_index(drop=True)
 
-
-if __name__ == "__main__":
-    main()
+Path(dst).parent.mkdir(parents=True, exist_ok=True)
+out.to_csv(dst, index=False)
+d = (out["time"].iloc[-1] - out["time"].iloc[0]).days
+print(f"OK: {len(out):,} velas | {out['time'].iloc[0]} -> {out['time'].iloc[-1]} ({d} dias)")
+print(f"Guardado: {dst}")
