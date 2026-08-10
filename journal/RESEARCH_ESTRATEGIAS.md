@@ -36,9 +36,19 @@ recalibrados por activo según rango M5 mediano. Script: `journal/analysis/ob_mu
 | GBPJPY | 0.99 | 0.91/1.07 | ❌ | -4% | 19% | 🔴 no transfiere (JPY) |
 | XAGUSD (plata) | 0.88 | 0.76/1.01 | ❌ | -23% | 41% | 🔴 no transfiere (rango minúsculo) |
 
-**VEREDICTO MULTI-ACTIVO FINAL:** la OB solo transfiere a **US30 y ORO** (rango M5 >> costo).
-Plata, GBPJPY, CADJPY, BTC, Russell FALLAN (rango chico → el spread se come el edge, o no robustos).
-El éxito manual del usuario en JPY/plata era discrecional, no edge de OB automatizable.
+**VEREDICTO MULTI-ACTIVO:** la OB transfiere a **US30, ORO y DAX** (índices grandes + oro).
+Plata, GBPJPY, CADJPY, GBPUSD, BTC, Russell FALLAN (rango chico → spread come el edge, o no robustos).
+El éxito manual del usuario en JPY/plata/GBPUSD era discrecional, no edge de OB automatizable.
+
+**DAX (DE40) — 3er mercado viable** (274d, RR 2.5): London PF1.11 +24%/DD11.7% | **NY PF1.17
++56%/DD12.4%** (mejor) | both PF1.11 +45%/DD14.2%. Todas robustas. NY mejor (overlap con USA).
+Config recomendada: NY. OJO: DAX correlaciona con US30 (ambos índices) → poca diversificacion real;
+el ORO es el verdadero diversificador (clase distinta). GBPUSD: PF0.81 DD31% → falla (forex).
+
+**POR QUE indices/oro sí y forex no:** el OB es huella institucional; funciona donde hay flujo
+institucional persistente que respeta zonas (indices mega-cap, oro) + sesion concentrada + rango
+grande vs costo. Forex es demasiado eficiente/arbitrado (huella borrada) + rango chico (costo la mata).
+Russell fallo por ser small-cap (flujo mas ruidoso) → tiene que ser indice GRANDE y liquido.
 
 **BTC re-analizado (Binance/futures, costo % del fee):** both y 24/7, RR 2.5, costos 20/60/130 pts.
 Bruto (costo 20): both +15%/DD28%, 24/7 +9%/DD48%. A costo realista Binance (60-130): PIERDE en
