@@ -40,6 +40,11 @@ recalibrados por activo según rango M5 mediano. Script: `journal/analysis/ob_mu
 Plata, GBPJPY, CADJPY, BTC, Russell FALLAN (rango chico → el spread se come el edge, o no robustos).
 El éxito manual del usuario en JPY/plata era discrecional, no edge de OB automatizable.
 
+**BTC re-analizado (Binance/futures, costo % del fee):** both y 24/7, RR 2.5, costos 20/60/130 pts.
+Bruto (costo 20): both +15%/DD28%, 24/7 +9%/DD48%. A costo realista Binance (60-130): PIERDE en
+todas (-12 a -26%/año). Motivo: el fee (0.1% ≈ 60-130 pts) es 20-60% del stop OB típico en BTC.
+DESCARTADO para Binance — no vale portar la API. Concentrar en US30 + ORO.
+
 **MENÚ ORO (todas robustas):** London 0.5% ~+75%/año DD~9-12% (challenge rápido) | London 0.4%
 ~+60%/año DD~7-9.6% (funded) | NY 0.3% ~+85%/año DD~9% (máx retorno, opera tarde).
 Recomendado: London 0.5% challenge → 0.4% funded. US30 London (prod) = ganadora intocable.

@@ -35,6 +35,7 @@ SESSIONS = {
     "ny":     {"new_york":  {"start": "13:30", "end": "23:00", "skip_minutes": 15}},
     "both":   {"london":    {"start": "10:00", "end": "17:00", "skip_minutes": 15},
                "new_york":  {"start": "13:30", "end": "23:00", "skip_minutes": 15}},
+    "24_7":   {"all":       {"start": "00:00", "end": "23:59", "skip_minutes": 0}},
 }
 
 asset = sys.argv[1] if len(sys.argv) > 1 else "XAUUSD"
@@ -57,6 +58,10 @@ p["slippage_points"]  = round(med * 0.10, 5)
 p["sessions"]         = SESSIONS[sess]
 p["target_rr"]        = float(sys.argv[4]) if len(sys.argv) > 4 else 3.5
 p["initial_balance"]  = 100_000.0
+
+if sess == "24_7":   # cripto: permitir TODAS las horas y dias (override local, no toca produccion)
+    import strategies.order_block.backtest.signals as _sig
+    _sig.is_session_allowed = lambda dt, params: True
 
 print(f"=== OB {asset} | sesion={sess} | M5+M1 (motor real) ===")
 print(f"  rango M5 med={med:.4f} -> min_risk={p['min_risk_points']} buffer={p['buffer_points']} "
