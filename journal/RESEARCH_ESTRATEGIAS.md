@@ -49,6 +49,19 @@ tranquilos (costo relativo alto) y en no-robustos (BTC, Russell).
 NY +84.7%/DD18.9% vs histórico conocido +87.6%/DD17.1% = reproduce. London +65%/DD8.2% robusto.
 El motor es de fiar → el oro también.
 
+**VALIDACIÓN DEFINITIVA vs OPERACIONES REALES** (`journal/analysis/validate_real_vs_bt.py`):
+Re-jugadas 268 ops reales del broker (entry/SL/TP exactos) sobre velas M1 → **match 99.0% en
+cierres limpios SL/TP** (92.2% global). Alineación horaria perfecta (offset 0h). Las 21
+discrepancias: 19 son cierres forzados (viernes/noticias FTMO), no error del motor.
+**El backtest es fiable mecánicamente al 99%.**
+
+**Data fresca ICM (jul2025-abr2026, muestra independiente) CONFIRMA oro:** London PF 1.36
+(1.51/1.22) DD 9.1%; both PF 1.30 (1.36/1.24) DD 13.5%. Mismo edge en 2 muestras = no overfit.
+
+**CONFIG FINAL ORO: London solo, riesgo 0.35% (DD conservador ~8.4%, ~+55%/año), techo 0.4%.**
+both no sirve para FTMO (DD fuerza riesgo 0.2-0.3%). Data manual: MT5 Bars->Export ->
+`convert_mt5_export.py`. Demo ICM congelada en may2026 (cuenta invalida).
+
 **⚠️ DD oro a 0.5% pasa el límite FTMO (10%). Config recomendada: ORO sesión NY, riesgo 0.25%
 → DD ~8%, ~+42%/año.** (DD real suele salir < backtest; US30 vivo -8% vs backtest 18.9%.)
 Pendiente: re-descargar ICM hasta HOY (data actual termina 2026-04) y testear GBPJPY/XAGUSD/CADCHF.

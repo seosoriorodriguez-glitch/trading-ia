@@ -25,6 +25,8 @@ ASSETS = {
     "EURCHF": ("data/EURCHF_icm_M5.csv", "data/EURCHF_icm_M1.csv", 0.00015),
     "US2000": ("data/US2000_icm_M5.csv", "data/US2000_icm_M1.csv", 0.15),
     "US30":   ("data/US30_icm_M5_518d.csv", "data/US30_icm_M1_500k.csv", 3.0),
+    "XAUUSD_F": ("data/XAUUSD_icm_M5_fresh.csv", "data/XAUUSD_icm_M1_fresh.csv", 0.40),
+    "US30_F":   ("data/US30_icm_M5_fresh.csv",   "data/US30_icm_M1_fresh.csv",   2.0),
 }
 SESSIONS = {
     "london": {"london":   {"start": "10:00", "end": "17:00", "skip_minutes": 15}},
