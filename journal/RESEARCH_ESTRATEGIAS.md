@@ -18,9 +18,17 @@ Datos: `data/US30_icm_M5_518d.csv` (99,935 velas M5, Oct 2024 - Mar 2026) + M1 5
 | **FVG** | Reacción en gaps | Espejismo → breakeven/pierde | 64-260% | ❌ | 🚫 **ARCHIVADA** |
 | **ORB** | Momentum (ruptura) | ~11%/año | **6%** | ✅ | 🟡 Diversificador lento usable |
 | **Liq Sweep + Wyckoff** | Reversión (barrido) | ~4.6%/año | **8.2%** | ✅ | 🟡 Diversificador lento usable |
+| **Breaker Block** | Continuación | pierde | 63-108% | ❌ | 🔴 **ARCHIVADA (sin edge)** |
 
 **Patrón aprendido:** robusto en el Dow ≈ modesto (~5-15%/año). Rápido ≈ frágil/espejismo.
 La OB siendo rápida Y robusta es un gem raro.
+
+**INSIGHT CLAVE (validado con test OB-reacción vs Breaker-continuación, mismo método M5):**
+El **Dow es MEAN-REVERTING en las zonas** — las zonas AGUANTAN (fadearlas = OB reacción → PF 1.03
+robusta) y las rupturas FALLAN/whipsaw (perseguirlas = Breaker continuación → PF 0.88 pierde).
+Por eso la **OB (reacción) está alineada con el carácter del Dow** y el **momentum es débil aquí**.
+Buscar otra "rápida + robusta" es difícil porque la OB ya captura el edge principal del Dow.
+Los edges de REACCIÓN funcionan; los de CONTINUACIÓN/momentum no (o son modestos).
 
 ---
 
