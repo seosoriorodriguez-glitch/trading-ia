@@ -22,7 +22,8 @@ ftmo:
   weekend_close_hour: 19      # Viernes 19:00 UTC = 15:00 NY = 22:00 servidor
                               # (cierra TODO ~1h antes del cierre del US30, regla FTMO 5.15.2)
 
-  risk_per_trade_pct: 0.005   # 0.5% = $1000 por trade con $200k (funded -> bajar a 0.004)
+  risk_per_trade_pct: 0.001   # 0.1% BAJISIMO — comparte cuenta con DAX, solo observar ratios
+                              # (subir a 0.005 cuando el oro tenga su propia cuenta real)
   max_simultaneous_trades: 1  # oro validado con 1 (mas conservador que US30=2)
   max_spread_points: 0.6      # ORO: spread = ask-bid EN PRECIO (~0.2-0.4); no operar si > 0.6
 

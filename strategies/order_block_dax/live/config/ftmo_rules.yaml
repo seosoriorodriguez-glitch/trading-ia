@@ -1,0 +1,35 @@
+ftmo:
+  account_size: 200000  # $200k Free Trial (instancia MT5_FVG, donde estaba el FVG)
+
+  phase_1:
+    profit_target_pct: 0.20   # 20% (subido de 10% el 2026-08-08 para seguir
+                              #      operando en la fondeada). OJO: en el CHALLENGE
+                              #      hay que PARAR MANUAL al pasar +10% (el pase).
+    max_daily_loss_pct: 0.04  # 4% (1% margen antes del limite FTMO de 5%)
+    max_total_loss_pct: 0.10  # 10%
+    min_trading_days: 4
+
+  phase_2:
+    profit_target_pct: 0.05   # 5%
+    max_daily_loss_pct: 0.04  # 4% (1% margen antes del limite FTMO de 5%)
+    max_total_loss_pct: 0.10  # 10%
+    min_trading_days: 4
+
+  refund: true
+  rewards: 0.90
+
+  close_before_weekend: true
+  weekend_close_hour: 19      # Viernes 19:00 UTC = 15:00 NY = 22:00 servidor
+                              # (cierra TODO ~1h antes del cierre del US30, regla FTMO 5.15.2)
+
+  risk_per_trade_pct: 0.001   # 0.1% BAJISIMO — comparte cuenta con oro, solo observar ratios
+  max_simultaneous_trades: 1
+  max_spread_points: 5        # DAX: spread = ask-bid EN PRECIO (~1-3 pts); no operar si > 5
+
+  # --- Filtro de noticias (regla FTMO 5.15.3, cuenta Standard) ---
+  # No abrir trades NI dejar pendientes vivas en la ventana. Hora NUEVA YORK (ET):
+  # se ancla a la hora real de la noticia US y se ajusta solo con el DST de EE.UU.
+  # (independiente del horario del servidor/Europa que usan las sesiones).
+  news_filter: true
+  news_blackout_et:
+    - "08:26-08:34"   # noticias macro de las 8:30 ET (NFP, CPI, PPI, Retail, GDP, PCE)
