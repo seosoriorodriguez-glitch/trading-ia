@@ -6,7 +6,8 @@ Copia INDEPENDIENTE de order_block_london (US30.cash), adaptada a XAUUSD.
 NO comparte nada con el bot de produccion US30.
 
 Simbolo: XAUUSD
-Sesion:  London 10:00-17:00 UTC+3 (hora servidor MT5/FTMO)
+Sesion:  London + NY (AMBAS) — 10:00-23:00 servidor. Modo free-trial para juntar
+         data de las dos. Para cuenta real -> volver a London solo (DD mas bajo).
 
 Params de ESCALA recalibrados al rango M5 del oro (mediano ~3.0-3.6 pts) — el motor
 es R-normalizado, pero buffer/min/max_risk son absolutos y deben escalar al instrumento.
@@ -45,9 +46,13 @@ GOLD_PARAMS = {
     "slippage_points": 0.2,
     "point_value": 100.0,             # XAUUSD: 1 lote = 100 oz -> $100 por 1.0 de precio
 
-    # --- Sesion London: 10:00-17:00 UTC+3 (servidor) ---
+    # --- Sesiones London + NY (AMBAS) — para juntar data en el Free Trial ---
+    # London 10:00-17:00 + NY 13:30-23:00 (servidor UTC+3). Cobertura ~10:00-23:00.
+    # Cada trade se etiqueta por sesion -> luego se separa London vs NY.
+    # both a RR 2.5: fresca +122%/ano DD 15%. DD mas alto que London solo (ok en free trial).
     "sessions": {
-        "london": {"start": "10:00", "end": "17:00", "skip_minutes": 15},
+        "london":   {"start": "10:00", "end": "17:00", "skip_minutes": 15},
+        "new_york": {"start": "13:30", "end": "23:00", "skip_minutes": 15},
     },
 
     # --- Filtros (desactivados, igual que US30) ---
