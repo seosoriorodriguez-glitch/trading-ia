@@ -259,11 +259,13 @@ class OrderBlockDaxBot:
 
     def _cancel_invalid_orders(self):
         try:
+            active = [ob for ob in self.ob_monitor.active_obs if ob.status == "fresh"]
             active_ob_keys = {
                 (ob.ob_type, round(ob.zone_high, 2), round(ob.zone_low, 2), ob.confirmed_at)
-                for ob in self.ob_monitor.active_obs
-                if ob.status == "fresh"
+                for ob in active
             }
+            price = self.data_feed.get_current_price()
+            bid = price["bid"] if price else None
             for ticket, order_info in list(self.pending_orders.items()):
                 signal = order_info.get("signal")
                 if signal is None:
@@ -271,10 +273,26 @@ class OrderBlockDaxBot:
                 ob = signal.ob
                 ob_key = (ob.ob_type, round(ob.zone_high, 2), round(ob.zone_low, 2), ob.confirmed_at)
                 if ob_key not in active_ob_keys:
+                    # --- DIAGNOSTICO: por que este OB ya no esta activo? ---
+                    same_zone = any(
+                        o.ob_type == ob.ob_type
+                        and abs(o.zone_high - ob.zone_high) < 0.01
+                        and abs(o.zone_low - ob.zone_low) < 0.01
+                        for o in active
+                    )
+                    destroyed = bid is not None and (
+                        (ob.ob_type == "bearish" and bid > ob.zone_high)
+                        or (ob.ob_type == "bullish" and bid < ob.zone_low)
+                    )
+                    if same_zone:
+                        reason = "BUG-KEY: misma zona re-detectada pero confirmed_at DISTINTO"
+                    elif destroyed:
+                        reason = f"OB DESTRUIDO real (precio {bid} rompio zona [{ob.zone_low}-{ob.zone_high}])"
+                    else:
+                        reason = f"OB no re-detectado (precio {bid} zona [{ob.zone_low}-{ob.zone_high}], {len(active)} activos)"
+                    print(f"[CANCEL-DIAG] {ticket} {ob.ob_type} -> {reason}", flush=True)
                     if not self.dry_run:
                         ok, _ = self.executor.cancel_order(ticket, self.dry_run)
-                        if ok:
-                            print(f"Orden {ticket} cancelada (OB destruido/expirado)", flush=True)
                     del self.pending_orders[ticket]
         except Exception as e:
             self.monitor.log_error(f"Error cancelando ordenes invalidas: {e}")
