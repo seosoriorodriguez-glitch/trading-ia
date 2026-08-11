@@ -23,7 +23,7 @@ export default async function Ftmo() {
         <div className="text-dim py-16">Sin cuentas FTMO aún.</div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
-          {ftmo.map((b) => <BotCard key={b.id} b={b} />)}
+          {ftmo.map((b) => <BotCard key={b.id} b={b} href={`/bot/${b.id}`} />)}
         </div>
       )}
     </div>

@@ -23,7 +23,7 @@ export default async function Darwinex() {
         <div className="text-dim py-16">Sin cuentas Darwinex aún.</div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
-          {dx.map((b) => <BotCard key={b.id} b={b} />)}
+          {dx.map((b) => <BotCard key={b.id} b={b} href={`/bot/${b.id}`} />)}
         </div>
       )}
     </div>

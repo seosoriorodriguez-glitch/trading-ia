@@ -1,7 +1,25 @@
 "use client";
-import { LineChart, Line, YAxis, XAxis, ReferenceLine, ResponsiveContainer, Tooltip } from "recharts";
+import { LineChart, Line, BarChart, Bar, Cell, YAxis, XAxis, ReferenceLine, ResponsiveContainer, Tooltip } from "recharts";
 
 type Pt = { i: number; equity: number; ma: number | null };
+
+export function RBars({ data, height = 140 }: { data: { i: number; r: number }[]; height?: number }) {
+  if (!data.length) return <div className="flex items-center justify-center text-dim text-xs" style={{ height }}>sin operaciones</div>;
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+        <YAxis hide />
+        <XAxis dataKey="i" hide />
+        <ReferenceLine y={0} stroke="#3a4657" />
+        <Tooltip contentStyle={{ background: "#0b0f17", border: "1px solid #26313f", borderRadius: 8, fontSize: 11 }}
+          formatter={(v: number) => [`${v > 0 ? "+" : ""}${v.toFixed(2)}R`, "R"]} labelFormatter={() => ""} cursor={{ fill: "rgba(255,255,255,.04)" }} />
+        <Bar dataKey="r" isAnimationActive={false} radius={[2, 2, 0, 0]}>
+          {data.map((d, i) => <Cell key={i} fill={d.r > 0 ? "#3fb96b" : "#ef5350"} />)}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
 
 export function EquityChart({ data, initial, height = 120 }: { data: Pt[]; initial: number; height?: number }) {
   if (!data.length)

@@ -148,7 +148,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
     breakevenWr, rollingWr, aboveMa, health,
     expectancyUsd, expectancyR, avgWinUsd, avgLossUsd, avgWinR, avgLossR, rrr,
     streak, streakWin, bestUsd, worstUsd, avgDurationMin, wrLondon, wrNy, wrLong, wrShort,
-    equity, recent: ts.slice(-15).reverse(), daily,
+    equity, recent: ts.slice(-80).reverse(), daily,
     todayN: todayTs.length, todayWins: todayTs.filter((t) => t.pnl_usd > 0).length,
   };
 }
