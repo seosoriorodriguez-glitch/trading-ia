@@ -46,7 +46,44 @@ print(f"Params oro: buffer={BUF} min_risk={MINR} max_risk={MAXR} RR={RR}\n")
 
 obs = detect_order_blocks(df5, P)
 m5t = df5.time.values; m5c = df5.close.values
+MAXA = P["max_active_obs"]
+_m5time = df5.time.reset_index(drop=True)
+_m5close = df5.close.reset_index(drop=True)
+
+
+def alive_at(ob, T):
+    """True si el OB esta fresco (no destruido/expirado) al tiempo T."""
+    conf = pd.to_datetime(ob.confirmed_at)
+    if conf > T:
+        return False
+    zl, zh = ob.zone_low, ob.zone_high
+    bull = ob.ob_type == "bullish"
+    cs = _m5close[(_m5time >= conf) & (_m5time <= T)]
+    cnt = 0
+    for c in cs:
+        if bull and c < zl:
+            return False
+        if (not bull) and c > zh:
+            return False
+        cnt += 1
+        if cnt >= EXP:
+            return False
+    return True
+
+
+def rank_among_fresh(candidate, T):
+    """Posicion (0=mas reciente) del OB entre los frescos vivos en T, y total frescos."""
+    fresh = [o for o in obs if alive_at(o, T)]
+    fresh.sort(key=lambda o: pd.to_datetime(o.confirmed_at), reverse=True)
+    for idx, o in enumerate(fresh):
+        if o is candidate:
+            return idx, len(fresh)
+    return None, len(fresh)
+
+
 n_analizadas = 0
+n_bug = 0
+n_truncada = 0
 
 for ob in obs:
     conf = pd.to_datetime(ob.confirmed_at)
@@ -93,9 +130,16 @@ for ob in obs:
         why = f"destruida {destroyed_at}" if destroyed_at is not None else "sigue viva"
         print(f"   NO hubo M1 que cerrara dentro en sesion ({why}) -> no se genero senal\n")
         continue
-    print(f"   M1 cerro DENTRO a {trig.time} (close {trig.close:.2f}) -> se pondria {'BUY' if bull else 'SELL'} STOP en {entry:.2f}")
+    # 4) truncacion: estaba el OB entre los max_active_obs mas recientes al momento del trigger?
+    rank, n_fresh = rank_among_fresh(ob, trig.time)
+    pos = f"#{rank+1}" if rank is not None else "?"
+    print(f"   M1 cerro DENTRO a {trig.time} (close {trig.close:.2f}). Habia {n_fresh} OBs frescas; esta es la {pos} mas reciente.")
+    if rank is None or rank >= MAXA:
+        n_truncada += 1
+        print(f"   -> TRUNCADA por max_active_obs={MAXA} (el bot solo guarda las {MAXA} mas recientes) -> el bot NO la ve. Diseno, NO bug. MEJORABLE subiendo max_active_obs.\n")
+        continue
 
-    # 4) fill: precio alcanza el borde (buy stop: high>=zh ; sell stop: low<=zl) antes de destruirse
+    # 5) fill: el precio alcanza el borde antes de destruirse
     after = df1[(df1.time > trig.time) & (df1.time <= end_t)]
     filled_at = None
     for _, r in after.iterrows():
@@ -104,11 +148,19 @@ for ob in obs:
         if (not bull) and r.low <= entry:
             filled_at = r.time; break
     if filled_at:
-        print(f"   >>> SE LLENO a {filled_at}. DEBIO ENTRAR. Si el bot no la tomo -> BUG (revisar consola a esa hora)\n")
+        n_bug += 1
+        print(f"   -> {'BUY' if bull else 'SELL'} STOP en {entry:.2f}, SE LLENO a {filled_at}. Estaba ACTIVA ({pos}/{MAXA}) -> DEBIO ENTRAR = *** BUG ***\n")
     else:
         d = destroyed_at if destroyed_at is not None else "no aun"
-        print(f"   El STOP NO se lleno: el precio no alcanzo {entry:.2f} antes de que la zona se destruyera ({d}) -> no entro (correcto)\n")
+        print(f"   -> STOP en {entry:.2f} NO se lleno (precio no alcanzo el borde antes de destruirse: {d}) -> no entro (correcto)\n")
 
 if n_analizadas == 0:
     print("No hay OBs de ese tipo confirmados en la ventana. Sube --hours.")
-print("Listo. Busca la zona que viste por su rango de precio y mira su veredicto.")
+print("=" * 60)
+print(f"RESUMEN: {n_bug} zona(s) que DEBIERON entrar y no (BUG) | {n_truncada} truncada(s) por max_active_obs (diseno)")
+if n_bug > 0:
+    print(">>> HAY BUG: zonas activas que debieron entrar. Hay que arreglarlo.")
+elif n_truncada > 0:
+    print(">>> NO es bug: las zonas viejas se truncan por max_active_obs=10. MEJORABLE subiendo ese limite y re-validando.")
+else:
+    print(">>> Todo correcto: las que no entraron fue por destruccion/no-fill legitimo.")
