@@ -40,10 +40,10 @@ DAX_PARAMS = {
     "slippage_points": 1.0,
     "point_value": 1.0,
 
-    # --- Sesiones London + NY (both) ---
+    # --- Sesion London SOLO (2026-08: validado mejor que London+NY para el challenge:
+    #     +25% PF 1.50 DD 4.2% vs +23% DD 7%. NY diluye y sube el DD.) ---
     "sessions": {
         "london":   {"start": "10:00", "end": "17:00", "skip_minutes": 15},
-        "new_york": {"start": "13:30", "end": "23:00", "skip_minutes": 15},
     },
 
     # --- Filtros (desactivados, igual que US30/oro) ---
