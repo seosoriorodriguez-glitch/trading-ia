@@ -46,6 +46,17 @@ const TYPES = [
   { k: "darwinex", label: "Darwinex" },
 ];
 
+export function BotSelector({ bots }: { bots: { id: string; name: string }[] }) {
+  const cur = useSearchParams().get("bot") ?? "";
+  const set = useSetParam();
+  return (
+    <select value={cur} onChange={(e) => set("bot", e.target.value)}
+      className="bg-panel2 border border-border rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-accent cursor-pointer">
+      {bots.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+    </select>
+  );
+}
+
 export function TypeSelector() {
   const cur = useSearchParams().get("type") ?? "";
   const set = useSetParam();

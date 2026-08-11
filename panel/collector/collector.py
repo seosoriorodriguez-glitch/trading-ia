@@ -50,10 +50,12 @@ def collect_bot(b: dict):
         acc = mt5.account_info()
         if acc is None:
             print(f"[{b['id']}] sin account_info", flush=True); return
-        # seguridad: la cuenta conectada debe cuadrar con la config
-        if b.get("account") and int(acc.login) != int(b["account"]):
-            print(f"[{b['id']}] CUENTA NO CUADRA: terminal={acc.login} config={b['account']} -> SKIP", flush=True)
-            return
+        live_acct = int(acc.login)
+        # El usuario ROTA la cuenta en el mismo terminal (mismo bot). No saltamos:
+        # seguimos con la cuenta actual y actualizamos el registro del bot.
+        if b.get("account") and live_acct != int(b["account"]):
+            print(f"[{b['id']}] cuenta rotó: {b['account']} -> {live_acct}. Actualizo registro.", flush=True)
+        SB.table("bots").update({"account": live_acct}).eq("id", b["id"]).execute()
 
         # snapshot balance/equity
         SB.table("account_snapshots").insert({
@@ -67,9 +69,24 @@ def collect_bot(b: dict):
         if deals is None:
             return
         magic = b.get("magic")
-        # agrupar por posicion
+        # operaciones de BALANCE (depositos/retiros) — se rastrean SIEMPRE (sin filtro de magic)
+        bops = []
+        for d in deals:
+            if d.type == mt5.DEAL_TYPE_BALANCE:
+                bops.append({
+                    "bot_id": b["id"], "account": live_acct, "ticket": int(d.ticket),
+                    "amount": float(d.profit),   # + deposito, - retiro
+                    "ts": datetime.fromtimestamp(d.time, tz=timezone.utc).isoformat(),
+                    "comment": (getattr(d, "comment", "") or ""),
+                })
+        if bops:
+            SB.table("balance_ops").upsert(bops, on_conflict="account,ticket").execute()
+            print(f"[{b['id']}] {len(bops)} op. de balance (dep/retiro)", flush=True)
+        # agrupar por posicion (trades reales)
         pos = {}
         for d in deals:
+            if d.type == mt5.DEAL_TYPE_BALANCE:
+                continue
             if magic is not None and d.magic != magic:
                 continue
             pos.setdefault(d.position_id, []).append(d)

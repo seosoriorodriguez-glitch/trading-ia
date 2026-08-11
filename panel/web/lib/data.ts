@@ -16,7 +16,7 @@ export type BotHealth = Bot & {
   category: "ftmo" | "darwinex";
   n: number; wins: number; losses: number; wr: number; pf: number;
   sumR: number; retPct: number; pnlUsd: number; balance: number;
-  realBalance: number | null; netFlows: number;
+  realBalance: number | null; netFlows: number; withdrawn: number; deposited: number;
   ddPct: number; maxDdPct: number; ddLimitPct: number;
   maxLossFromInitialPct: number; todayPnlUsd: number; todayPnlPct: number;
   breakevenWr: number; rollingWr: number; aboveMa: boolean;
@@ -144,7 +144,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
 
   return {
     ...bot, category, n, wins, losses, wr, pf: pf(rs), sumR, retPct, pnlUsd, balance,
-    realBalance: null, netFlows: 0,
+    realBalance: null, netFlows: 0, withdrawn: 0, deposited: 0,
     ddPct: Math.max(0, curDd), maxDdPct: maxDd, ddLimitPct: 10,
     maxLossFromInitialPct, todayPnlUsd, todayPnlPct,
     breakevenWr, rollingWr, aboveMa, health,
@@ -213,10 +213,11 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     return { ...base, error: "Falta configurar SUPABASE_URL / SUPABASE_SERVICE_KEY en .env.local" };
   try {
     const client = sb();
-    const [{ data: botsRaw }, { data: tradesRaw }, { data: snapsRaw }] = await Promise.all([
+    const [{ data: botsRaw }, { data: tradesRaw }, { data: snapsRaw }, { data: bopsRaw }] = await Promise.all([
       client.from("bots").select("*").eq("active", true),
       client.from("trades").select("*").order("exit_time", { ascending: true }).limit(5000),
       client.from("account_snapshots").select("account,balance,ts").order("ts", { ascending: false }).limit(1000),
+      client.from("balance_ops").select("bot_id,amount").limit(2000),
     ]);
     const catOf = (id: string): "ftmo" | "darwinex" => (id.includes("darwinex") ? "darwinex" : "ftmo");
     let botsList = (botsRaw ?? []) as Bot[];
@@ -232,10 +233,20 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     const latestBal = new Map<number, number>();
     for (const s of (snapsRaw ?? []) as { account: number; balance: number }[])
       if (!latestBal.has(s.account)) latestBal.set(s.account, s.balance);
+    // retiros/depósitos acumulados por bot (sobrevive rotaciones de cuenta)
+    const wByBot = new Map<string, { w: number; d: number }>();
+    for (const o of (bopsRaw ?? []) as { bot_id: string; amount: number }[]) {
+      const e = wByBot.get(o.bot_id) ?? { w: 0, d: 0 };
+      if (o.amount < 0) e.w += -o.amount; else e.d += o.amount;
+      wByBot.set(o.bot_id, e);
+    }
     for (const b of health) {
       const rb = b.account != null ? latestBal.get(b.account) : undefined;
       b.realBalance = rb ?? null;
       b.netFlows = rb != null ? rb - (b.initial_balance + b.pnlUsd) : 0;
+      const w = wByBot.get(b.id);
+      b.withdrawn = w?.w ?? 0;
+      b.deposited = w?.d ?? 0;
     }
 
     const sum = (f: (b: BotHealth) => number) => health.reduce((a, b) => a + f(b), 0);

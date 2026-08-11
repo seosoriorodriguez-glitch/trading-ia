@@ -20,6 +20,7 @@ const NAV = [
   { href: "/", label: "Vista general" },
   { href: "/ftmo", label: "FTMO" },
   { href: "/darwinex", label: "Darwinex" },
+  { href: "/trades", label: "Trades" },
   { href: "/alertas", label: "Alertas" },
 ];
 

@@ -53,6 +53,20 @@ create table if not exists account_snapshots (
   ts         timestamptz default now()
 );
 
+-- Depósitos / retiros (operaciones de balance de MT5) — para el $ retirado acumulado
+create table if not exists balance_ops (
+  id         bigserial primary key,
+  bot_id     text references bots(id),
+  account    bigint not null,
+  ticket     bigint not null,
+  amount     numeric,            -- + depósito, - retiro
+  ts         timestamptz,
+  comment    text,
+  created_at timestamptz default now(),
+  unique(account, ticket)
+);
+create index if not exists idx_bops_bot on balance_ops(bot_id, ts desc);
+
 create index if not exists idx_trades_bot_time  on trades(bot_id, exit_time desc);
 create index if not exists idx_trades_exit_time  on trades(exit_time desc);
 create index if not exists idx_snap_account_ts   on account_snapshots(account, ts desc);
