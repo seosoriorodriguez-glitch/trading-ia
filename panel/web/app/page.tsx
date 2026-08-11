@@ -122,7 +122,7 @@ export default async function Dashboard() {
         </div>
       </aside>
 
-      <main className="flex-1 px-5 lg:px-8 py-8 max-w-6xl">
+      <main className="flex-1 px-5 lg:px-8 py-8">
         {error ? (
           <div className="text-dim text-sm py-20">Sin datos: <span className="text-loss font-mono">{error}</span></div>
         ) : totals.nBots === 0 ? (
@@ -167,7 +167,7 @@ export default async function Dashboard() {
 
             <section id="bots" className="scroll-mt-4">
               <h2 className="text-xl font-semibold mb-4">Bots ({totals.nBots})</h2>
-              <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {bots.map((b) => <BotCard key={b.id} b={b} />)}
               </div>
             </section>
