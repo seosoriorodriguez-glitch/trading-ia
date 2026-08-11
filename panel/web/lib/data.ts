@@ -206,6 +206,19 @@ export function periodRange(key?: string): { since?: string; until?: string; lab
   return { label: "Todo" };
 }
 
+export type Candle = { t: number; o: number; h: number; l: number; c: number };
+export async function getTradeCandles(tickets: number[]): Promise<Record<number, Candle[]>> {
+  if (!tickets.length || !process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return {};
+  try {
+    const { data } = await sb().from("trade_candles").select("ticket,candles").in("ticket", tickets);
+    const out: Record<number, Candle[]> = {};
+    for (const r of (data ?? []) as { ticket: number; candles: Candle[] }[]) out[r.ticket] = r.candles;
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
   const now0 = new Date().toISOString();
   const base = { bots: [], totals: EMPTY, alerts: [], portfolio: [], portfolioDaily: [], updatedAt: now0, lastCollected: now0 };

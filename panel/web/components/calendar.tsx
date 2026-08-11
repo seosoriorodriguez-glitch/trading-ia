@@ -33,7 +33,7 @@ export function Calendar({ days }: { days: DayPnl[] }) {
           <button onClick={next} className="w-7 h-7 rounded bg-panel2 hover:bg-border text-dim">›</button>
         </div>
         <div className="font-mono text-sm">
-          <span className={monthTotal >= 0 ? "text-win" : "text-loss"}>{monthTotal >= 0 ? "+" : ""}${Math.round(monthTotal).toLocaleString()}</span>
+          <span className={monthTotal >= 0 ? "text-win" : "text-loss"} suppressHydrationWarning>{monthTotal >= 0 ? "+" : ""}${Math.round(monthTotal).toLocaleString("es-CL")}</span>
           <span className="text-dim text-xs ml-2">· {inMonth.length} días op.</span>
         </div>
       </div>

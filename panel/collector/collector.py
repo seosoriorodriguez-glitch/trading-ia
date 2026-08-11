@@ -127,6 +127,29 @@ def collect_bot(b: dict):
         if rows:
             SB.table("trades").upsert(rows, on_conflict="account,ticket").execute()
             print(f"[{b['id']}] {len(rows)} trades sincronizados (cuenta {acc.login})", flush=True)
+
+            # velas M5 alrededor de cada trade NUEVO (para el grafico del panel)
+            existing = set()
+            try:
+                ex = SB.table("trade_candles").select("ticket").eq("account", live_acct).execute()
+                existing = {int(r["ticket"]) for r in (ex.data or [])}
+            except Exception as e:
+                print(f"[{b['id']}] trade_candles no disponible ({e})", flush=True)
+            cbatch = []
+            for r in rows:
+                if r["ticket"] in existing:
+                    continue
+                et = datetime.fromisoformat(r["entry_time"]).replace(tzinfo=None)
+                xt = datetime.fromisoformat(r["exit_time"]).replace(tzinfo=None)
+                rates = mt5.copy_rates_range(b["symbol"], mt5.TIMEFRAME_M5, et - timedelta(hours=4), xt + timedelta(hours=2))
+                if rates is None or len(rates) == 0:
+                    continue
+                candles = [{"t": int(x["time"]), "o": float(x["open"]), "h": float(x["high"]),
+                            "l": float(x["low"]), "c": float(x["close"])} for x in rates]
+                cbatch.append({"ticket": r["ticket"], "bot_id": b["id"], "account": live_acct, "candles": candles})
+            if cbatch:
+                SB.table("trade_candles").upsert(cbatch, on_conflict="ticket").execute()
+                print(f"[{b['id']}] velas guardadas para {len(cbatch)} trades", flush=True)
     finally:
         mt5.shutdown()
 
