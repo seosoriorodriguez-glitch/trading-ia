@@ -1,6 +1,7 @@
 import { getDashboard, type BotHealth } from "@/lib/data";
 import { AggKPI } from "@/components/cards";
 import { EquityChart } from "@/components/charts";
+import { Calendar } from "@/components/calendar";
 
 export const dynamic = "force-dynamic";
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
@@ -14,7 +15,7 @@ function groupSummary(bots: BotHealth[]) {
 }
 
 export default async function Overview() {
-  const { bots, totals, alerts, portfolio, error } = await getDashboard();
+  const { bots, totals, alerts, portfolio, portfolioDaily, error } = await getDashboard();
   if (error) return <div className="text-dim py-20">Sin datos: <span className="text-loss font-mono">{error}</span></div>;
   if (!totals.nBots) return <div className="text-dim py-20">Sin datos aún. Corre el colector en el VPS.</div>;
   const groups = [
@@ -33,9 +34,15 @@ export default async function Overview() {
         <AggKPI label="Estado" value={`${totals.healthy}/${totals.nBots}`} sub={totals.bad ? `${totals.bad} en alerta` : totals.warn ? `${totals.warn} en atención` : "todos sanos"} tone={totals.bad ? "loss" : totals.warn ? undefined : "win"} />
       </div>
 
-      <div className="bg-panel border border-border rounded-2xl p-5 mb-8">
-        <div className="text-[10px] uppercase tracking-wider text-dim mb-2">Equity del portafolio (todos los bots)</div>
-        <EquityChart data={portfolio} initial={totals.capital} height={220} />
+      <div className="grid lg:grid-cols-2 gap-5 mb-8">
+        <div className="bg-panel border border-border rounded-2xl p-5">
+          <div className="text-[10px] uppercase tracking-wider text-dim mb-2">Equity del portafolio (todos los bots)</div>
+          <EquityChart data={portfolio} initial={totals.capital} height={220} />
+        </div>
+        <div className="bg-panel border border-border rounded-2xl p-5">
+          <div className="text-[10px] uppercase tracking-wider text-dim mb-3">Calendario PnL del portafolio</div>
+          <Calendar days={portfolioDaily} />
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-5 mb-8">

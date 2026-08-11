@@ -156,7 +156,7 @@ export type Totals = {
 export type PortPoint = { i: number; equity: number; ma: number | null };
 export type Dashboard = {
   bots: BotHealth[]; totals: Totals; alerts: Alert[]; portfolio: PortPoint[];
-  updatedAt: string; error?: string;
+  portfolioDaily: DayPnl[]; updatedAt: string; error?: string;
 };
 
 function alertsFor(b: BotHealth): Alert[] {
@@ -176,7 +176,7 @@ function alertsFor(b: BotHealth): Alert[] {
 const EMPTY: Totals = { nBots: 0, capital: 0, balance: 0, pnlUsd: 0, retPct: 0, nTrades: 0, wins: 0, losses: 0, wr: 0, healthy: 0, warn: 0, bad: 0 };
 
 export async function getDashboard(): Promise<Dashboard> {
-  const base = { bots: [], totals: EMPTY, alerts: [], portfolio: [], updatedAt: new Date().toISOString() };
+  const base = { bots: [], totals: EMPTY, alerts: [], portfolio: [], portfolioDaily: [], updatedAt: new Date().toISOString() };
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY)
     return { ...base, error: "Falta configurar SUPABASE_URL / SUPABASE_SERVICE_KEY en .env.local" };
   try {
@@ -215,7 +215,16 @@ export async function getDashboard(): Promise<Dashboard> {
       p.ma = win.reduce((a, b) => a + b, 0) / win.length;
     });
 
-    return { bots: health, totals, alerts, portfolio, updatedAt: new Date().toISOString() };
+    const pdmap = new Map<string, { pnl: number; n: number; wins: number }>();
+    for (const t of trades) {
+      const d = t.exit_time.slice(0, 10);
+      const e = pdmap.get(d) ?? { pnl: 0, n: 0, wins: 0 };
+      e.pnl += t.pnl_usd; e.n++; if (t.pnl_usd > 0) e.wins++;
+      pdmap.set(d, e);
+    }
+    const portfolioDaily: DayPnl[] = Array.from(pdmap.entries()).map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date));
+
+    return { bots: health, totals, alerts, portfolio, portfolioDaily, updatedAt: new Date().toISOString() };
   } catch (e) {
     return { ...base, error: String(e) };
   }
