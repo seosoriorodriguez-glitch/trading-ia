@@ -174,6 +174,8 @@ function alertsFor(b: BotHealth): Alert[] {
     A(b.ddPct >= b.ddLimitPct * 0.85 ? "bad" : "warn", `Drawdown ${b.ddPct.toFixed(1)}% — cerca del límite ${b.ddLimitPct}%`);
   if (b.n >= 10 && b.rollingWr < b.breakevenWr)
     A(b.rollingWr < b.breakevenWr - 4 ? "bad" : "warn", `WR reciente ${b.rollingWr.toFixed(0)}% bajo el breakeven ${b.breakevenWr.toFixed(0)}%`);
+  if (b.n >= 20 && b.wr < b.breakevenWr)
+    A(b.wr < b.breakevenWr - 4 ? "bad" : "warn", `WR global ${b.wr.toFixed(0)}% bajo el breakeven ${b.breakevenWr.toFixed(0)}% — no rentable`);
   if (!b.aboveMa && b.n >= 10)
     A("warn", "Equity bajo su media — posible cambio de régimen");
   if (b.retPct <= -5)
@@ -190,17 +192,18 @@ function alertsFor(b: BotHealth): Alert[] {
 const EMPTY: Totals = { nBots: 0, capital: 0, balance: 0, pnlUsd: 0, retPct: 0, nTrades: 0, wins: 0, losses: 0, wr: 0, healthy: 0, warn: 0, bad: 0 };
 
 export type Opts = { since?: string; until?: string; category?: "ftmo" | "darwinex" };
+export const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 export function periodRange(key?: string): { since?: string; until?: string; label: string } {
   const now = new Date();
   const iso = (d: Date) => d.toISOString();
   const D = 864e5;
-  switch (key) {
-    case "7d": return { since: iso(new Date(now.getTime() - 7 * D)), label: "Últimos 7 días" };
-    case "30d": return { since: iso(new Date(now.getTime() - 30 * D)), label: "Últimos 30 días" };
-    case "mes": return { since: iso(new Date(now.getFullYear(), now.getMonth(), 1)), label: "Este mes" };
-    case "mespasado": return { since: iso(new Date(now.getFullYear(), now.getMonth() - 1, 1)), until: iso(new Date(now.getFullYear(), now.getMonth(), 1)), label: "Mes pasado" };
-    default: return { label: "Todo" };
+  if (key === "7d") return { since: iso(new Date(now.getTime() - 7 * D)), label: "Últimos 7 días" };
+  if (key === "30d") return { since: iso(new Date(now.getTime() - 30 * D)), label: "Últimos 30 días" };
+  if (key && /^\d{4}-\d{2}$/.test(key)) {
+    const [y, m] = key.split("-").map(Number);
+    return { since: iso(new Date(y, m - 1, 1)), until: iso(new Date(y, m, 1)), label: `${MESES[m - 1]} ${y}` };
   }
+  return { label: "Todo" };
 }
 
 export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {

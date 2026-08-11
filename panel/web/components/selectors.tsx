@@ -13,26 +13,30 @@ function useSetParam() {
   };
 }
 
-const PERIODS = [
-  { k: "", label: "Todo" },
-  { k: "mes", label: "Este mes" },
-  { k: "mespasado", label: "Mes pasado" },
-  { k: "30d", label: "30 días" },
-  { k: "7d", label: "7 días" },
-];
+const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+function monthOptions() {
+  const now = new Date();
+  const out: { k: string; label: string }[] = [];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    out.push({ k: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: `${MESES[d.getMonth()]} ${d.getFullYear()}` });
+  }
+  return out;
+}
 
 export function PeriodSelector() {
   const cur = useSearchParams().get("period") ?? "";
   const set = useSetParam();
   return (
-    <div className="flex flex-wrap gap-1">
-      {PERIODS.map((p) => (
-        <button key={p.k} onClick={() => set("period", p.k)}
-          className={`px-3 py-1.5 rounded-lg text-xs transition ${cur === p.k ? "bg-accent text-white" : "bg-panel2 text-dim hover:text-white"}`}>
-          {p.label}
-        </button>
-      ))}
-    </div>
+    <select value={cur} onChange={(e) => set("period", e.target.value)} suppressHydrationWarning
+      className="bg-panel2 border border-border rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-accent cursor-pointer">
+      <option value="">Todo</option>
+      <option value="7d">Últimos 7 días</option>
+      <option value="30d">Últimos 30 días</option>
+      <optgroup label="Por mes">
+        {monthOptions().map((m) => <option key={m.k} value={m.k}>{m.label}</option>)}
+      </optgroup>
+    </select>
   );
 }
 
