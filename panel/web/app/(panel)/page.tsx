@@ -1,8 +1,9 @@
-import { getDashboard, type BotHealth } from "@/lib/data";
+import { getDashboard, periodRange, type BotHealth } from "@/lib/data";
 import { AggKPI } from "@/components/cards";
 import { EquityChart } from "@/components/charts";
 import { Calendar } from "@/components/calendar";
 import { AlertList } from "@/components/alerts";
+import { PeriodSelector, TypeSelector } from "@/components/selectors";
 
 export const dynamic = "force-dynamic";
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
@@ -15,18 +16,28 @@ function groupSummary(bots: BotHealth[]) {
   return { capital, pnl, retPct: capital ? (pnl / capital) * 100 : 0, n, wr: n ? (wins / n) * 100 : 0, nBots: bots.length };
 }
 
-export default async function Overview() {
-  const { bots, totals, alerts, portfolio, portfolioDaily, error } = await getDashboard();
+export default async function Overview({ searchParams }: { searchParams: { period?: string; type?: string } }) {
+  const pr = periodRange(searchParams.period);
+  const category = searchParams.type === "ftmo" || searchParams.type === "darwinex" ? searchParams.type : undefined;
+  const { bots, totals, alerts, portfolio, portfolioDaily, error } = await getDashboard({ since: pr.since, until: pr.until, category });
   if (error) return <div className="text-dim py-20">Sin datos: <span className="text-loss font-mono">{error}</span></div>;
-  if (!totals.nBots) return <div className="text-dim py-20">Sin datos aún. Corre el colector en el VPS.</div>;
   const groups = [
     { k: "FTMO", g: groupSummary(bots.filter((b) => b.category === "ftmo")), href: "/ftmo", desc: "Challenges y fondeo · profit split" },
     { k: "Darwinex", g: groupSummary(bots.filter((b) => b.category === "darwinex")), href: "/darwinex", desc: "Asignación de capital · track record" },
   ];
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-1">Vista general</h1>
-      <p className="text-sm text-dim mb-6">Todo tu portafolio en un vistazo</p>
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">Vista general</h1>
+          <p className="text-sm text-dim">Todo tu portafolio · <span className="text-[#c5cfdb]">{pr.label}</span></p>
+        </div>
+        <div className="flex flex-col gap-2 items-start sm:items-end">
+          <TypeSelector />
+          <PeriodSelector />
+        </div>
+      </div>
+      {!totals.nBots && <div className="text-dim py-16">Sin operaciones en este período.</div>}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <AggKPI label="Capital desplegado" value={money(totals.capital)} />

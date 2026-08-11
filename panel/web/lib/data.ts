@@ -189,7 +189,21 @@ function alertsFor(b: BotHealth): Alert[] {
 
 const EMPTY: Totals = { nBots: 0, capital: 0, balance: 0, pnlUsd: 0, retPct: 0, nTrades: 0, wins: 0, losses: 0, wr: 0, healthy: 0, warn: 0, bad: 0 };
 
-export async function getDashboard(): Promise<Dashboard> {
+export type Opts = { since?: string; until?: string; category?: "ftmo" | "darwinex" };
+export function periodRange(key?: string): { since?: string; until?: string; label: string } {
+  const now = new Date();
+  const iso = (d: Date) => d.toISOString();
+  const D = 864e5;
+  switch (key) {
+    case "7d": return { since: iso(new Date(now.getTime() - 7 * D)), label: "Últimos 7 días" };
+    case "30d": return { since: iso(new Date(now.getTime() - 30 * D)), label: "Últimos 30 días" };
+    case "mes": return { since: iso(new Date(now.getFullYear(), now.getMonth(), 1)), label: "Este mes" };
+    case "mespasado": return { since: iso(new Date(now.getFullYear(), now.getMonth() - 1, 1)), until: iso(new Date(now.getFullYear(), now.getMonth(), 1)), label: "Mes pasado" };
+    default: return { label: "Todo" };
+  }
+}
+
+export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
   const now0 = new Date().toISOString();
   const base = { bots: [], totals: EMPTY, alerts: [], portfolio: [], portfolioDaily: [], updatedAt: now0, lastCollected: now0 };
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY)
@@ -201,8 +215,14 @@ export async function getDashboard(): Promise<Dashboard> {
       client.from("trades").select("*").order("exit_time", { ascending: true }).limit(5000),
       client.from("account_snapshots").select("account,balance,ts").order("ts", { ascending: false }).limit(1000),
     ]);
-    const trades = (tradesRaw ?? []) as Trade[];
-    const health = (botsRaw ?? []).map((b) => compute(b as Bot, trades));
+    const catOf = (id: string): "ftmo" | "darwinex" => (id.includes("darwinex") ? "darwinex" : "ftmo");
+    let botsList = (botsRaw ?? []) as Bot[];
+    if (opts.category) botsList = botsList.filter((b) => catOf(b.id) === opts.category);
+    const botIds = new Set(botsList.map((b) => b.id));
+    const trades = ((tradesRaw ?? []) as Trade[]).filter(
+      (t) => botIds.has(t.bot_id) && (!opts.since || t.exit_time >= opts.since) && (!opts.until || t.exit_time < opts.until)
+    );
+    const health = botsList.map((b) => compute(b, trades));
     const rank = { bad: 0, warn: 1, good: 2 };
     health.sort((a, b) => rank[a.health] - rank[b.health]);
     // balance REAL del broker (refleja retiros/depósitos)
