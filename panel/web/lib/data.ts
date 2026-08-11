@@ -26,6 +26,10 @@ const ROLL_WINDOW = 30;
 function sb() {
   return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!, {
     auth: { persistSession: false },
+    global: {
+      // no cachear: siempre leer data fresca de Supabase (evita que Next cachee el fetch)
+      fetch: (u: RequestInfo | URL, o?: RequestInit) => fetch(u, { ...o, cache: "no-store" }),
+    },
   });
 }
 
