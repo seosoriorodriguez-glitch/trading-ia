@@ -59,6 +59,8 @@ p["avg_spread_points"]= spread
 p["slippage_points"]  = round(med * 0.10, 5)
 p["sessions"]         = SESSIONS[sess]
 p["target_rr"]        = float(sys.argv[4]) if len(sys.argv) > 4 else 3.5
+if len(sys.argv) > 5: p["buffer_points"] = float(sys.argv[5])          # override buffer
+if len(sys.argv) > 6: p["max_simultaneous_trades"] = int(sys.argv[6])  # override max simultaneos
 p["initial_balance"]  = 100_000.0
 
 if sess == "24_7":   # cripto: permitir TODAS las horas y dias (override local, no toca produccion)
@@ -87,4 +89,8 @@ days = max((pd.to_datetime(res.exit_time).max() - pd.to_datetime(res.entry_time)
 rob = "SI" if PF>1 and p1>1 and p2>1 else "NO"
 print(f"  Trades:{n} ({n/days*30:.1f}/mes) WR:{wr:.1f}% PF:{PF:.2f} | 1a:{p1:.2f} 2a:{p2:.2f} ROBUSTA:{rob}")
 print(f"  SumaR:{sumR:+.0f}R  Retorno(0.5%):{ret:+.1f}%/{days}d (~{ret/days*365:+.0f}%/ano)  DD:{ddR*0.5:.1f}%")
+_tout = pd.to_datetime(res.exit_time)
+_best90 = max((res.pnl_r[(_tout >= s) & (_tout < s + pd.Timedelta(days=90))].sum()*0.5 for s in _tout), default=0.0)
+_rec90 = res.pnl_r[_tout >= _tout.max() - pd.Timedelta(days=90)].sum()*0.5
+print(f"  MEJOR 90d: {_best90:+.1f}%  |  ultimos 90d: {_rec90:+.1f}%")
 print("="*60, flush=True)
