@@ -2,6 +2,7 @@ import { getDashboard, type BotHealth } from "@/lib/data";
 import { AggKPI } from "@/components/cards";
 import { EquityChart } from "@/components/charts";
 import { Calendar } from "@/components/calendar";
+import { AlertList } from "@/components/alerts";
 
 export const dynamic = "force-dynamic";
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
@@ -67,14 +68,7 @@ export default async function Overview() {
             <h2 className="text-lg font-semibold">Alertas activas ({alerts.length})</h2>
             <a href="/alertas" className="text-xs text-accent">ver todas →</a>
           </div>
-          <div className="flex flex-col gap-2">
-            {alerts.slice(0, 4).map((a, i) => (
-              <div key={i} className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-4 py-3 border ${a.level === "bad" ? "bg-loss/10 border-loss/40" : "bg-yellow-500/10 border-yellow-500/40"}`}>
-                <span className={`text-[10px] font-semibold ${a.level === "bad" ? "text-loss" : "text-yellow-400"}`}>{a.level === "bad" ? "ALERTA" : "ATENCIÓN"}</span>
-                <span className="text-sm font-medium">{a.botName}</span><span className="text-sm text-dim">— {a.msg}</span>
-              </div>
-            ))}
-          </div>
+          <AlertList alerts={alerts.slice(0, 4)} />
         </div>
       )}
     </div>

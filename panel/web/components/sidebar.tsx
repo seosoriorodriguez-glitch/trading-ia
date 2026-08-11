@@ -9,8 +9,11 @@ const NAV = [
   { href: "/alertas", label: "Alertas" },
 ];
 
-export function Sidebar({ nBots, nAlerts, updatedAt }: { nBots: number; nAlerts: number; updatedAt: string }) {
+export function Sidebar({ nBots, nAlerts, lastCollected }: { nBots: number; nAlerts: number; lastCollected: string }) {
   const path = usePathname();
+  const dt = new Date(lastCollected);
+  const fecha = dt.toLocaleDateString("es-CL", { timeZone: "America/Santiago", day: "2-digit", month: "2-digit", year: "numeric" });
+  const hora = dt.toLocaleTimeString("es-CL", { timeZone: "America/Santiago", hour: "2-digit", minute: "2-digit" });
   return (
     <aside className="hidden lg:flex flex-col w-56 shrink-0 border-r border-border bg-panel/40 px-4 py-6 sticky top-0 h-screen">
       <div className="mb-8">
@@ -28,10 +31,11 @@ export function Sidebar({ nBots, nAlerts, updatedAt }: { nBots: number; nAlerts:
           );
         })}
       </nav>
-      <div className="mt-auto text-[11px] font-mono text-dim leading-relaxed">
+      <div className="mt-auto text-[11px] font-mono text-dim leading-relaxed border-t border-border pt-3">
         <div>{nBots} bots activos</div>
         <div className={nAlerts ? "text-loss" : "text-win"}>{nAlerts ? `${nAlerts} en alerta` : "todo sano"}</div>
-        <div>act. {new Date(updatedAt).toLocaleTimeString("es-CL")}</div>
+        <div className="mt-1.5 text-[10px]">Última recolección:</div>
+        <div className="text-[#c5cfdb]" suppressHydrationWarning>{fecha} · {hora} <span className="text-dim">Chile</span></div>
       </div>
     </aside>
   );

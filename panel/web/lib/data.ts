@@ -155,7 +155,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
   };
 }
 
-export type Alert = { botId: string; botName: string; level: "warn" | "bad"; msg: string };
+export type Alert = { botId: string; botName: string; level: "info" | "warn" | "bad"; msg: string };
 export type Totals = {
   nBots: number; capital: number; balance: number; pnlUsd: number; retPct: number;
   nTrades: number; wins: number; losses: number; wr: number;
@@ -164,27 +164,34 @@ export type Totals = {
 export type PortPoint = { i: number; equity: number; ma: number | null };
 export type Dashboard = {
   bots: BotHealth[]; totals: Totals; alerts: Alert[]; portfolio: PortPoint[];
-  portfolioDaily: DayPnl[]; updatedAt: string; error?: string;
+  portfolioDaily: DayPnl[]; updatedAt: string; lastCollected: string; error?: string;
 };
 
 function alertsFor(b: BotHealth): Alert[] {
   const out: Alert[] = [];
+  const A = (level: Alert["level"], msg: string) => out.push({ botId: b.id, botName: b.name, level, msg });
   if (b.ddPct >= b.ddLimitPct * 0.7)
-    out.push({ botId: b.id, botName: b.name, level: b.ddPct >= b.ddLimitPct * 0.85 ? "bad" : "warn",
-      msg: `Drawdown ${b.ddPct.toFixed(1)}% — cerca del límite ${b.ddLimitPct}%` });
+    A(b.ddPct >= b.ddLimitPct * 0.85 ? "bad" : "warn", `Drawdown ${b.ddPct.toFixed(1)}% — cerca del límite ${b.ddLimitPct}%`);
   if (b.n >= 10 && b.rollingWr < b.breakevenWr)
-    out.push({ botId: b.id, botName: b.name, level: b.rollingWr < b.breakevenWr - 4 ? "bad" : "warn",
-      msg: `WR reciente ${b.rollingWr.toFixed(0)}% bajo el breakeven ${b.breakevenWr.toFixed(0)}%` });
+    A(b.rollingWr < b.breakevenWr - 4 ? "bad" : "warn", `WR reciente ${b.rollingWr.toFixed(0)}% bajo el breakeven ${b.breakevenWr.toFixed(0)}%`);
   if (!b.aboveMa && b.n >= 10)
-    out.push({ botId: b.id, botName: b.name, level: "warn",
-      msg: `Equity bajo su media — posible cambio de régimen` });
+    A("warn", "Equity bajo su media — posible cambio de régimen");
+  if (b.retPct <= -5)
+    A(b.retPct <= -8 ? "bad" : "warn", `Cuenta en pérdida ${b.retPct.toFixed(1)}% del balance`);
+  if (b.todayPnlPct <= -3)
+    A("warn", `Pérdida hoy ${b.todayPnlPct.toFixed(1)}% — límite diario 5%`);
+  if (!b.streakWin && b.streak >= 6)
+    A("warn", `Racha de ${b.streak} pérdidas seguidas`);
+  if (b.category === "ftmo" && b.retPct >= 8 && b.retPct < 10)
+    A("info", `Cerca del pase FTMO (+${b.retPct.toFixed(1)}% de +10%)`);
   return out;
 }
 
 const EMPTY: Totals = { nBots: 0, capital: 0, balance: 0, pnlUsd: 0, retPct: 0, nTrades: 0, wins: 0, losses: 0, wr: 0, healthy: 0, warn: 0, bad: 0 };
 
 export async function getDashboard(): Promise<Dashboard> {
-  const base = { bots: [], totals: EMPTY, alerts: [], portfolio: [], portfolioDaily: [], updatedAt: new Date().toISOString() };
+  const now0 = new Date().toISOString();
+  const base = { bots: [], totals: EMPTY, alerts: [], portfolio: [], portfolioDaily: [], updatedAt: now0, lastCollected: now0 };
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY)
     return { ...base, error: "Falta configurar SUPABASE_URL / SUPABASE_SERVICE_KEY en .env.local" };
   try {
@@ -221,7 +228,11 @@ export async function getDashboard(): Promise<Dashboard> {
       warn: health.filter((b) => b.health === "warn").length,
       bad: health.filter((b) => b.health === "bad").length,
     };
-    const alerts = health.flatMap(alertsFor).sort((a, b) => (a.level === "bad" ? 0 : 1) - (b.level === "bad" ? 0 : 1));
+    const rankLvl = { bad: 0, warn: 1, info: 2 };
+    const alerts = health.flatMap(alertsFor);
+    if (totals.retPct <= -5)
+      alerts.unshift({ botId: "__portfolio__", botName: "Portafolio", level: totals.retPct <= -8 ? "bad" : "warn", msg: `Portafolio en pérdida ${totals.retPct.toFixed(1)}% del capital total` });
+    alerts.sort((a, b) => rankLvl[a.level] - rankLvl[b.level]);
 
     // equity del portafolio: todos los trades ordenados por salida
     const sorted = [...trades].sort((a, b) => +new Date(a.exit_time) - +new Date(b.exit_time));
@@ -242,7 +253,8 @@ export async function getDashboard(): Promise<Dashboard> {
     }
     const portfolioDaily: DayPnl[] = Array.from(pdmap.entries()).map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date));
 
-    return { bots: health, totals, alerts, portfolio, portfolioDaily, updatedAt: new Date().toISOString() };
+    const lastCollected = ((snapsRaw?.[0] as { ts?: string } | undefined)?.ts) ?? new Date().toISOString();
+    return { bots: health, totals, alerts, portfolio, portfolioDaily, updatedAt: new Date().toISOString(), lastCollected };
   } catch (e) {
     return { ...base, error: String(e) };
   }
