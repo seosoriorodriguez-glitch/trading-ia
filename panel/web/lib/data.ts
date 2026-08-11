@@ -11,13 +11,22 @@ export type Bot = {
   session: string; risk_pct: number; initial_balance: number; rr: number; magic: number;
 };
 export type EquityPoint = { i: number; t: string; equity: number; ma: number | null };
+export type DayPnl = { date: string; pnl: number; n: number; wins: number };
 export type BotHealth = Bot & {
+  category: "ftmo" | "darwinex";
   n: number; wins: number; losses: number; wr: number; pf: number;
   sumR: number; retPct: number; pnlUsd: number; balance: number;
   ddPct: number; maxDdPct: number; ddLimitPct: number;
   breakevenWr: number; rollingWr: number; aboveMa: boolean;
+  // stats avanzadas (estilo FTMO)
+  expectancyUsd: number; expectancyR: number;
+  avgWinUsd: number; avgLossUsd: number; avgWinR: number; avgLossR: number;
+  rrr: number; streak: number; streakWin: boolean;
+  bestUsd: number; worstUsd: number; avgDurationMin: number;
+  wrLondon: number; wrNy: number; wrLong: number; wrShort: number;
   health: "good" | "warn" | "bad";
   equity: EquityPoint[]; recent: Trade[]; todayN: number; todayWins: number;
+  daily: DayPnl[];  // para el calendario
 };
 
 const MA_WINDOW = 30;
@@ -87,6 +96,40 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
   const today = new Date().toISOString().slice(0, 10);
   const todayTs = ts.filter((t) => t.exit_time.slice(0, 10) === today);
 
+  // --- stats avanzadas (estilo FTMO) ---
+  const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+  const winsArr = ts.filter((t) => t.pnl_usd > 0);
+  const lossArr = ts.filter((t) => t.pnl_usd <= 0);
+  const avgWinUsd = avg(winsArr.map((t) => t.pnl_usd));
+  const avgLossUsd = avg(lossArr.map((t) => t.pnl_usd));
+  const avgWinR = avg(winsArr.map((t) => t.pnl_r ?? bot.rr));
+  const avgLossR = avg(lossArr.map((t) => t.pnl_r ?? -1));
+  const expectancyUsd = n ? pnlUsd / n : 0;
+  const expectancyR = n ? sumR / n : 0;
+  const rrr = avgLossUsd !== 0 ? Math.abs(avgWinUsd / avgLossUsd) : 0;
+  const bestUsd = n ? Math.max(...ts.map((t) => t.pnl_usd)) : 0;
+  const worstUsd = n ? Math.min(...ts.map((t) => t.pnl_usd)) : 0;
+  const avgDurationMin = avg(ts.map((t) => (+new Date(t.exit_time) - +new Date(t.entry_time)) / 60000));
+  let streak = 0, streakWin = true;
+  if (n) {
+    streakWin = ts[n - 1].pnl_usd > 0;
+    for (let i = n - 1; i >= 0; i--) { if ((ts[i].pnl_usd > 0) === streakWin) streak++; else break; }
+  }
+  const wrOf = (arr: Trade[]) => (arr.length ? (arr.filter((t) => t.pnl_usd > 0).length / arr.length) * 100 : 0);
+  const wrLondon = wrOf(ts.filter((t) => (t.session ?? "").includes("london")));
+  const wrNy = wrOf(ts.filter((t) => { const s = t.session ?? ""; return s.includes("new_york") || s.includes("ny"); }));
+  const wrLong = wrOf(ts.filter((t) => t.direction === "long"));
+  const wrShort = wrOf(ts.filter((t) => t.direction === "short"));
+  const dmap = new Map<string, { pnl: number; n: number; wins: number }>();
+  for (const t of ts) {
+    const d = t.exit_time.slice(0, 10);
+    const e = dmap.get(d) ?? { pnl: 0, n: 0, wins: 0 };
+    e.pnl += t.pnl_usd; e.n++; if (t.pnl_usd > 0) e.wins++;
+    dmap.set(d, e);
+  }
+  const daily: DayPnl[] = Array.from(dmap.entries()).map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date));
+  const category: "ftmo" | "darwinex" = bot.id.includes("darwinex") ? "darwinex" : "ftmo";
+
   // salud
   let health: BotHealth["health"] = "good";
   if (curDd >= bot.initial_balance * 0 + 6 || (n >= 10 && rollingWr < breakevenWr) || !aboveMa)
@@ -94,10 +137,12 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
   if (curDd >= 8 || (n >= 15 && rollingWr < breakevenWr - 4)) health = "bad";
 
   return {
-    ...bot, n, wins, losses, wr, pf: pf(rs), sumR, retPct, pnlUsd, balance,
+    ...bot, category, n, wins, losses, wr, pf: pf(rs), sumR, retPct, pnlUsd, balance,
     ddPct: Math.max(0, curDd), maxDdPct: maxDd, ddLimitPct: 10,
     breakevenWr, rollingWr, aboveMa, health,
-    equity, recent: ts.slice(-15).reverse(),
+    expectancyUsd, expectancyR, avgWinUsd, avgLossUsd, avgWinR, avgLossR, rrr,
+    streak, streakWin, bestUsd, worstUsd, avgDurationMin, wrLondon, wrNy, wrLong, wrShort,
+    equity, recent: ts.slice(-15).reverse(), daily,
     todayN: todayTs.length, todayWins: todayTs.filter((t) => t.pnl_usd > 0).length,
   };
 }

@@ -61,6 +61,27 @@ function BotCard({ b }: { b: BotHealth }) {
         <span>hoy: {b.todayN} ops ({b.todayWins}G)</span>
       </div>
 
+      <div className="grid grid-cols-4 gap-2 text-center border-t border-border pt-3">
+        <div>
+          <div className="text-[9px] uppercase tracking-wide text-dim">Expectancy</div>
+          <div className={`font-mono text-sm ${b.expectancyUsd >= 0 ? "text-win" : "text-loss"}`}>
+            {b.expectancyUsd >= 0 ? "+" : ""}${b.expectancyUsd.toFixed(0)}
+          </div>
+        </div>
+        <div>
+          <div className="text-[9px] uppercase tracking-wide text-dim">RRR</div>
+          <div className="font-mono text-sm">{b.rrr.toFixed(2)}</div>
+        </div>
+        <div>
+          <div className="text-[9px] uppercase tracking-wide text-dim">Racha</div>
+          <div className={`font-mono text-sm ${b.streakWin ? "text-win" : "text-loss"}`}>{b.streak}{b.streakWin ? "G" : "P"}</div>
+        </div>
+        <div>
+          <div className="text-[9px] uppercase tracking-wide text-dim">Avg W/L</div>
+          <div className="font-mono text-sm">+{b.avgWinR.toFixed(1)}/{b.avgLossR.toFixed(1)}</div>
+        </div>
+      </div>
+
       {b.recent.length > 0 && (
         <div className="border-t border-border pt-2">
           <div className="text-[10px] uppercase tracking-wider text-dim mb-1">Últimas operaciones</div>
