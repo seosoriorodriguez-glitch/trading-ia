@@ -1,0 +1,3 @@
+# Dependencias del dashboard interno (aditivo; no toca el requirements.txt raíz).
+# plotly (6.6.0) y pandas ya están en el venv del proyecto.
+streamlit>=1.30
