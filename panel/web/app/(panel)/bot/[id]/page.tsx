@@ -27,7 +27,7 @@ export default async function BotDetail({ params }: { params: { id: string } }) 
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <KPI label="Balance" value={money(b.balance)} sub={`de ${money(b.initial_balance)}`} />
+        <KPI label="Balance" value={money(b.realBalance ?? b.balance)} sub={Math.abs(b.netFlows) > 1 ? `${b.netFlows < 0 ? "retirado" : "depósito"} ${money(Math.abs(b.netFlows))}` : `de ${money(b.initial_balance)}`} />
         <KPI label="Retorno" value={`${b.retPct >= 0 ? "+" : ""}${b.retPct.toFixed(1)}%`} sub={money(b.pnlUsd)} tone={b.retPct >= 0 ? "win" : "loss"} />
         <KPI label="Win Rate" value={`${b.wr.toFixed(0)}%`} sub={`breakeven ${b.breakevenWr.toFixed(0)}%`} tone={b.wr >= b.breakevenWr ? "win" : "loss"} />
         <KPI label="Profit Factor" value={b.pf.toFixed(2)} tone={b.pf >= 1 ? "win" : "loss"} />

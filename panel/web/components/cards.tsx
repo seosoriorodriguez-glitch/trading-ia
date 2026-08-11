@@ -63,7 +63,8 @@ export function BotCard({ b, href }: { b: BotHealth; href?: string }) {
         <KPI label="WR reciente" value={`${b.rollingWr.toFixed(0)}%`} sub="últ. 30" tone={b.rollingWr >= b.breakevenWr ? "win" : "loss"} />
         <KPI label="Profit Factor" value={b.pf.toFixed(2)} tone={b.pf >= 1 ? "win" : "loss"} />
         <KPI label="Retorno" value={`${b.retPct >= 0 ? "+" : ""}${b.retPct.toFixed(1)}%`} sub={`$${Math.round(b.pnlUsd).toLocaleString()}`} tone={b.retPct >= 0 ? "win" : "loss"} />
-        <KPI label="Balance" value={`$${Math.round(b.balance).toLocaleString()}`} sub={`de $${b.initial_balance.toLocaleString()}`} />
+        <KPI label="Balance" value={`$${Math.round(b.realBalance ?? b.balance).toLocaleString()}`}
+          sub={Math.abs(b.netFlows) > 1 ? `${b.netFlows < 0 ? "retirado" : "depósito"} $${Math.abs(Math.round(b.netFlows)).toLocaleString()}` : `de $${b.initial_balance.toLocaleString()}`} />
         <KPI label="Drawdown" value={`${b.ddPct.toFixed(1)}%`} sub={`límite ${b.ddLimitPct}%`} tone={ddNear ? "loss" : "dim"} />
       </div>
 
