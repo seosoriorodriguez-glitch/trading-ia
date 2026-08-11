@@ -17,6 +17,7 @@ export type BotHealth = Bot & {
   n: number; wins: number; losses: number; wr: number; pf: number;
   sumR: number; retPct: number; pnlUsd: number; balance: number;
   ddPct: number; maxDdPct: number; ddLimitPct: number;
+  maxLossFromInitialPct: number; todayPnlUsd: number; todayPnlPct: number;
   breakevenWr: number; rollingWr: number; aboveMa: boolean;
   // stats avanzadas (estilo FTMO)
   expectancyUsd: number; expectancyR: number;
@@ -86,6 +87,8 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
     if (dd > maxDd) maxDd = dd;
   }
   curDd = ((peak - (last?.equity ?? bot.initial_balance)) / bot.initial_balance) * 100;
+  const minEq = eqVals.length ? Math.min(bot.initial_balance, ...eqVals) : bot.initial_balance;
+  const maxLossFromInitialPct = Math.max(0, ((bot.initial_balance - minEq) / bot.initial_balance) * 100);
 
   const rollWin = rs.slice(-ROLL_WINDOW);
   const rollingWr = rollWin.length
@@ -129,6 +132,8 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
   }
   const daily: DayPnl[] = Array.from(dmap.entries()).map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date));
   const category: "ftmo" | "darwinex" = bot.id.includes("darwinex") ? "darwinex" : "ftmo";
+  const todayPnlUsd = todayTs.reduce((a, t) => a + t.pnl_usd, 0);
+  const todayPnlPct = bot.initial_balance ? (todayPnlUsd / bot.initial_balance) * 100 : 0;
 
   // salud
   let health: BotHealth["health"] = "good";
@@ -139,6 +144,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
   return {
     ...bot, category, n, wins, losses, wr, pf: pf(rs), sumR, retPct, pnlUsd, balance,
     ddPct: Math.max(0, curDd), maxDdPct: maxDd, ddLimitPct: 10,
+    maxLossFromInitialPct, todayPnlUsd, todayPnlPct,
     breakevenWr, rollingWr, aboveMa, health,
     expectancyUsd, expectancyR, avgWinUsd, avgLossUsd, avgWinR, avgLossR, rrr,
     streak, streakWin, bestUsd, worstUsd, avgDurationMin, wrLondon, wrNy, wrLong, wrShort,

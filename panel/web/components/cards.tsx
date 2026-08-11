@@ -29,6 +29,20 @@ export function AggKPI({ label, value, sub, tone }: { label: string; value: stri
   );
 }
 
+function Bar({ label, valueTxt, pct, tone }: { label: string; valueTxt: string; pct: number; tone: "win" | "loss" }) {
+  return (
+    <div>
+      <div className="flex justify-between text-[10px] mb-0.5">
+        <span className="text-dim uppercase tracking-wide">{label}</span>
+        <span className={`font-mono ${tone === "win" ? "text-win" : "text-loss"}`}>{valueTxt}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-panel2 overflow-hidden">
+        <div className={`h-full ${tone === "win" ? "bg-win" : "bg-loss"}`} style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+      </div>
+    </div>
+  );
+}
+
 export function BotCard({ b, href }: { b: BotHealth; href?: string }) {
   const h = HEALTH[b.health];
   const ddNear = b.ddPct >= b.ddLimitPct * 0.7;
@@ -84,6 +98,15 @@ export function BotCard({ b, href }: { b: BotHealth; href?: string }) {
           <div className="font-mono text-sm">+{b.avgWinR.toFixed(1)}/{b.avgLossR.toFixed(1)}</div>
         </div>
       </div>
+
+      {b.category === "ftmo" && (
+        <div className="border-t border-border pt-3 flex flex-col gap-2">
+          <div className="text-[10px] uppercase tracking-wider text-dim">Objetivos FTMO</div>
+          <Bar label="Profit target (+10%)" valueTxt={`${b.retPct >= 0 ? "+" : ""}${b.retPct.toFixed(1)}% / 10%`} pct={(b.retPct / 10) * 100} tone="win" />
+          <Bar label="Pérdida máx (límite 10%)" valueTxt={`${b.maxLossFromInitialPct.toFixed(1)}% / 10%`} pct={(b.maxLossFromInitialPct / 10) * 100} tone="loss" />
+          <Bar label="Pérdida hoy (límite 5%)" valueTxt={`${Math.max(0, -b.todayPnlPct).toFixed(1)}% / 5%`} pct={(Math.max(0, -b.todayPnlPct) / 5) * 100} tone="loss" />
+        </div>
+      )}
 
       {b.recent.length > 0 && (
         <div className="border-t border-border pt-2">
