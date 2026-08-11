@@ -1,0 +1,10 @@
+# dependencias / build
+node_modules/
+.next/
+.vercel/
+out/
+
+# secretos — NUNCA subir
+.env
+.env.local
+.env*.local

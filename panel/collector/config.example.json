@@ -1,0 +1,54 @@
+{
+  "_comentario": "Copia a config.json. El colector solo agarra trades cuyo magic coincida (ignora manuales). Confirmar terminal_path del US30 100k.",
+  "bots": [
+    {
+      "id": "us30_live_10k",
+      "name": "US30 London — Live 10k",
+      "symbol": "US30.cash",
+      "account": 531415693,
+      "terminal_path": "C:\\Program Files\\MT5_BTCUSD\\terminal64.exe",
+      "session": "london",
+      "risk_pct": 0.005,
+      "initial_balance": 10000,
+      "rr": 2.5,
+      "magic": 345680
+    },
+    {
+      "id": "us30_challenge_100k",
+      "name": "US30 London — Challenge 100k",
+      "symbol": "US30.cash",
+      "account": 511362717,
+      "terminal_path": "C:\\Program Files\\MT5_US30\\terminal64.exe",
+      "session": "london",
+      "risk_pct": 0.005,
+      "initial_balance": 100000,
+      "rr": 2.5,
+      "magic": null,
+      "_nota": "terminal MT5_US30 confirmado. magic null = agarra todos los trades de la cuenta (dedicada). Si mezclas manuales, pon el magic real (London 345680 / NY 345678)."
+    },
+    {
+      "id": "dax_50k",
+      "name": "DAX London — Challenge 50k",
+      "symbol": "GER40.cash",
+      "account": 531420256,
+      "terminal_path": "C:\\Program Files\\MT5_FVG\\terminal64.exe",
+      "session": "london",
+      "risk_pct": 0.005,
+      "initial_balance": 50000,
+      "rr": 2.5,
+      "magic": 345683
+    },
+    {
+      "id": "us30_darwinex",
+      "name": "US30 Darwinex — WS30 100k",
+      "symbol": "WS30",
+      "account": 4000096966,
+      "terminal_path": "C:\\Program Files\\MT5_BREAKERBLOCKS\\terminal64.exe",
+      "session": "london",
+      "risk_pct": 0.001,
+      "initial_balance": 100000,
+      "rr": 2.5,
+      "magic": 345681
+    }
+  ]
+}

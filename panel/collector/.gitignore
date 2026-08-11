@@ -1,0 +1,4 @@
+# config real con cuentas/terminales — no subir (usar config.example.json de plantilla)
+config.json
+__pycache__/
+.env

@@ -1,0 +1,3 @@
+MetaTrader5
+supabase
+python-dotenv
