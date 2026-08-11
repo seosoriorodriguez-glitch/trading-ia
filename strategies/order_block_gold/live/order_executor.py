@@ -109,7 +109,16 @@ class OrderExecutor:
             "type_filling": mt5.ORDER_FILLING_RETURN,
         }
 
+        # --- LOG diagnostico (NO cambia comportamiento; sigue siendo STOP) ---
+        _cross = (tick.ask >= entry_price) if signal.direction == "long" else (tick.bid <= entry_price)
+        print(f"[EXEC oro] {trade_type} STOP @ {entry_price:.2f} | ask={tick.ask:.2f} bid={tick.bid:.2f}"
+              f"{'  <-- PRECIO YA CRUZO EL BORDE (stop seria invalido)' if _cross else ''}", flush=True)
+
         result = mt5.order_send(request)
+
+        print(f"[EXEC oro] retcode={result.retcode if result else None}"
+              f" {getattr(result, 'comment', '') if result else mt5.last_error()}"
+              f"  (10009=OK, 10016=Invalid stops/carrera)", flush=True)
 
         if result is None:
             return False, {"error": "order_send returned None"}
