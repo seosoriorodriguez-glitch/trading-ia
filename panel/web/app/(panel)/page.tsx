@@ -70,10 +70,18 @@ export default async function Overview({ searchParams }: { searchParams: { perio
               const pos = b.dayPnlBal >= 0;
               return (
                 <a key={b.id} href={`/bot/${b.id}`} className="bg-panel border border-border rounded-xl px-4 py-3 hover:border-accent/50 transition block">
-                  <div className="text-[11px] text-dim truncate mb-0.5">{b.name}</div>
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <span className="text-[11px] text-dim truncate">{b.name}</span>
+                    {Math.abs(b.floating) >= 0.01 && (
+                      <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 ${b.floating >= 0 ? "bg-win/15 text-win" : "bg-loss/15 text-loss"}`}>
+                        ● abierta {b.floating >= 0 ? "+" : "-"}{money(Math.abs(b.floating))}
+                      </span>
+                    )}
+                  </div>
                   <div className={`font-mono text-xl font-semibold ${pos ? "text-win" : "text-loss"}`}>{pos ? "+" : "-"}{money(Math.abs(b.dayPnlBal))}</div>
                   <div className="text-[11px] font-mono text-dim">
                     <span className={pos ? "text-win" : "text-loss"}>{pos ? "+" : ""}{b.dayPnlBalPct.toFixed(2)}%</span> · saldo {money(b.realBalance ?? b.balance)}
+                    {Math.abs(b.floating) >= 0.01 && <span className="text-dim"> · c/flotante {money((b.realBalance ?? b.balance) + b.floating)}</span>}
                   </div>
                 </a>
               );

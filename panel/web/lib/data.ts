@@ -26,6 +26,7 @@ export type BotHealth = Bot & {
   n: number; wins: number; losses: number; wr: number; pf: number;
   sumR: number; retPct: number; pnlUsd: number; balance: number;
   realBalance: number | null; netFlows: number; withdrawn: number; deposited: number;
+  floating: number;   // P&L flotante de operaciones abiertas (equity − balance); 0 si no hay abiertas
   realPnl: number; realRetPct: number;
   ddPct: number; maxDdPct: number; ddLimitPct: number;
   maxLossFromInitialPct: number; todayPnlUsd: number; todayPnlPct: number;
@@ -156,7 +157,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
 
   return {
     ...bot, category, kind, n, wins, losses, wr, pf: pf(rs), sumR, retPct, pnlUsd, balance,
-    realBalance: null, netFlows: 0, withdrawn: 0, deposited: 0, realPnl: pnlUsd, realRetPct: retPct,
+    realBalance: null, netFlows: 0, withdrawn: 0, deposited: 0, floating: 0, realPnl: pnlUsd, realRetPct: retPct,
     ddPct: Math.max(0, curDd), maxDdPct: maxDd, ddLimitPct: 10,
     maxLossFromInitialPct, todayPnlUsd, todayPnlPct, dayPnlBal: 0, dayPnlBalPct: 0,
     breakevenWr, rollingWr, aboveMa, health,
@@ -260,7 +261,7 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     const [{ data: botsRaw }, { data: tradesRaw }, { data: snapsRaw }, { data: bopsRaw }, { data: daySnaps }] = await Promise.all([
       client.from("bots").select("*").eq("active", true),
       client.from("trades").select("*").order("exit_time", { ascending: true }).limit(5000),
-      client.from("account_snapshots").select("account,balance,ts").order("ts", { ascending: false }).limit(1000),
+      client.from("account_snapshots").select("account,balance,equity,ts").order("ts", { ascending: false }).limit(1000),
       client.from("balance_ops").select("bot_id,amount").limit(2000),
       client.from("account_snapshots").select("account,balance,ts").gte("ts", reset.toISOString()).order("ts", { ascending: true }).limit(400),
     ]);
@@ -277,8 +278,11 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     health.sort((a, b) => rank[a.health] - rank[b.health]);
     // balance REAL del broker (refleja retiros/depósitos)
     const latestBal = new Map<number, number>();
-    for (const s of (snapsRaw ?? []) as { account: number; balance: number }[])
+    const latestEq = new Map<number, number>();
+    for (const s of (snapsRaw ?? []) as { account: number; balance: number; equity: number }[]) {
       if (!latestBal.has(s.account)) latestBal.set(s.account, s.balance);
+      if (!latestEq.has(s.account)) latestEq.set(s.account, s.equity);
+    }
     // balance de apertura del día FTMO (primer snapshot ≥ reset, orden asc)
     const balAtReset = new Map<number, number>();
     for (const s of (daySnaps ?? []) as { account: number; balance: number }[])
@@ -308,6 +312,9 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
       const b0 = b.account != null ? balAtReset.get(b.account) : undefined;
       b.dayPnlBal = b0 != null ? rb2 - b0 : 0;
       b.dayPnlBalPct = b.initial_balance ? (b.dayPnlBal / b.initial_balance) * 100 : 0;
+      // flotante = equity − balance (P&L de operaciones abiertas); ~0 si no hay abiertas
+      const eqNow = b.account != null ? latestEq.get(b.account) : undefined;
+      b.floating = eqNow != null && b.realBalance != null ? eqNow - b.realBalance : 0;
     }
 
     const sum = (f: (b: BotHealth) => number) => health.reduce((a, b) => a + f(b), 0);
