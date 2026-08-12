@@ -40,7 +40,11 @@ export default async function Trades({ searchParams }: { searchParams: { bot?: s
           <h1 className="text-2xl font-bold mb-1">Trades</h1>
           <p className="text-sm text-dim">Últimas operaciones con gráfico · {sel.name}</p>
         </div>
-        <BotSelector bots={bots.map((b) => ({ id: b.id, name: b.name }))} />
+        <div className="flex flex-wrap items-center gap-2">
+          <a href={`/api/export?bot=${sel.id}`} className="text-xs font-mono px-3 py-2 rounded-lg border border-border bg-panel2 text-dim hover:text-white hover:border-accent/50 transition">⬇ Excel · esta cuenta</a>
+          <a href="/api/export" className="text-xs font-mono px-3 py-2 rounded-lg border border-border bg-panel2 text-dim hover:text-white hover:border-accent/50 transition">⬇ Excel · todo</a>
+          <BotSelector bots={bots.map((b) => ({ id: b.id, name: b.name }))} />
+        </div>
       </div>
       {trades.length === 0 ? (
         <div className="text-dim py-16">Sin operaciones para esta cuenta.</div>
