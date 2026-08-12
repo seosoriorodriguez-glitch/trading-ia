@@ -2,7 +2,7 @@
 import { useRef, useEffect } from "react";
 
 type Candle = { t: number; o: number; h: number; l: number; c: number };
-type Zone = { type: "bullish" | "bearish"; high: number; low: number; at: number };
+type Zone = { type: "bullish" | "bearish"; high: number; low: number; at: number; spent?: boolean };
 type Trade = {
   entry_price: number; exit_price: number; entry_time: string; exit_time: string;
   direction: string; pnl_usd: number;
@@ -41,16 +41,19 @@ export function SessionChart({ candles, zones, trades = [], dec = 1, height = 32
         ctx.fillStyle = "#8a97a8"; ctx.fillText(p.toFixed(dec), W - PR + 5, y);
       }
 
-      // zonas OB (rectángulos desde su confirmación hasta el borde derecho)
+      // zonas OB (rectángulos desde su confirmación hasta el borde derecho).
+      // Activas = sólidas; gastadas (precio cerró al otro lado) = tenues + punteadas, pero se marcan igual.
       zones.forEach((z) => {
         const x0 = X(idxAt(z.at)) - 2;
         const x1 = W - PR;
         const yTop = Y(z.high), yBot = Y(z.low);
         const bull = z.type === "bullish";
-        ctx.fillStyle = bull ? "rgba(38,166,154,.13)" : "rgba(239,83,80,.13)";
+        const rgb = bull ? "38,166,154" : "239,83,80";
+        ctx.fillStyle = `rgba(${rgb},${z.spent ? ".05" : ".15"})`;
         ctx.fillRect(x0, yTop, x1 - x0, yBot - yTop);
-        ctx.strokeStyle = bull ? "rgba(38,166,154,.5)" : "rgba(239,83,80,.5)";
-        ctx.lineWidth = 1; ctx.strokeRect(x0, yTop, x1 - x0, yBot - yTop);
+        ctx.strokeStyle = `rgba(${rgb},${z.spent ? ".3" : ".6"})`;
+        ctx.lineWidth = 1; ctx.setLineDash(z.spent ? [3, 3] : []);
+        ctx.strokeRect(x0, yTop, x1 - x0, yBot - yTop); ctx.setLineDash([]);
       });
 
       // velas

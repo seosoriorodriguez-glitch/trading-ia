@@ -59,7 +59,7 @@ export default async function Vivo() {
       </div>
 
       <p className="text-xs text-dim mt-5">
-        Zonas verdes = demanda (bullish OB) · rojas = oferta (bearish OB), desde su confirmación hasta el precio actual. ▲/▼ entrada · ✕ salida (verde/rojo por resultado). Las zonas destruidas se ocultan.
+        Zonas verdes = demanda (bullish OB) · rojas = oferta (bearish OB), desde su confirmación hasta el precio actual. ▲/▼ entrada · ✕ salida (verde/rojo por resultado). Las zonas gastadas (el precio las atravesó) quedan tenues y punteadas, pero se marcan igual.
       </p>
     </div>
   );

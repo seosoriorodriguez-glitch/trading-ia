@@ -58,44 +58,48 @@ def push_session_view(symbol: str):
     win = LIVE_VIEW.get(symbol)
     if not win:
         return
-    start_h, end_h = win
+    start_h, end_h = win                     # hora SERVIDOR (el t de cada vela ya viene en hora servidor)
     tick = mt5.symbol_info_tick(symbol)
     if not tick:
         return
-    server_now = datetime.fromtimestamp(tick.time, tz=timezone.utc).replace(tzinfo=None)  # hora servidor (naive)
-    if start_h <= server_now.hour < end_h:
-        # EN VIVO: sesión de hoy, desde el inicio hasta ahora
-        sess_start = server_now.replace(hour=start_h, minute=0, second=0, microsecond=0)
-        sess_end = server_now + timedelta(minutes=5)
+    swc = lambda t: datetime.fromtimestamp(int(t), tz=timezone.utc).replace(tzinfo=None)  # hora servidor de un t
+    now = swc(tick.time)
+    in_session = start_h <= now.hour < end_h
+    # Traer las últimas velas por POSICIÓN (sin fechas) y filtrar por la hora del propio t.
+    # Evita el desfase de zona horaria de copy_rates_range en MT5.
+    bars = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, 800)
+    if bars is None or len(bars) == 0:
+        return
+    insess = [x for x in bars if start_h <= swc(x["time"]).hour < end_h]   # solo velas de London
+    if in_session:
+        target = now.date()
         live = True
     else:
-        # FUERA DE SESIÓN: mostrar la ÚLTIMA sesión completada (congelada). Solo una vez por proceso.
-        day = server_now.date()
-        if server_now.hour < start_h:
-            day = day - timedelta(days=1)          # antes de abrir → la de ayer
-        if _LAST_SESSION.get(symbol) == day:
-            return                                  # ya la tengo congelada este proceso
-        sess_start = datetime(day.year, day.month, day.day, start_h)
-        sess_end = datetime(day.year, day.month, day.day, end_h)
+        days = sorted({swc(x["time"]).date() for x in insess})            # última fecha con sesión (maneja finde)
+        if not days:
+            return
+        target = days[-1]
+        if _LAST_SESSION.get(symbol) == target:
+            return                                                         # ya congelada este proceso
         live = False
-    rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_M5, sess_start, sess_end)
-    if rates is None or len(rates) == 0:
+    sess = [x for x in insess if swc(x["time"]).date() == target]
+    if not sess:
+        if not live:
+            _LAST_SESSION[symbol] = target
         return
     candles = [{"t": int(x["time"]), "o": float(x["open"]), "h": float(x["high"]),
-                "l": float(x["low"]), "c": float(x["close"])} for x in rates]
+                "l": float(x["low"]), "c": float(x["close"])} for x in sess]
     zones = []
-    if _OB_OK and len(rates) > OB_PARAMS["consecutive_candles"] + 2:
+    if _OB_OK and len(sess) > OB_PARAMS["consecutive_candles"] + 2:
         try:
-            df = pd.DataFrame(rates)                      # columnas time,open,high,low,close,...
+            df = pd.DataFrame(sess)                       # columnas time,open,high,low,close,...
             for o in detect_order_blocks(df, OB_PARAMS):
-                later = df[df["time"] > o.confirmed_at]
-                destroyed = bool((later["close"] < o.zone_low).any()) if o.ob_type == "bullish" \
+                later = df[df["time"] > o.confirmed_at]   # ¿precio cerró al otro lado? (zona gastada)
+                spent = bool((later["close"] < o.zone_low).any()) if o.ob_type == "bullish" \
                     else bool((later["close"] > o.zone_high).any())
-                if destroyed:
-                    continue
-                zones.append({"type": o.ob_type, "high": float(o.zone_high),
-                              "low": float(o.zone_low), "at": int(o.confirmed_at)})
-            zones = zones[-12:]                            # limitar para no saturar el gráfico
+                zones.append({"type": o.ob_type, "high": float(o.zone_high), "low": float(o.zone_low),
+                              "at": int(o.confirmed_at), "spent": spent})   # se conservan (marcadas) para visualizar
+            zones = zones[-16:]                            # limitar para no saturar el gráfico
         except Exception as e:
             print(f"[session_view {symbol}] zonas fallo ({e})", flush=True)
     SB.table("session_view").upsert({
@@ -104,7 +108,7 @@ def push_session_view(symbol: str):
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }, on_conflict="symbol").execute()
     if not live:
-        _LAST_SESSION[symbol] = day
+        _LAST_SESSION[symbol] = target
     print(f"[session_view {symbol}] {'EN VIVO' if live else 'congelada'} · {len(candles)} velas · {len(zones)} zonas", flush=True)
 
 

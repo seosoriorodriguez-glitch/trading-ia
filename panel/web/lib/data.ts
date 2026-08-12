@@ -228,7 +228,7 @@ export async function getTradeCandles(tickets: number[]): Promise<Record<number,
   }
 }
 
-export type SessionZone = { type: "bullish" | "bearish"; high: number; low: number; at: number };
+export type SessionZone = { type: "bullish" | "bearish"; high: number; low: number; at: number; spent?: boolean };
 export type SessionView = { symbol: string; session: string; live: boolean; candles: Candle[]; zones: SessionZone[]; updatedAt: string };
 export async function getSessionViews(symbols: string[]): Promise<Record<string, SessionView>> {
   if (!symbols.length || !process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return {};
