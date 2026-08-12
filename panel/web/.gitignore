@@ -8,3 +8,8 @@ out/
 .env
 .env.local
 .env*.local
+
+# cloudflare / opennext build artifacts
+.open-next/
+.wrangler/
+.vercel/

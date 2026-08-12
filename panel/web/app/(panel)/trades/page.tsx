@@ -4,7 +4,6 @@ import { TradeChart } from "@/components/tradechart";
 import { chDateTime } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
-export const runtime = "edge";
 
 function TradeCard({ t, dec, candles }: { t: Trade; dec: number; candles: Candle[] }) {
   const win = t.pnl_usd > 0;

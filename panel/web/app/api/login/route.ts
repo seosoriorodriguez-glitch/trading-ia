@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-export const runtime = "edge";
 export async function POST(req: Request) {
   const form = await req.formData();
   const pw = String(form.get("password") ?? "");

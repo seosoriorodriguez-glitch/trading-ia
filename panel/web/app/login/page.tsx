@@ -1,4 +1,3 @@
-export const runtime = "edge";
 export default function Login({ searchParams }: { searchParams: { e?: string } }) {
   return (
     <main className="min-h-screen flex items-center justify-center px-4">

@@ -3,7 +3,6 @@ import { SessionChart } from "@/components/sessionchart";
 import { chDateTime } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
-export const runtime = "edge";
 
 const ASSETS = [
   { symbol: "US30.cash", name: "US30 · London", dec: 1 },

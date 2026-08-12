@@ -6,7 +6,6 @@ import { AlertList } from "@/components/alerts";
 import { PeriodSelector, TypeSelector } from "@/components/selectors";
 
 export const dynamic = "force-dynamic";
-export const runtime = "edge";
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
 
 function groupSummary(bots: BotHealth[]) {

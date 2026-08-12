@@ -2,7 +2,6 @@ import { getDashboard } from "@/lib/data";
 import { AlertList } from "@/components/alerts";
 
 export const dynamic = "force-dynamic";
-export const runtime = "edge";
 
 const REGLAS = [
   { lvl: "bad", cond: "Drawdown ≥ 8.5% (crítico) / ≥ 7% (atención)", que: "Cerca del límite FTMO 10%" },
