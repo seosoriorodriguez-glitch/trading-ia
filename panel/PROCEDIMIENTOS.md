@@ -29,11 +29,13 @@ El colector corre en el VPS (`panel/collector/`), cada **60 segundos**.
 > update balance_ops set amount = -392.00 where bot_id = 'us30_live_10k' and amount < 0;
 > ```
 
-### El colchón al ROTAR cuentas en el mismo terminal
-Cuando cierras una cuenta con profit y logueas la siguiente en el **mismo terminal** (misma lineage, mismo tamaño), el colchón que dejas debe quedar **bien medido**:
-- El colector snapshotea el **balance real** de la cuenta actualmente logueada → el colchón = `balance − initial_balance` se ve solo.
-- El retiro bruto de la cuenta anterior sigue sumado por `bot_id` (sobrevive la rotación).
-- ⚠️ Esto asume **mismo tamaño** de cuenta. Si el nuevo tamaño cambia (ej. 10k→25k), hay que resetear `initial_balance` (ver §2, cambio de fase = manual), o el colchón/retorno saldrán mal.
+### El colchón al ROTAR cuentas en el mismo terminal (automático)
+Cuando cierras una cuenta y llevas un colchón a la cuenta nueva, MT5 lo registra como un **depósito** en la cuenta nueva (además del fondeo inicial). El panel lo maneja solo:
+- **Retorno = (balance − inicial) + retirado − depósitos extra.**
+- `depósitos extra` = todo lo depositado por encima del fondeo inicial = **el colchón que trajiste**. Se **resta** para no contarlo como ganancia (si no, se cuenta doble: está en el balance actual).
+- Ejemplo real 10k: balance $10.163,51, inicial $10.000, retirado $392, depósito extra **$62,81** (colchón traído) → retorno = 163,51 + 392 − 62,81 = **$492,70 = +4,93%** (no +5,56%).
+- El fondeo inicial (`= initial_balance`) NO se resta (es la base). Solo lo que exceda.
+- ⚠️ Asume **mismo tamaño** de cuenta. Si cambia el tamaño (ej. 10k→25k), resetear `initial_balance` (ver §2, cambio de fase = manual).
 
 ---
 
