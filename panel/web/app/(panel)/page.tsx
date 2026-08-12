@@ -135,12 +135,12 @@ export default async function Overview({ searchParams }: { searchParams: { perio
         );
       })()}
 
-      <div className="grid lg:grid-cols-2 gap-5 mb-8">
+      <div className="grid lg:grid-cols-2 gap-5 mb-8 items-start">
         <div className="bg-panel border border-border rounded-2xl p-5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] uppercase tracking-wider text-dim">Retorno % por cuenta <span className="text-[#6b7684] normal-case">· relativo a su tamaño · arrastra/rueda para escalar</span></span>
           </div>
-          <PctLines series={pctSeries} dates={allDates} height={220} />
+          <PctLines series={pctSeries} dates={allDates} height={300} />
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[11px] font-mono">
             {pctSeries.map((s) => {
               const last = s.points[s.points.length - 1] ?? 0;
