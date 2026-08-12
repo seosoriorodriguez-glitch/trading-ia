@@ -32,6 +32,7 @@ LIVE_VIEW = {
     "GER40.cash": (10, 17),
 }
 OB_PARAMS = {"consecutive_candles": 4, "min_impulse_pct": 0.0, "zone_type": "half_candle", "max_atr_mult": 3.5}
+VIEW_MARGIN_H = 2           # horas de contexto antes y después de la sesión (ver zonas previas + qué pasó después)
 SESSION_DONE = set()        # símbolos ya empujados en el ciclo actual (evita duplicar el pull)
 _LAST_SESSION = {}          # symbol -> date de la última sesión ya congelada (evita rehacerla fuera de horario)
 try:
@@ -70,7 +71,7 @@ def push_session_view(symbol: str):
     bars = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, 800)
     if bars is None or len(bars) == 0:
         return
-    insess = [x for x in bars if start_h <= swc(x["time"]).hour < end_h]   # solo velas de London
+    insess = [x for x in bars if start_h <= swc(x["time"]).hour < end_h]   # solo London (para elegir el día)
     if in_session:
         target = now.date()
         live = True
@@ -82,7 +83,9 @@ def push_session_view(symbol: str):
         if _LAST_SESSION.get(symbol) == target:
             return                                                         # ya congelada este proceso
         live = False
-    sess = [x for x in insess if swc(x["time"]).date() == target]
+    # ventana AMPLIADA ±VIEW_MARGIN_H: contexto antes (zonas previas) y después (qué pasó)
+    dstart, dend = start_h - VIEW_MARGIN_H, end_h + VIEW_MARGIN_H
+    sess = [x for x in bars if swc(x["time"]).date() == target and dstart <= swc(x["time"]).hour < dend]
     if not sess:
         if not live:
             _LAST_SESSION[symbol] = target

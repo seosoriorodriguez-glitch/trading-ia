@@ -59,7 +59,8 @@ export default async function Vivo() {
       </div>
 
       <p className="text-xs text-dim mt-5">
-        Zonas verdes = demanda (bullish OB) · rojas = oferta (bearish OB), desde su confirmación hasta el precio actual. ▲/▼ entrada · ✕ salida (verde/rojo por resultado). Las zonas gastadas (el precio las atravesó) quedan tenues y punteadas, pero se marcan igual.
+        Zonas verdes = demanda (bullish OB) · rojas = oferta (bearish OB), desde su vela de origen. ▲/▼ entrada · ✕ salida · SL/TP punteados. Zonas gastadas = tenues y punteadas. La banda sombreada marca la sesión de London (con ±2h de contexto antes/después).
+        <br />🖱️ Arrastra el <span className="text-[#c5cfdb]">eje de precios (derecha)</span> para escalar las velas · arrastra el gráfico para moverlo · rueda para zoom · doble clic para resetear.
       </p>
     </div>
   );
