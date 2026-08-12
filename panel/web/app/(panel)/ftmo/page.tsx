@@ -11,6 +11,8 @@ export default async function Ftmo({ searchParams }: { searchParams: { period?: 
   const capital = ftmo.reduce((a, b) => a + b.initial_balance, 0);
   const pnl = ftmo.reduce((a, b) => a + b.realPnl, 0);
   const withdrawn = ftmo.reduce((a, b) => a + b.withdrawn, 0);
+  const payoutNet = ftmo.reduce((a, b) => a + b.payoutNet, 0);
+  const ftmoCut = ftmo.reduce((a, b) => a + b.ftmoCut, 0);
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
@@ -24,7 +26,7 @@ export default async function Ftmo({ searchParams }: { searchParams: { period?: 
         <AggKPI label="Cuentas" value={`${ftmo.length}`} />
         <AggKPI label="Capital" value={money(capital)} />
         <AggKPI label="PnL generado" value={`${pnl >= 0 ? "+" : "-"}${money(Math.abs(pnl))}`} sub={`${capital ? ((pnl / capital) * 100).toFixed(1) : 0}%`} tone={pnl >= 0 ? "win" : "loss"} />
-        <AggKPI label="Retirado total" value={money(withdrawn)} sub={withdrawn > 0 ? "cobrado" : "aún nada"} tone={withdrawn > 0 ? "win" : undefined} />
+        <AggKPI label="Retirado (bruto)" value={money(withdrawn)} sub={withdrawn > 0 ? `tú ${money(payoutNet)} · FTMO ${money(ftmoCut)}` : "aún nada"} tone={withdrawn > 0 ? "win" : undefined} />
         <AggKPI label="En alerta" value={`${ftmo.filter((b) => b.health !== "good").length}`} tone={ftmo.some((b) => b.health !== "good") ? "loss" : "win"} />
       </div>
       {ftmo.length === 0 ? (

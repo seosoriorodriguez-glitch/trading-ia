@@ -8,7 +8,7 @@ El colector corre en el VPS (`panel/collector/`), cada **60 segundos**.
 ## Cómo funciona la recolección (base para entender todo lo demás)
 
 - El colector se conecta al **terminal MT5** de cada cuenta (por `terminal_path` en `config.json`) y **lee el historial** (solo lectura, no toca nada).
-- **Seguridad:** verifica que la cuenta logueada en el terminal coincida con `account` del config. Si no cuadra → **salta esa cuenta** (no mezcla data).
+- **Rotación de cuenta:** como rotas el login en el mismo terminal (mismo bot), el colector **NO salta** si el número no coincide: actualiza el `account` registrado al login actual y sigue. (Los retiros se acumulan por `bot_id`, así sobreviven la rotación.)
 - Filtra por **magic** (o toma todo si `magic: null`) → solo los trades del bot.
 - Sube a Supabase con **dedup** por `(account, ticket)` → **nunca duplica**.
 - **Nunca borra.** El histórico se acumula para siempre en Supabase.
@@ -16,18 +16,42 @@ El colector corre en el VPS (`panel/collector/`), cada **60 segundos**.
 
 ---
 
-## 1. Cuando RETIRES ganancias
+## 1. Cuando RETIRES ganancias (payout)
 
-**No hay que hacer nada — es automático.**
-- El colector lee el **balance real** de MT5 (que baja tras el retiro).
-- El panel muestra ese balance real y agrega **"retirado $X"** en la tarjeta.
-- Las **métricas de trading** (WR, PF, R, expectancy, curva de equity) **NO cambian** — reflejan el rendimiento operativo, no el dinero retirado.
+**Automático** — MT5 graba el retiro como operación de balance dentro de la cuenta; el colector la captura a `balance_ops`.
+- El monto retirado se registra **BRUTO** (lo que sale de la cuenta). El panel:
+  - Suma el bruto al **retorno/PnL generado** (mide la estrategia: tu bot SÍ generó ese dinero antes del split).
+  - En la tarjeta **"Retirado (bruto)"** muestra el bruto y debajo el desglose **"tú 80% · FTMO 20%"** (split configurable en `data.ts`, hoy 0.8 para FTMO, 1.0 para Darwinex).
+- Las **métricas de trading** (WR, PF, R, expectancy) **NO cambian** — reflejan lo operativo.
+
+> Nota sobre la semilla del 10k previo: se sembró a mano. El valor correcto es el **bruto** ($392, no el neto $314). Corregir con:
+> ```sql
+> update balance_ops set amount = -392.00 where bot_id = 'us30_live_10k' and amount = -314.03;
+> ```
 
 ---
 
-## 2. Cuando CAMBIES de cuenta (rollover / renovación / pasar challenge → fondeo)
+## 2. Cuando PASES DE FASE o te FONDEEN (challenge → fase 2 → fondeada)
 
-Al cambiar el número de cuenta de un bot (nueva cuenta en el mismo terminal, o pasar el challenge y recibir la fondeada), tienes 2 caminos:
+⚠️ **Esto es MANUAL** (a diferencia del retiro). Un cambio de fase es una **cuenta nueva** (login distinto, balance arranca de cero en su tamaño) — **no hay balance-op**, así que el colector no lo detecta como retiro; sólo actualiza el número de cuenta. El `initial_balance` y la línea base de retiros **no se resetean solos**.
+
+**Cuando pases una fase / te fondeen, avísame y hago (o corres tú el SQL):**
+1. **Archivar la fase anterior** como registro cerrado (queda en el histórico, sale del panel):
+   ```sql
+   update bots set active = false where id = 'dax_50k_fase1';
+   ```
+2. **Alta de la nueva fase** con su tamaño real (así el retorno arranca limpio):
+   - En `config.json`, entrada nueva con `id` distinto, nuevo `account`, `initial_balance` = tamaño de la cuenta nueva.
+   - Reiniciar el colector.
+3. Esto evita que (a) el `initial_balance` viejo quede mal si cambia el tamaño, y (b) el retiro viejo se filtre al nuevo `bot_id`.
+
+> Regla simple: **cada fase/fondeo = un `id` nuevo**. El retorno de un challenge es virtual (no te pagan por pasar); lo que mide la estrategia (WR/PF/R) igual se ve sumando las fases en el histórico.
+
+---
+
+## 2b. Cuando sólo cambia el NÚMERO (misma cuenta lógica, renovación)
+
+Si es la misma cuenta (mismo tamaño, misma lineage) y sólo cambió el login:
 
 **Opción A (RECOMENDADA) — cuenta nueva = bot nuevo (historial limpio):**
 1. En `config.json`, **agrega una entrada NUEVA** con `id` distinto (ej. `dax_50k` → `dax_funded`), el nuevo `account` y `terminal_path`.
