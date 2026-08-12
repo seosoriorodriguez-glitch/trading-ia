@@ -26,6 +26,7 @@ export default async function Overview({ searchParams }: { searchParams: { perio
     { k: "Darwinex", g: groupSummary(bots.filter((b) => b.category === "darwinex")), href: "/darwinex", desc: "Asignación de capital · track record" },
   ];
   const totalWithdrawn = bots.reduce((a, b) => a + b.withdrawn, 0);
+  const totalTradePnl = bots.reduce((a, b) => a + b.pnlUsd, 0); // suma de TRADES (track record, incl. histórico)
   // series de retorno % acumulado por cuenta (alineadas por fecha), cada una con su color
   const pctPalette = ["#26a69a", "#3b82f6", "#f59e0b", "#ef5350", "#a855f7", "#e879f9"];
   const allDates = Array.from(new Set(bots.flatMap((b) => b.daily.map((d) => d.date)))).sort();
@@ -54,10 +55,11 @@ export default async function Overview({ searchParams }: { searchParams: { perio
       </div>
       {!totals.nBots && <div className="text-dim py-16">Sin operaciones en este período.</div>}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
         <AggKPI label="Capital desplegado" value={money(totals.capital)} />
-        <AggKPI label="PnL total (trading)" value={`${totals.pnlUsd >= 0 ? "+" : "-"}${money(Math.abs(totals.pnlUsd))}`} sub={`${avgRet >= 0 ? "+" : ""}${avgRet.toFixed(1)}% medio por cuenta`} tone={totals.pnlUsd >= 0 ? "win" : "loss"} />
-        <AggKPI label="Retirado (bruto)" value={money(totalWithdrawn)} sub={totalWithdrawn > 0 ? "ganancias retiradas" : "aún nada"} tone={totalWithdrawn > 0 ? "win" : undefined} />
+        <AggKPI label="Retirado · ganado" value={money(totalWithdrawn)} sub={totalWithdrawn > 0 ? "efectivo cobrado" : "aún nada"} tone={totalWithdrawn > 0 ? "win" : undefined} />
+        <AggKPI label="PnL en cuentas · dinero" value={`${totals.pnlUsd >= 0 ? "+" : "-"}${money(Math.abs(totals.pnlUsd))}`} sub={`${avgRet >= 0 ? "+" : ""}${avgRet.toFixed(1)}% medio · activas`} tone={totals.pnlUsd >= 0 ? "win" : "loss"} />
+        <AggKPI label="PnL histórico · trades" value={`${totalTradePnl >= 0 ? "+" : "-"}${money(Math.abs(totalTradePnl))}`} sub={`${totals.nTrades} ops · track record`} tone={totalTradePnl >= 0 ? "win" : "loss"} />
         <AggKPI label="WR combinado" value={`${totals.wr.toFixed(0)}%`} sub={`${totals.nTrades} ops · ${totals.wins}G/${totals.losses}P`} />
         <AggKPI label="Estado" value={`${totals.healthy}/${totals.nBots}`} sub={totals.bad ? `${totals.bad} en alerta` : totals.warn ? `${totals.warn} en atención` : "todos sanos"} tone={totals.bad ? "loss" : totals.warn ? undefined : "win"} />
       </div>
