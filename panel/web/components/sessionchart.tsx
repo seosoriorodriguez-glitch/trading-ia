@@ -89,6 +89,6 @@ export function SessionChart({ candles, zones, trades = [], dec = 1, height = 32
   }, [candles, zones, trades, dec, height]);
 
   if (!candles.length)
-    return <div className="flex items-center justify-center text-dim text-xs text-center px-4" style={{ height }}>Sin sesión activa — el gráfico aparece durante la sesión de London (10:00–17:00 servidor) y se limpia fuera de ella.</div>;
+    return <div className="flex items-center justify-center text-dim text-xs text-center px-4" style={{ height }}>Aún sin datos de la sesión de hoy — se llena durante London (10:00–17:00 servidor ≈ 03:00–10:00 Chile) y luego queda congelada para revisarla.</div>;
   return <canvas ref={ref} style={{ width: "100%", display: "block" }} />;
 }

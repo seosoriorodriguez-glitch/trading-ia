@@ -19,7 +19,7 @@ export default async function Vivo() {
     <div className="max-w-5xl">
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1">En vivo · Sesión</h1>
-        <p className="text-sm text-dim">Sesión actual de London con tus zonas OB (misma detección del bot) y las operaciones del día. Se refresca cada 60 s y se limpia fuera de sesión.</p>
+        <p className="text-sm text-dim">Sesión de London con tus zonas OB (misma detección del bot) y las operaciones del día. En vivo mientras corre (refresca 60 s); al terminar queda <span className="text-[#c5cfdb]">congelada</span> para analizarla, y se reinicia sola al abrir la próxima London.</p>
       </div>
 
       <div className="flex flex-col gap-6">
@@ -37,18 +37,20 @@ export default async function Vivo() {
           }
           const bull = zones.filter((z) => z.type === "bullish").length;
           const bear = zones.filter((z) => z.type === "bearish").length;
+          // "en vivo" si el colector actualizó hace poco (durante sesión); si no, quedó congelada
+          const live = v ? Date.now() - Date.parse(v.updatedAt) < 3 * 60 * 1000 : false;
           return (
             <div key={a.symbol} className="bg-panel border border-border rounded-2xl p-5">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div className="font-semibold">{a.name} <span className="text-dim font-mono text-xs">· {a.symbol}</span></div>
                 <div className="flex items-center gap-3 text-[11px] font-mono text-dim">
-                  {candles.length > 0 && <>
+                  {candles.length > 0 ? <>
+                    <span className={live ? "text-win font-semibold" : "text-[#8a97a8]"}>{live ? "● EN VIVO" : "■ cerrada"}</span>
                     <span className="text-win">▢ {bull} demanda</span>
                     <span className="text-loss">▢ {bear} oferta</span>
                     <span>{trades.length} op.</span>
                     {v?.updatedAt && <span suppressHydrationWarning>· {chDateTime(v.updatedAt)}</span>}
-                  </>}
-                  {candles.length === 0 && <span>fuera de sesión</span>}
+                  </> : <span>fuera de sesión · aún sin datos de hoy</span>}
                 </div>
               </div>
               <SessionChart candles={candles} zones={zones} trades={trades} dec={a.dec} />

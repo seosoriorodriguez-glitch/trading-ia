@@ -61,12 +61,13 @@ def push_session_view(symbol: str):
     tick = mt5.symbol_info_tick(symbol)
     if not tick:
         return
-    server_now = datetime.utcfromtimestamp(tick.time)   # hora del servidor (naive)
+    server_now = datetime.fromtimestamp(tick.time, tz=timezone.utc).replace(tzinfo=None)  # hora servidor (naive)
+    if not (start_h <= server_now.hour < end_h):
+        # Fuera de sesión: NO tocar la fila → la última sesión de London queda CONGELADA
+        # y visible todo el día (para analizarla). Se reemplaza sola al abrir la próxima London.
+        return
     base = {"symbol": symbol, "session": "london",
             "updated_at": datetime.now(timezone.utc).isoformat()}
-    if not (start_h <= server_now.hour < end_h):         # Asia/off → se limpia
-        SB.table("session_view").upsert({**base, "candles": [], "zones": []}, on_conflict="symbol").execute()
-        return
     sess_start = server_now.replace(hour=start_h, minute=0, second=0, microsecond=0)
     rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_M5, sess_start, server_now + timedelta(minutes=5))
     if rates is None or len(rates) == 0:
