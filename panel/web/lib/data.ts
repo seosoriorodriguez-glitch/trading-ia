@@ -261,12 +261,10 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
       b.realBalance = rb ?? null;
       b.netFlows = rb != null ? rb - (b.initial_balance + b.pnlUsd) : 0;
       const w = wByBot.get(b.id);
-      b.withdrawn = w?.w ?? 0; // BRUTO: lo que salió de la cuenta (mide la estrategia)
+      b.withdrawn = w?.w ?? 0; // lo que salió de la cuenta = lo que retiraste para ti (mide la estrategia junto al colchón)
       b.deposited = w?.d ?? 0;
-      // Split FTMO 80/20: lo retirado es bruto; tú cobras 80%, FTMO retiene 20%.
-      const split = b.category === "ftmo" ? 0.8 : 1;
-      b.payoutNet = b.withdrawn * split;
-      b.ftmoCut = b.withdrawn * (1 - split);
+      b.payoutNet = b.withdrawn; // el usuario retira su monto completo; el colchón queda dentro del balance
+      b.ftmoCut = 0;
       // retorno REAL = lo que generó la cuenta (balance actual + retirado − inicial), robusto sin importar cuántos trades capturó el colector
       const rb2 = b.realBalance ?? b.balance;
       b.realPnl = rb2 + b.withdrawn - b.initial_balance;

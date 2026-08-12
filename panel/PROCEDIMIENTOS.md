@@ -19,14 +19,14 @@ El colector corre en el VPS (`panel/collector/`), cada **60 segundos**.
 ## 1. Cuando RETIRES ganancias (payout)
 
 **Automático** — MT5 graba el retiro como operación de balance dentro de la cuenta; el colector la captura a `balance_ops`.
-- El monto retirado se registra **BRUTO** (lo que sale de la cuenta). El panel:
-  - Suma el bruto al **retorno/PnL generado** (mide la estrategia: tu bot SÍ generó ese dinero antes del split).
-  - En la tarjeta **"Retirado (bruto)"** muestra el bruto y debajo el desglose **"tú 80% · FTMO 20%"** (split configurable en `data.ts`, hoy 0.8 para FTMO, 1.0 para Darwinex).
+- Se registra **lo que sale de la cuenta** = lo que retiras para ti (el colchón que dejes queda dentro del balance). El panel:
+  - **Retorno / PnL generado** = `balance actual + retirado − inicial`. Mide lo que generó la cuenta (retirado + colchón). Robusto sin importar cuántos trades capturó el colector.
+  - Tarjeta **"Retirado"** = suma de lo retirado (sin split; es tu monto).
 - Las **métricas de trading** (WR, PF, R, expectancy) **NO cambian** — reflejan lo operativo.
 
-> Nota sobre la semilla del 10k previo: se sembró a mano. El valor correcto es el **bruto** ($392, no el neto $314). Corregir con:
+> Semilla del 10k previo (cuenta ya inaccesible), sembrada a mano = **$314.03** (lo retirado; el colchón vive en el balance):
 > ```sql
-> update balance_ops set amount = -392.00 where bot_id = 'us30_live_10k' and amount = -314.03;
+> update balance_ops set amount = -314.03 where bot_id = 'us30_live_10k' and amount < 0;
 > ```
 
 ---
