@@ -260,7 +260,7 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
       client.from("trades").select("*").order("exit_time", { ascending: true }).limit(5000),
       client.from("account_snapshots").select("account,balance,ts").order("ts", { ascending: false }).limit(1000),
       client.from("balance_ops").select("bot_id,amount").limit(2000),
-      client.from("account_snapshots").select("account,balance,ts").lte("ts", reset.toISOString()).order("ts", { ascending: false }).limit(400),
+      client.from("account_snapshots").select("account,balance,ts").gte("ts", reset.toISOString()).order("ts", { ascending: true }).limit(400),
     ]);
     let botsList = (botsRaw ?? []) as Bot[];
     if (opts.category) botsList = botsList.filter((b) => catOf(b.id) === opts.category);
@@ -277,7 +277,7 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     const latestBal = new Map<number, number>();
     for (const s of (snapsRaw ?? []) as { account: number; balance: number }[])
       if (!latestBal.has(s.account)) latestBal.set(s.account, s.balance);
-    // balance de cada cuenta al inicio del día FTMO (último snapshot ≤ reset)
+    // balance de apertura del día FTMO (primer snapshot ≥ reset, orden asc)
     const balAtReset = new Map<number, number>();
     for (const s of (daySnaps ?? []) as { account: number; balance: number }[])
       if (!balAtReset.has(s.account)) balAtReset.set(s.account, s.balance);
