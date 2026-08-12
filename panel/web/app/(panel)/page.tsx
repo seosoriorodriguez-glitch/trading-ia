@@ -50,6 +50,29 @@ export default async function Overview({ searchParams }: { searchParams: { perio
         <AggKPI label="Estado" value={`${totals.healthy}/${totals.nBots}`} sub={totals.bad ? `${totals.bad} en alerta` : totals.warn ? `${totals.warn} en atención` : "todos sanos"} tone={totals.bad ? "loss" : totals.warn ? undefined : "win"} />
       </div>
 
+      {bots.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold">El día por cuenta</h2>
+            <span className="text-[10px] text-dim font-mono">reinicia 18:00 CL · 00:00 CEST (regla diaria FTMO)</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+            {bots.map((b) => {
+              const pos = b.dayPnlBal >= 0;
+              return (
+                <a key={b.id} href={`/bot/${b.id}`} className="bg-panel border border-border rounded-xl px-4 py-3 hover:border-accent/50 transition block">
+                  <div className="text-[11px] text-dim truncate mb-0.5">{b.name}</div>
+                  <div className={`font-mono text-xl font-semibold ${pos ? "text-win" : "text-loss"}`}>{pos ? "+" : "-"}{money(Math.abs(b.dayPnlBal))}</div>
+                  <div className="text-[11px] font-mono text-dim">
+                    <span className={pos ? "text-win" : "text-loss"}>{pos ? "+" : ""}{b.dayPnlBalPct.toFixed(2)}%</span> · saldo {money(b.realBalance ?? b.balance)}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {bots.length > 0 && (() => {
         const ranked = [...bots].sort((a, b) => b.realRetPct - a.realRetPct);
         const maxAbs = Math.max(1, ...ranked.map((b) => Math.abs(b.realRetPct)));

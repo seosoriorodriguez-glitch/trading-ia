@@ -28,6 +28,7 @@ export type BotHealth = Bot & {
   realPnl: number; realRetPct: number;
   ddPct: number; maxDdPct: number; ddLimitPct: number;
   maxLossFromInitialPct: number; todayPnlUsd: number; todayPnlPct: number;
+  dayPnlBal: number; dayPnlBalPct: number;   // día FTMO (desde balance real, reinicia 00:00 CEST = 18:00 CL)
   breakevenWr: number; rollingWr: number; aboveMa: boolean;
   // stats avanzadas (estilo FTMO)
   expectancyUsd: number; expectancyR: number;
@@ -155,7 +156,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
     ...bot, category, n, wins, losses, wr, pf: pf(rs), sumR, retPct, pnlUsd, balance,
     realBalance: null, netFlows: 0, withdrawn: 0, deposited: 0, realPnl: pnlUsd, realRetPct: retPct,
     ddPct: Math.max(0, curDd), maxDdPct: maxDd, ddLimitPct: 10,
-    maxLossFromInitialPct, todayPnlUsd, todayPnlPct,
+    maxLossFromInitialPct, todayPnlUsd, todayPnlPct, dayPnlBal: 0, dayPnlBalPct: 0,
     breakevenWr, rollingWr, aboveMa, health,
     expectancyUsd, expectancyR, avgWinUsd, avgLossUsd, avgWinR, avgLossR, rrr,
     streak, streakWin, bestUsd, worstUsd, avgDurationMin, wrLondon, wrNy, wrLong, wrShort,
@@ -250,11 +251,16 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     return { ...base, error: "Falta configurar SUPABASE_URL / SUPABASE_SERVICE_KEY en .env.local" };
   try {
     const client = sb();
-    const [{ data: botsRaw }, { data: tradesRaw }, { data: snapsRaw }, { data: bopsRaw }] = await Promise.all([
+    // inicio del día FTMO = 00:00 CEST = 22:00 UTC = 18:00 Chile
+    const nowD = new Date();
+    const reset = new Date(Date.UTC(nowD.getUTCFullYear(), nowD.getUTCMonth(), nowD.getUTCDate(), 22, 0, 0));
+    if (nowD.getTime() < reset.getTime()) reset.setUTCDate(reset.getUTCDate() - 1);
+    const [{ data: botsRaw }, { data: tradesRaw }, { data: snapsRaw }, { data: bopsRaw }, { data: daySnaps }] = await Promise.all([
       client.from("bots").select("*").eq("active", true),
       client.from("trades").select("*").order("exit_time", { ascending: true }).limit(5000),
       client.from("account_snapshots").select("account,balance,ts").order("ts", { ascending: false }).limit(1000),
       client.from("balance_ops").select("bot_id,amount").limit(2000),
+      client.from("account_snapshots").select("account,balance,ts").lte("ts", reset.toISOString()).order("ts", { ascending: false }).limit(400),
     ]);
     let botsList = (botsRaw ?? []) as Bot[];
     if (opts.category) botsList = botsList.filter((b) => catOf(b.id) === opts.category);
@@ -271,6 +277,10 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     const latestBal = new Map<number, number>();
     for (const s of (snapsRaw ?? []) as { account: number; balance: number }[])
       if (!latestBal.has(s.account)) latestBal.set(s.account, s.balance);
+    // balance de cada cuenta al inicio del día FTMO (último snapshot ≤ reset)
+    const balAtReset = new Map<number, number>();
+    for (const s of (daySnaps ?? []) as { account: number; balance: number }[])
+      if (!balAtReset.has(s.account)) balAtReset.set(s.account, s.balance);
     // retiros/depósitos acumulados por bot (sobrevive rotaciones de cuenta)
     const wByBot = new Map<string, { w: number; d: number }>();
     for (const o of (bopsRaw ?? []) as { bot_id: string; amount: number }[]) {
@@ -292,6 +302,10 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
       const rb2 = b.realBalance ?? b.balance;
       b.realPnl = rb2 + b.withdrawn - b.initial_balance - extraDep;
       b.realRetPct = b.initial_balance ? (b.realPnl / b.initial_balance) * 100 : 0;
+      // día FTMO: balance actual − balance al inicio del día
+      const b0 = b.account != null ? balAtReset.get(b.account) : undefined;
+      b.dayPnlBal = b0 != null ? rb2 - b0 : 0;
+      b.dayPnlBalPct = b.initial_balance ? (b.dayPnlBal / b.initial_balance) * 100 : 0;
     }
 
     const sum = (f: (b: BotHealth) => number) => health.reduce((a, b) => a + f(b), 0);
