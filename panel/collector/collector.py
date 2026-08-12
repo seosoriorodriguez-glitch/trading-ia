@@ -99,7 +99,7 @@ def push_session_view(symbol: str):
                 spent = bool((later["close"] < o.zone_low).any()) if o.ob_type == "bullish" \
                     else bool((later["close"] > o.zone_high).any())
                 zones.append({"type": o.ob_type, "high": float(o.zone_high), "low": float(o.zone_low),
-                              "at": int(o.confirmed_at), "spent": spent})   # se conservan (marcadas) para visualizar
+                              "at": int(o.ob_candle_time), "spent": spent})   # 'at' = vela de origen del OB (donde nace la zona)
             zones = zones[-16:]                            # limitar para no saturar el gráfico
         except Exception as e:
             print(f"[session_view {symbol}] zonas fallo ({e})", flush=True)
