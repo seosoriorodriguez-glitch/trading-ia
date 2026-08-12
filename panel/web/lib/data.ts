@@ -17,6 +17,7 @@ export type BotHealth = Bot & {
   n: number; wins: number; losses: number; wr: number; pf: number;
   sumR: number; retPct: number; pnlUsd: number; balance: number;
   realBalance: number | null; netFlows: number; withdrawn: number; deposited: number;
+  realPnl: number; realRetPct: number;
   ddPct: number; maxDdPct: number; ddLimitPct: number;
   maxLossFromInitialPct: number; todayPnlUsd: number; todayPnlPct: number;
   breakevenWr: number; rollingWr: number; aboveMa: boolean;
@@ -144,7 +145,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
 
   return {
     ...bot, category, n, wins, losses, wr, pf: pf(rs), sumR, retPct, pnlUsd, balance,
-    realBalance: null, netFlows: 0, withdrawn: 0, deposited: 0,
+    realBalance: null, netFlows: 0, withdrawn: 0, deposited: 0, realPnl: pnlUsd, realRetPct: retPct,
     ddPct: Math.max(0, curDd), maxDdPct: maxDd, ddLimitPct: 10,
     maxLossFromInitialPct, todayPnlUsd, todayPnlPct,
     breakevenWr, rollingWr, aboveMa, health,
@@ -260,11 +261,15 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
       const w = wByBot.get(b.id);
       b.withdrawn = w?.w ?? 0;
       b.deposited = w?.d ?? 0;
+      // retorno REAL = lo que generó la cuenta (balance actual + retirado − inicial), robusto sin importar cuántos trades capturó el colector
+      const rb2 = b.realBalance ?? b.balance;
+      b.realPnl = rb2 + b.withdrawn - b.initial_balance;
+      b.realRetPct = b.initial_balance ? (b.realPnl / b.initial_balance) * 100 : 0;
     }
 
     const sum = (f: (b: BotHealth) => number) => health.reduce((a, b) => a + f(b), 0);
     const capital = sum((b) => b.initial_balance);
-    const pnlUsd = sum((b) => b.pnlUsd);
+    const pnlUsd = sum((b) => b.realPnl);
     const nTrades = sum((b) => b.n);
     const wins = sum((b) => b.wins);
     const totals: Totals = {

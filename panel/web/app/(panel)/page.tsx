@@ -10,7 +10,7 @@ const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
 
 function groupSummary(bots: BotHealth[]) {
   const capital = bots.reduce((a, b) => a + b.initial_balance, 0);
-  const pnl = bots.reduce((a, b) => a + b.pnlUsd, 0);
+  const pnl = bots.reduce((a, b) => a + b.realPnl, 0);
   const n = bots.reduce((a, b) => a + b.n, 0);
   const wins = bots.reduce((a, b) => a + b.wins, 0);
   return { capital, pnl, retPct: capital ? (pnl / capital) * 100 : 0, n, wr: n ? (wins / n) * 100 : 0, nBots: bots.length };
