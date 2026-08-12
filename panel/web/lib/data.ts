@@ -261,10 +261,13 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
       b.netFlows = rb != null ? rb - (b.initial_balance + b.pnlUsd) : 0;
       const w = wByBot.get(b.id);
       b.withdrawn = w?.w ?? 0; // BRUTO retirado de la cuenta (sin repartición); entra al retorno junto al colchón
-      b.deposited = w?.d ?? 0;
-      // retorno REAL = lo que generó la cuenta (balance actual + retirado − inicial), robusto sin importar cuántos trades capturó el colector
+      b.deposited = w?.d ?? 0; // incluye el fondeo inicial (~initial) + depósitos extra (colchón traído de otra cuenta)
+      // Depósitos EXTRA = todo lo depositado por encima del fondeo inicial (el colchón que llevas a la cuenta nueva).
+      // NO son ganancia de la estrategia → hay que restarlos o se cuenta doble (están en el balance actual).
+      const extraDep = b.deposited >= b.initial_balance ? b.deposited - b.initial_balance : b.deposited;
+      // retorno REAL = lo que generó la estrategia = (balance − inicial) + retirado − depósitos extra
       const rb2 = b.realBalance ?? b.balance;
-      b.realPnl = rb2 + b.withdrawn - b.initial_balance;
+      b.realPnl = rb2 + b.withdrawn - b.initial_balance - extraDep;
       b.realRetPct = b.initial_balance ? (b.realPnl / b.initial_balance) * 100 : 0;
     }
 
