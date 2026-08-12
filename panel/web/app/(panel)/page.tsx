@@ -53,6 +53,9 @@ export default async function Overview({ searchParams }: { searchParams: { perio
       {bots.length > 0 && (() => {
         const ranked = [...bots].sort((a, b) => b.realRetPct - a.realRetPct);
         const maxAbs = Math.max(1, ...ranked.map((b) => Math.abs(b.realRetPct)));
+        const totalPnl = ranked.reduce((a, b) => a + b.realPnl, 0);
+        const sumRet = ranked.reduce((a, b) => a + b.realRetPct, 0);
+        const avgRet2 = sumRet / ranked.length;
         return (
           <div className="bg-panel border border-border rounded-2xl p-5 mb-8">
             <div className="text-[10px] uppercase tracking-wider text-dim mb-4">Rentabilidad por cuenta <span className="text-[#6b7684] normal-case">· relativa a su propio tamaño</span></div>
@@ -77,6 +80,13 @@ export default async function Overview({ searchParams }: { searchParams: { perio
                   </a>
                 );
               })}
+            </div>
+            {/* total combinado de todas las cuentas */}
+            <div className="mt-4 pt-3 border-t border-border flex items-center gap-3 font-mono">
+              <div className="w-40 shrink-0 text-sm font-sans font-semibold">Total · {ranked.length} cuentas</div>
+              <div className="flex-1 text-[11px] text-dim font-sans">suma de retornos (cada cuenta sobre su tamaño) · media {avgRet2 >= 0 ? "+" : ""}{avgRet2.toFixed(1)}%</div>
+              <div className={`w-16 shrink-0 text-right text-lg font-bold ${sumRet >= 0 ? "text-win" : "text-loss"}`}>{sumRet >= 0 ? "+" : ""}{sumRet.toFixed(1)}%</div>
+              <div className={`w-20 shrink-0 text-right text-[11px] ${totalPnl >= 0 ? "text-win" : "text-loss"}`}>{totalPnl >= 0 ? "+" : "-"}{money(Math.abs(totalPnl))}</div>
             </div>
           </div>
         );
