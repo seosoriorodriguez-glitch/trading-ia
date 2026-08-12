@@ -28,7 +28,8 @@ export function SessionChart({ candles, zones, trades = [], dec = 1, height = 32
       const dpr = Math.min(devicePixelRatio || 1, 2);
       const W = cv.clientWidth, H = height;
       cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + "px"; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const PL = 6, PR = 62, PT = 10, PB = 10, plotH = H - PT - PB;
+      const PL = 6, PR = 62, PT = 10, PB = 24, plotH = H - PT - PB;
+      const chLabel = (t: number) => new Date((t - 3 * 3600) * 1000).toLocaleTimeString("es-CL", { timeZone: "America/Santiago", hour: "2-digit", minute: "2-digit" });
       const tv = trades.flatMap((t) => [t.entry_price, t.exit_price, t.sl, t.tp].filter((v) => v != null) as number[]);
       let lo0 = Math.min(...candles.map((c) => c.l), ...zones.map((z) => z.low), ...tv);
       let hi0 = Math.max(...candles.map((c) => c.h), ...zones.map((z) => z.high), ...tv);
@@ -100,6 +101,21 @@ export function SessionChart({ candles, zones, trades = [], dec = 1, height = 32
         ctx.strokeStyle = t.pnl_usd >= 0 ? "#26a69a" : "#ef5350"; ctx.lineWidth = 1.6;
         ctx.beginPath(); ctx.moveTo(xe - 4, xy - 4); ctx.lineTo(xe + 4, xy + 4); ctx.moveTo(xe + 4, xy - 4); ctx.lineTo(xe - 4, xy + 4); ctx.stroke();
       });
+
+      // eje de tiempo (hora Chile) abajo + marcadores de inicio/fin de sesión
+      ctx.textBaseline = "alphabetic"; ctx.font = "9px ui-monospace,monospace";
+      const startX = iS >= 0 ? X(iS) : -99, endX = iE >= 0 ? X(iE) : -99;
+      const step = Math.max(1, Math.floor(candles.length / 7));
+      ctx.textAlign = "center"; ctx.fillStyle = "#6b7684";
+      for (let i = 0; i < candles.length; i += step) {
+        const x = X(i);
+        if (Math.abs(x - startX) < 34 || Math.abs(x - endX) < 30) continue;   // no chocar con los de sesión
+        ctx.fillText(chLabel(candles[i].t), x, H - 8);
+      }
+      ctx.fillStyle = "#8ab4f8"; ctx.font = "10px ui-monospace,monospace";
+      if (iS >= 0) { ctx.textAlign = "left"; ctx.fillText("▏London " + chLabel(candles[iS].t), startX + 2, H - 8); }
+      if (iE >= 0) { ctx.textAlign = "right"; ctx.fillText("cierre " + chLabel(candles[iE].t) + "▕", endX - 2, H - 8); }
+      ctx.textAlign = "left"; ctx.textBaseline = "middle";
 
       // último precio
       const last = candles[candles.length - 1].c;

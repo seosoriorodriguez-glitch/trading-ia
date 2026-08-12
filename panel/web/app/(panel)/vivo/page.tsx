@@ -16,7 +16,7 @@ export default async function Vivo() {
   ]);
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-7xl">
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1">En vivo · Sesión</h1>
         <p className="text-sm text-dim">Sesión de London con tus zonas OB (misma detección del bot) y las operaciones del día. En vivo mientras corre (refresca 60 s); al terminar queda <span className="text-[#c5cfdb]">congelada</span> para analizarla, y se reinicia sola al abrir la próxima London.</p>
@@ -52,7 +52,7 @@ export default async function Vivo() {
                   </> : <span>fuera de sesión · aún sin datos de hoy</span>}
                 </div>
               </div>
-              <SessionChart candles={candles} zones={zones} trades={trades} dec={a.dec} />
+              <SessionChart candles={candles} zones={zones} trades={trades} dec={a.dec} height={440} />
             </div>
           );
         })}
