@@ -29,11 +29,14 @@ export default async function Overview({ searchParams }: { searchParams: { perio
   // series de retorno % acumulado por cuenta (alineadas por fecha), cada una con su color
   const pctPalette = ["#26a69a", "#3b82f6", "#f59e0b", "#ef5350", "#a855f7", "#e879f9"];
   const allDates = Array.from(new Set(bots.flatMap((b) => b.daily.map((d) => d.date)))).sort();
+  const shortSize = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`);
   const pctSeries = bots.map((b, i) => {
     const dm = new Map(b.daily.map((d) => [d.date, d.pnl]));
     let cum = 0;
     const points = allDates.map((date) => { cum += dm.get(date) ?? 0; return b.initial_balance ? (cum / b.initial_balance) * 100 : 0; });
-    return { name: b.name, color: pctPalette[i % pctPalette.length], points };
+    const tag = b.category === "ftmo" ? (b.kind === "live" ? " Live" : " Chall") : "";
+    const label = `${b.name.split("—")[0].trim()} ${shortSize(b.initial_balance)}${tag}`;
+    return { name: label, color: pctPalette[i % pctPalette.length], points };
   });
   // retorno MEDIO por cuenta (equal-weight): cada cuenta sobre su propio tamaño, sin que la aplaste el nominal grande
   const avgRet = bots.length ? bots.reduce((a, b) => a + b.realRetPct, 0) / bots.length : 0;
@@ -144,7 +147,7 @@ export default async function Overview({ searchParams }: { searchParams: { perio
               return (
                 <span key={s.name} className="flex items-center gap-1.5">
                   <span style={{ background: s.color }} className="w-2.5 h-2.5 rounded-sm inline-block shrink-0" />
-                  <span className="text-dim">{s.name.split("—")[0].trim()}</span>
+                  <span className="text-dim">{s.name}</span>
                   <span style={{ color: s.color }}>{last >= 0 ? "+" : ""}{last.toFixed(1)}%</span>
                 </span>
               );
