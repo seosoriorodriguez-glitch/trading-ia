@@ -18,6 +18,7 @@ function Countdown({ from, seconds = 60 }: { from: string; seconds?: number }) {
 
 const NAV = [
   { href: "/", label: "Vista general" },
+  { href: "/vivo", label: "En vivo" },
   { href: "/ftmo", label: "FTMO" },
   { href: "/darwinex", label: "Darwinex" },
   { href: "/demo", label: "Lab · Demo" },

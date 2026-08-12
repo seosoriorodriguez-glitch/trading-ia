@@ -84,6 +84,7 @@ el colector, ni cuántas veces rotaste la cuenta.
 | Página | Ruta | Qué muestra |
 |---|---|---|
 | **Vista general** | `/` | KPIs del portafolio real, rentabilidad por cuenta (+ fila Total), equity, calendario, grupos FTMO/Darwinex, alertas. **Excluye demo.** |
+| **En vivo** | `/vivo` | Sesión actual de US30 y DAX con velas M5, **zonas OB** (misma detección del bot) y las operaciones del día. Refresca cada 60 s; se limpia fuera de sesión. |
 | **FTMO** | `/ftmo` | KPIs + card por cada cuenta FTMO. |
 | **Darwinex** | `/darwinex` | KPIs + card por cada cuenta Darwinex. |
 | **Lab · Demo** | `/demo` | Forward-tests en demo. **Independiente**: no cuenta para el portafolio real. |

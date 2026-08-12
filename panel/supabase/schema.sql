@@ -67,6 +67,15 @@ create table if not exists balance_ops (
 );
 create index if not exists idx_bops_bot on balance_ops(bot_id, ts desc);
 
+-- Vista "En vivo": velas M5 de la SESIÓN ACTUAL + zonas OB por símbolo (rodante, se sobrescribe)
+create table if not exists session_view (
+  symbol     text primary key,          -- 'US30.cash', 'GER40.cash'
+  session    text,                      -- 'london'
+  candles    jsonb not null default '[]'::jsonb,   -- [{t,o,h,l,c}]
+  zones      jsonb not null default '[]'::jsonb,   -- [{type,high,low,at}]
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists idx_trades_bot_time  on trades(bot_id, exit_time desc);
 create index if not exists idx_trades_exit_time  on trades(exit_time desc);
 create index if not exists idx_snap_account_ts   on account_snapshots(account, ts desc);
@@ -80,3 +89,4 @@ create index if not exists idx_snap_account_ts   on account_snapshots(account, t
 alter table bots              enable row level security;
 alter table trades            enable row level security;
 alter table account_snapshots enable row level security;
+alter table session_view      enable row level security;

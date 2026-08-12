@@ -25,12 +25,71 @@ SB = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"
 LOOKBACK_DAYS = 5           # ventana de historial a revisar cada corrida (dedup por unique)
 POLL_SECONDS = 60
 
+# --- Vista "En vivo": sesión actual con zonas OB (solo lectura de tu detección real) ---
+# symbol -> (hora_inicio, hora_fin) en hora del SERVIDOR MT5 (UTC+3). Fuera de ventana = se limpia.
+LIVE_VIEW = {
+    "US30.cash":  (10, 17),
+    "GER40.cash": (10, 17),
+}
+OB_PARAMS = {"consecutive_candles": 4, "min_impulse_pct": 0.0, "zone_type": "half_candle", "max_atr_mult": 3.5}
+SESSION_DONE = set()        # símbolos ya empujados en el ciclo actual (evita duplicar el pull)
+try:
+    import sys
+    import pandas as pd
+    sys.path.insert(0, str(ROOT.parent.parent))   # raíz del repo
+    from strategies.order_block.backtest.ob_detection import detect_order_blocks
+    _OB_OK = True
+except Exception as _e:      # pandas o la estrategia no disponibles → velas sin zonas
+    _OB_OK = False
+    print(f"[session_view] detección OB no disponible ({_e}); guardaré velas sin zonas", flush=True)
+
 
 def session_of(hour_server: int) -> str:
     if 10 <= hour_server < 13:   return "london"
     if 13 <= hour_server < 17:   return "london_ny"
     if 17 <= hour_server < 23:   return "new_york"
     return "off"
+
+
+def push_session_view(symbol: str):
+    """Guarda las velas M5 de la SESIÓN ACTUAL + las zonas OB (recalculadas con tu
+    detección real). Sobrescribe por símbolo (rodante). Fuera de sesión → limpia."""
+    win = LIVE_VIEW.get(symbol)
+    if not win:
+        return
+    start_h, end_h = win
+    tick = mt5.symbol_info_tick(symbol)
+    if not tick:
+        return
+    server_now = datetime.utcfromtimestamp(tick.time)   # hora del servidor (naive)
+    base = {"symbol": symbol, "session": "london",
+            "updated_at": datetime.now(timezone.utc).isoformat()}
+    if not (start_h <= server_now.hour < end_h):         # Asia/off → se limpia
+        SB.table("session_view").upsert({**base, "candles": [], "zones": []}, on_conflict="symbol").execute()
+        return
+    sess_start = server_now.replace(hour=start_h, minute=0, second=0, microsecond=0)
+    rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_M5, sess_start, server_now + timedelta(minutes=5))
+    if rates is None or len(rates) == 0:
+        return
+    candles = [{"t": int(x["time"]), "o": float(x["open"]), "h": float(x["high"]),
+                "l": float(x["low"]), "c": float(x["close"])} for x in rates]
+    zones = []
+    if _OB_OK and len(rates) > OB_PARAMS["consecutive_candles"] + 2:
+        try:
+            df = pd.DataFrame(rates)                      # columnas time,open,high,low,close,...
+            for o in detect_order_blocks(df, OB_PARAMS):
+                later = df[df["time"] > o.confirmed_at]
+                destroyed = bool((later["close"] < o.zone_low).any()) if o.ob_type == "bullish" \
+                    else bool((later["close"] > o.zone_high).any())
+                if destroyed:
+                    continue
+                zones.append({"type": o.ob_type, "high": float(o.zone_high),
+                              "low": float(o.zone_low), "at": int(o.confirmed_at)})
+            zones = zones[-12:]                            # limitar para no saturar el gráfico
+        except Exception as e:
+            print(f"[session_view {symbol}] zonas fallo ({e})", flush=True)
+    SB.table("session_view").upsert({**base, "candles": candles, "zones": zones}, on_conflict="symbol").execute()
+    print(f"[session_view {symbol}] {len(candles)} velas · {len(zones)} zonas", flush=True)
 
 
 def upsert_bots():
@@ -150,6 +209,14 @@ def collect_bot(b: dict):
             if cbatch:
                 SB.table("trade_candles").upsert(cbatch, on_conflict="ticket").execute()
                 print(f"[{b['id']}] velas guardadas para {len(cbatch)} trades", flush=True)
+
+        # vista "En vivo": sesión actual + zonas (una vez por símbolo por ciclo)
+        if b["symbol"] in LIVE_VIEW and b["symbol"] not in SESSION_DONE:
+            try:
+                push_session_view(b["symbol"])
+                SESSION_DONE.add(b["symbol"])
+            except Exception as e:
+                print(f"[{b['id']}] session_view error: {e}", flush=True)
     finally:
         mt5.shutdown()
 
@@ -158,6 +225,7 @@ def main():
     print("Colector Panel de Trading iniciado.", flush=True)
     upsert_bots()
     while True:
+        SESSION_DONE.clear()   # reset de la vista en vivo por ciclo
         for b in CFG["bots"]:
             try:
                 collect_bot(b)
