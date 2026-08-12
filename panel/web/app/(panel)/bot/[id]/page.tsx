@@ -1,4 +1,4 @@
-import { getDashboard } from "@/lib/data";
+import { getDashboard, catOf } from "@/lib/data";
 import { KPI, HEALTH } from "@/components/cards";
 import { EquityChart, RBars } from "@/components/charts";
 import { Calendar } from "@/components/calendar";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
 
 export default async function BotDetail({ params }: { params: { id: string } }) {
-  const { bots } = await getDashboard();
+  const { bots } = await getDashboard({ category: catOf(params.id) });
   const b = bots.find((x) => x.id === params.id);
   if (!b) return notFound();
   const h = HEALTH[b.health];
@@ -18,7 +18,7 @@ export default async function BotDetail({ params }: { params: { id: string } }) 
 
   return (
     <div className="max-w-5xl">
-      <a href={b.category === "darwinex" ? "/darwinex" : "/ftmo"} className="text-dim hover:text-white text-sm">← {b.category === "darwinex" ? "Darwinex" : "FTMO"}</a>
+      <a href={b.category === "darwinex" ? "/darwinex" : b.category === "demo" ? "/demo" : "/ftmo"} className="text-dim hover:text-white text-sm">← {b.category === "darwinex" ? "Darwinex" : b.category === "demo" ? "Lab · Demo" : "FTMO"}</a>
       <div className="flex items-start justify-between gap-3 mt-2 mb-6">
         <div>
           <h1 className="text-2xl font-bold">{b.name}</h1>

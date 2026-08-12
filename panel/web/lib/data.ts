@@ -1,6 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { chDate, chToday } from "./tz";
 
+// Categoría inferida del id del bot. "demo"/"lab" = laboratorio (independiente del resto).
+export function catOf(id: string): "ftmo" | "darwinex" | "demo" {
+  if (id.includes("demo") || id.includes("lab")) return "demo";
+  if (id.includes("darwinex")) return "darwinex";
+  return "ftmo";
+}
+
 export type Trade = {
   bot_id: string; account: number; ticket: number; symbol: string;
   direction: string; entry_price: number; sl: number | null; tp: number | null;
@@ -14,7 +21,7 @@ export type Bot = {
 export type EquityPoint = { i: number; t: string; equity: number; ma: number | null };
 export type DayPnl = { date: string; pnl: number; n: number; wins: number };
 export type BotHealth = Bot & {
-  category: "ftmo" | "darwinex";
+  category: "ftmo" | "darwinex" | "demo";
   n: number; wins: number; losses: number; wr: number; pf: number;
   sumR: number; retPct: number; pnlUsd: number; balance: number;
   realBalance: number | null; netFlows: number; withdrawn: number; deposited: number;
@@ -134,7 +141,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
     dmap.set(d, e);
   }
   const daily: DayPnl[] = Array.from(dmap.entries()).map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date));
-  const category: "ftmo" | "darwinex" = bot.id.includes("darwinex") ? "darwinex" : "ftmo";
+  const category = catOf(bot.id);
   const todayPnlUsd = todayTs.reduce((a, t) => a + t.pnl_usd, 0);
   const todayPnlPct = bot.initial_balance ? (todayPnlUsd / bot.initial_balance) * 100 : 0;
 
@@ -193,7 +200,7 @@ function alertsFor(b: BotHealth): Alert[] {
 
 const EMPTY: Totals = { nBots: 0, capital: 0, balance: 0, pnlUsd: 0, retPct: 0, nTrades: 0, wins: 0, losses: 0, wr: 0, healthy: 0, warn: 0, bad: 0 };
 
-export type Opts = { since?: string; until?: string; category?: "ftmo" | "darwinex" };
+export type Opts = { since?: string; until?: string; category?: "ftmo" | "darwinex" | "demo" };
 export const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 export function periodRange(key?: string): { since?: string; until?: string; label: string } {
   const now = new Date();
@@ -234,9 +241,10 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
       client.from("account_snapshots").select("account,balance,ts").order("ts", { ascending: false }).limit(1000),
       client.from("balance_ops").select("bot_id,amount").limit(2000),
     ]);
-    const catOf = (id: string): "ftmo" | "darwinex" => (id.includes("darwinex") ? "darwinex" : "ftmo");
     let botsList = (botsRaw ?? []) as Bot[];
     if (opts.category) botsList = botsList.filter((b) => catOf(b.id) === opts.category);
+    // Vista general (sin categoría) EXCLUYE demo/lab: son experimentos, no ensucian el portafolio real.
+    else botsList = botsList.filter((b) => catOf(b.id) !== "demo");
     const botIds = new Set(botsList.map((b) => b.id));
     const trades = ((tradesRaw ?? []) as Trade[]).filter(
       (t) => botIds.has(t.bot_id) && (!opts.since || t.exit_time >= opts.since) && (!opts.until || t.exit_time < opts.until)
