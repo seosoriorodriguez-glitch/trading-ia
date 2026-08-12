@@ -30,8 +30,25 @@ export default async function Ftmo({ searchParams }: { searchParams: { period?: 
       {ftmo.length === 0 ? (
         <div className="text-dim py-16">Sin cuentas FTMO aún.</div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {ftmo.map((b) => <BotCard key={b.id} b={b} href={`/bot/${b.id}`} />)}
+        <div className="flex flex-col gap-8">
+          {([
+            { k: "live", title: "Fondeadas · Live", desc: "sin profit target · solo límites DD · profit split" },
+            { k: "challenge", title: "Challenges", desc: "objetivo +10% · límite DD 10% / diario 5%" },
+          ] as const).map(({ k, title, desc }) => {
+            const grp = ftmo.filter((b) => b.kind === k);
+            if (!grp.length) return null;
+            return (
+              <div key={k}>
+                <div className="flex items-baseline gap-3 mb-3">
+                  <h2 className="text-sm font-semibold">{title}</h2>
+                  <span className="text-[11px] text-dim">{grp.length} · {desc}</span>
+                </div>
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {grp.map((b) => <BotCard key={b.id} b={b} href={`/bot/${b.id}`} />)}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

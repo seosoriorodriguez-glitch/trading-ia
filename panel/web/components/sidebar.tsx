@@ -21,8 +21,8 @@ const NAV = [
   { href: "/vivo", label: "En vivo" },
   { href: "/ftmo", label: "FTMO" },
   { href: "/darwinex", label: "Darwinex" },
-  { href: "/demo", label: "Lab · Demo" },
   { href: "/trades", label: "Trades" },
+  { href: "/demo", label: "Lab · Demo" },
   { href: "/alertas", label: "Alertas" },
 ];
 

@@ -31,10 +31,10 @@ export default async function Trades({ searchParams }: { searchParams: { bot?: s
   if (!bots.length) return <div className="text-dim py-20">Sin datos aún.</div>;
   const sel = bots.find((b) => b.id === searchParams.bot) ?? bots[0];
   const dec = sel.symbol.includes("XAU") ? 2 : 1;
-  const trades = sel.recent.slice(0, 6);
+  const trades = sel.recent.slice(0, 9);
   const candlesByTicket = await getTradeCandles(trades.map((t) => t.ticket));
   return (
-    <div className="max-w-5xl">
+    <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold mb-1">Trades</h1>
@@ -45,7 +45,7 @@ export default async function Trades({ searchParams }: { searchParams: { bot?: s
       {trades.length === 0 ? (
         <div className="text-dim py-16">Sin operaciones para esta cuenta.</div>
       ) : (
-        <div className="grid lg:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
           {trades.map((t) => <TradeCard key={t.ticket} t={t} dec={dec} candles={candlesByTicket[t.ticket] ?? []} />)}
         </div>
       )}

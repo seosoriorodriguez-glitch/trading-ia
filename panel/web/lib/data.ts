@@ -22,6 +22,7 @@ export type EquityPoint = { i: number; t: string; equity: number; ma: number | n
 export type DayPnl = { date: string; pnl: number; n: number; wins: number };
 export type BotHealth = Bot & {
   category: "ftmo" | "darwinex" | "demo";
+  kind: "live" | "challenge";   // FTMO: fondeada (live) vs challenge — profit target solo aplica en challenge
   n: number; wins: number; losses: number; wr: number; pf: number;
   sumR: number; retPct: number; pnlUsd: number; balance: number;
   realBalance: number | null; netFlows: number; withdrawn: number; deposited: number;
@@ -143,6 +144,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
   }
   const daily: DayPnl[] = Array.from(dmap.entries()).map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date));
   const category = catOf(bot.id);
+  const kind: "live" | "challenge" = bot.id.includes("live") ? "live" : "challenge";
   const todayPnlUsd = todayTs.reduce((a, t) => a + t.pnl_usd, 0);
   const todayPnlPct = bot.initial_balance ? (todayPnlUsd / bot.initial_balance) * 100 : 0;
 
@@ -153,7 +155,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
   if (curDd >= 8 || (n >= 15 && rollingWr < breakevenWr - 4)) health = "bad";
 
   return {
-    ...bot, category, n, wins, losses, wr, pf: pf(rs), sumR, retPct, pnlUsd, balance,
+    ...bot, category, kind, n, wins, losses, wr, pf: pf(rs), sumR, retPct, pnlUsd, balance,
     realBalance: null, netFlows: 0, withdrawn: 0, deposited: 0, realPnl: pnlUsd, realRetPct: retPct,
     ddPct: Math.max(0, curDd), maxDdPct: maxDd, ddLimitPct: 10,
     maxLossFromInitialPct, todayPnlUsd, todayPnlPct, dayPnlBal: 0, dayPnlBalPct: 0,
