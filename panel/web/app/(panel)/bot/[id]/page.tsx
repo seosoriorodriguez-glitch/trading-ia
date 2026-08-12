@@ -3,6 +3,7 @@ import { KPI, HEALTH } from "@/components/cards";
 import { EquityChart, RBars } from "@/components/charts";
 import { Calendar } from "@/components/calendar";
 import { notFound } from "next/navigation";
+import { chDateTime } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
@@ -78,7 +79,7 @@ export default async function BotDetail({ params }: { params: { id: string } }) 
             <tbody>
               {b.recent.map((t) => (
                 <tr key={t.ticket} className="border-t border-border/50">
-                  <td className="py-1 text-dim">{t.exit_time.slice(5, 16).replace("T", " ")}</td>
+                  <td className="py-1 text-dim">{chDateTime(t.exit_time)}</td>
                   <td className={t.direction === "long" ? "text-win" : "text-loss"}>{t.direction === "long" ? "▲" : "▼"} {t.direction}</td>
                   <td className="text-right">{t.entry_price}</td>
                   <td className="text-right">{t.exit_price}</td>

@@ -1,6 +1,7 @@
 import { getDashboard, getTradeCandles, type Trade, type Candle } from "@/lib/data";
 import { BotSelector } from "@/components/selectors";
 import { TradeChart } from "@/components/tradechart";
+import { chDateTime } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ function TradeCard({ t, dec, candles }: { t: Trade; dec: number; candles: Candle
   return (
     <div className="bg-panel border border-border rounded-xl p-4">
       <div className="flex items-center justify-between text-xs font-mono mb-2">
-        <span className="text-dim">{t.exit_time.slice(0, 16).replace("T", " ")}</span>
+        <span className="text-dim">{chDateTime(t.exit_time)}</span>
         <span className={t.direction === "long" ? "text-win" : "text-loss"}>{t.direction === "long" ? "▲ LONG" : "▼ SHORT"}</span>
         <span className={`font-semibold ${win ? "text-win" : "text-loss"}`}>{t.pnl_r != null ? `${t.pnl_r > 0 ? "+" : ""}${t.pnl_r.toFixed(2)}R` : ""} · {win ? "+" : ""}${t.pnl_usd.toFixed(0)}</span>
       </div>

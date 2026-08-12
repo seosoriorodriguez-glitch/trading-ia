@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { chDate, chToday } from "./tz";
 
 export type Trade = {
   bot_id: string; account: number; ticket: number; symbol: string;
@@ -98,8 +99,8 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
     : 0;
   const breakevenWr = (1 / (1 + bot.rr)) * 100;
 
-  const today = new Date().toISOString().slice(0, 10);
-  const todayTs = ts.filter((t) => t.exit_time.slice(0, 10) === today);
+  const today = chToday();
+  const todayTs = ts.filter((t) => chDate(t.exit_time) === today);
 
   // --- stats avanzadas (estilo FTMO) ---
   const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
@@ -127,7 +128,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
   const wrShort = wrOf(ts.filter((t) => t.direction === "short"));
   const dmap = new Map<string, { pnl: number; n: number; wins: number }>();
   for (const t of ts) {
-    const d = t.exit_time.slice(0, 10);
+    const d = chDate(t.exit_time);
     const e = dmap.get(d) ?? { pnl: 0, n: 0, wins: 0 };
     e.pnl += t.pnl_usd; e.n++; if (t.pnl_usd > 0) e.wins++;
     dmap.set(d, e);
@@ -298,7 +299,7 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
 
     const pdmap = new Map<string, { pnl: number; n: number; wins: number }>();
     for (const t of trades) {
-      const d = t.exit_time.slice(0, 10);
+      const d = chDate(t.exit_time);
       const e = pdmap.get(d) ?? { pnl: 0, n: 0, wins: 0 };
       e.pnl += t.pnl_usd; e.n++; if (t.pnl_usd > 0) e.wins++;
       pdmap.set(d, e);

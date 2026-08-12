@@ -1,5 +1,6 @@
 import { EquityChart } from "@/components/charts";
 import type { BotHealth } from "@/lib/data";
+import { chDateTime } from "@/lib/tz";
 
 export const HEALTH = {
   good: { label: "SANO", cls: "bg-win/15 text-win border-win/40" },
@@ -115,7 +116,7 @@ export function BotCard({ b, href }: { b: BotHealth; href?: string }) {
           <div className="flex flex-col gap-0.5 font-mono text-[11px]">
             {b.recent.slice(0, 6).map((t) => (
               <div key={t.ticket} className="flex items-center justify-between">
-                <span className="text-dim">{t.exit_time.slice(5, 16).replace("T", " ")}</span>
+                <span className="text-dim">{chDateTime(t.exit_time)}</span>
                 <span className={t.direction === "long" ? "text-win" : "text-loss"}>{t.direction === "long" ? "▲" : "▼"} {t.direction}</span>
                 <span className={t.pnl_usd > 0 ? "text-win" : "text-loss"}>{t.pnl_r != null ? `${t.pnl_r > 0 ? "+" : ""}${t.pnl_r.toFixed(2)}R` : ""}</span>
                 <span className={t.pnl_usd > 0 ? "text-win" : "text-loss"}>{t.pnl_usd > 0 ? "+" : ""}${t.pnl_usd.toFixed(0)}</span>
