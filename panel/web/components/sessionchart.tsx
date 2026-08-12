@@ -16,6 +16,7 @@ export function SessionChart({ candles, zones, trades = [], dec = 1, height = 32
   const vOff = useRef(0);            // desplazamiento vertical en precio (arrastrar el gráfico)
   const view = useRef({ lo: 0, hi: 1, plotH: 1, W: 0, PR: 62 });
   const drag = useRef<null | "scale" | "pan">(null);
+  const cross = useRef<null | { x: number; y: number }>(null);
 
   useEffect(() => {
     const cv = ref.current;
@@ -126,6 +127,26 @@ export function SessionChart({ candles, zones, trades = [], dec = 1, height = 32
       ctx.beginPath(); ctx.moveTo(PL, Y(last)); ctx.lineTo(W - PR, Y(last)); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = "#0b0f14"; ctx.fillRect(W - PR + 1, Y(last) - 7, PR - 1, 14);
       ctx.fillStyle = "#cfd8e6"; ctx.fillText(last.toFixed(dec), W - PR + 5, Y(last));
+
+      // crosshair (al pasar el mouse) — precio a la derecha + hora abajo
+      if (cross.current) {
+        const cy = Math.max(PT, Math.min(H - PB, cross.current.y));
+        const ci = Math.max(0, Math.min(candles.length - 1, Math.round((cross.current.x - PL) / (plotW / candles.length) - 0.5)));
+        const cx = X(ci);
+        ctx.strokeStyle = "rgba(255,255,255,.3)"; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(cx, PT); ctx.lineTo(cx, H - PB); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(PL, cy); ctx.lineTo(W - PR, cy); ctx.stroke(); ctx.setLineDash([]);
+        const p = hi - ((cy - PT) / plotH) * (hi - lo);
+        ctx.fillStyle = "#2b3442"; ctx.fillRect(W - PR + 1, cy - 8, PR - 1, 16);
+        ctx.fillStyle = "#e6edf3"; ctx.font = "10px ui-monospace,monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        ctx.fillText(p.toFixed(dec), W - PR + 5, cy);
+        const lbl = chLabel(candles[ci].t);
+        ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+        const tw = ctx.measureText(lbl).width + 10;
+        ctx.fillStyle = "#2b3442"; ctx.fillRect(cx - tw / 2, H - PB + 1, tw, 15);
+        ctx.fillStyle = "#e6edf3"; ctx.fillText(lbl, cx, H - PB + 12);
+        ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      }
     };
 
     // ---- interacción tipo TradingView ----
@@ -135,18 +156,25 @@ export function SessionChart({ candles, zones, trades = [], dec = 1, height = 32
       cv.setPointerCapture(e.pointerId); cv.style.cursor = "grabbing";
     };
     const onMove = (e: PointerEvent) => {
-      if (!drag.current) { cv.style.cursor = localX(e) > view.current.W - view.current.PR ? "ns-resize" : "grab"; return; }
-      if (drag.current === "scale") vScale.current = clamp(vScale.current * Math.exp(-e.movementY * 0.008), 0.15, 40);
-      else { const { lo, hi, plotH } = view.current; vOff.current += e.movementY * (hi - lo) / plotH; }
+      if (drag.current) {
+        if (drag.current === "scale") vScale.current = clamp(vScale.current * Math.exp(-e.movementY * 0.008), 0.15, 40);
+        else { const { lo, hi, plotH } = view.current; vOff.current += e.movementY * (hi - lo) / plotH; }
+        draw(); return;
+      }
+      const r = cv.getBoundingClientRect();
+      cross.current = { x: e.clientX - r.left, y: e.clientY - r.top };
+      cv.style.cursor = (e.clientX - r.left) > view.current.W - view.current.PR ? "ns-resize" : "crosshair";
       draw();
     };
-    const onUp = (e: PointerEvent) => { drag.current = null; cv.style.cursor = "grab"; try { cv.releasePointerCapture(e.pointerId); } catch {} };
+    const onLeave = () => { if (!drag.current) { cross.current = null; draw(); } };
+    const onUp = (e: PointerEvent) => { drag.current = null; try { cv.releasePointerCapture(e.pointerId); } catch {} };
     const onWheel = (e: WheelEvent) => { e.preventDefault(); vScale.current = clamp(vScale.current * (e.deltaY < 0 ? 1.12 : 0.89), 0.15, 40); draw(); };
     const onDbl = () => { vScale.current = 1; vOff.current = 0; draw(); };
 
     draw();
     cv.addEventListener("pointerdown", onDown);
     cv.addEventListener("pointermove", onMove);
+    cv.addEventListener("pointerleave", onLeave);
     window.addEventListener("pointerup", onUp);
     cv.addEventListener("wheel", onWheel, { passive: false });
     cv.addEventListener("dblclick", onDbl);
@@ -154,6 +182,7 @@ export function SessionChart({ candles, zones, trades = [], dec = 1, height = 32
     return () => {
       cv.removeEventListener("pointerdown", onDown);
       cv.removeEventListener("pointermove", onMove);
+      cv.removeEventListener("pointerleave", onLeave);
       window.removeEventListener("pointerup", onUp);
       cv.removeEventListener("wheel", onWheel);
       cv.removeEventListener("dblclick", onDbl);

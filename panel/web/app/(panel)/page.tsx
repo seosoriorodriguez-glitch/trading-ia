@@ -1,6 +1,6 @@
 import { getDashboard, periodRange, type BotHealth } from "@/lib/data";
 import { AggKPI } from "@/components/cards";
-import { EquityChart } from "@/components/charts";
+import { PctLines } from "@/components/pctlines";
 import { Calendar } from "@/components/calendar";
 import { AlertList } from "@/components/alerts";
 import { PeriodSelector, TypeSelector } from "@/components/selectors";
@@ -26,6 +26,15 @@ export default async function Overview({ searchParams }: { searchParams: { perio
     { k: "Darwinex", g: groupSummary(bots.filter((b) => b.category === "darwinex")), href: "/darwinex", desc: "Asignación de capital · track record" },
   ];
   const totalWithdrawn = bots.reduce((a, b) => a + b.withdrawn, 0);
+  // series de retorno % acumulado por cuenta (alineadas por fecha), cada una con su color
+  const pctPalette = ["#26a69a", "#3b82f6", "#f59e0b", "#ef5350", "#a855f7", "#e879f9"];
+  const allDates = Array.from(new Set(bots.flatMap((b) => b.daily.map((d) => d.date)))).sort();
+  const pctSeries = bots.map((b, i) => {
+    const dm = new Map(b.daily.map((d) => [d.date, d.pnl]));
+    let cum = 0;
+    const points = allDates.map((date) => { cum += dm.get(date) ?? 0; return b.initial_balance ? (cum / b.initial_balance) * 100 : 0; });
+    return { name: b.name, color: pctPalette[i % pctPalette.length], points };
+  });
   // retorno MEDIO por cuenta (equal-weight): cada cuenta sobre su propio tamaño, sin que la aplaste el nominal grande
   const avgRet = bots.length ? bots.reduce((a, b) => a + b.realRetPct, 0) / bots.length : 0;
   return (
@@ -117,8 +126,22 @@ export default async function Overview({ searchParams }: { searchParams: { perio
 
       <div className="grid lg:grid-cols-2 gap-5 mb-8">
         <div className="bg-panel border border-border rounded-2xl p-5">
-          <div className="text-[10px] uppercase tracking-wider text-dim mb-2">Equity del portafolio (todos los bots)</div>
-          <EquityChart data={portfolio} initial={totals.capital} height={220} />
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] uppercase tracking-wider text-dim">Retorno % por cuenta <span className="text-[#6b7684] normal-case">· relativo a su tamaño · arrastra/rueda para escalar</span></span>
+          </div>
+          <PctLines series={pctSeries} dates={allDates} height={220} />
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[11px] font-mono">
+            {pctSeries.map((s) => {
+              const last = s.points[s.points.length - 1] ?? 0;
+              return (
+                <span key={s.name} className="flex items-center gap-1.5">
+                  <span style={{ background: s.color }} className="w-2.5 h-2.5 rounded-sm inline-block shrink-0" />
+                  <span className="text-dim">{s.name.split("—")[0].trim()}</span>
+                  <span style={{ color: s.color }}>{last >= 0 ? "+" : ""}{last.toFixed(1)}%</span>
+                </span>
+              );
+            })}
+          </div>
         </div>
         <div className="bg-panel border border-border rounded-2xl p-5">
           <div className="text-[10px] uppercase tracking-wider text-dim mb-3">Calendario PnL del portafolio</div>
