@@ -146,9 +146,12 @@ def collect_bot(b: dict):
             "balance": float(acc.balance), "equity": float(acc.equity),
         }).execute()
 
-        # historial de deals de la ventana
+        # historial de deals de la ventana.
+        # Límite superior = now + 1 día: MT5 interpreta el rango en hora del servidor (UTC+3),
+        # así que un tope "now + minutos" (UTC) deja fuera los trades de las últimas ~3h.
+        # Un tope futuro es inofensivo (no hay deals futuros) y elimina ese retraso.
         now = datetime.now(timezone.utc)
-        deals = mt5.history_deals_get(now - timedelta(days=LOOKBACK_DAYS), now + timedelta(minutes=5))
+        deals = mt5.history_deals_get(now - timedelta(days=LOOKBACK_DAYS), now + timedelta(days=1))
         if deals is None:
             return
         magic = b.get("magic")
