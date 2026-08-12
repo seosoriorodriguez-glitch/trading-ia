@@ -63,9 +63,12 @@ export function SessionChart({ candles, zones, trades = [], dec = 1, height = 32
         ctx.fillStyle = "#8a97a8"; ctx.fillText(p.toFixed(dec), W - PR + 5, y);
       }
 
-      // zonas OB — activas = sólidas; gastadas = tenues + punteadas (se marcan igual)
+      // zonas OB — activas = sólidas; gastadas = tenues + punteadas (se marcan igual).
+      // Se extienden ~30 velas desde su origen (no hasta el borde) para no ensuciar.
+      const ZONE_LEN = 30;
       zones.forEach((z) => {
-        const x0 = X(idxAt(z.at)) - 2, x1 = W - PR;
+        const i0 = idxAt(z.at);
+        const x0 = X(i0) - 2, x1 = Math.min(W - PR, X(Math.min(candles.length - 1, i0 + ZONE_LEN)) + 2);
         const yTop = Y(z.high), yBot = Y(z.low), bull = z.type === "bullish";
         const rgb = bull ? "38,166,154" : "239,83,80";
         ctx.fillStyle = `rgba(${rgb},${z.spent ? ".05" : ".15"})`;
