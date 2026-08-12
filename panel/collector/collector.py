@@ -90,9 +90,10 @@ def push_session_view(symbol: str):
     candles = [{"t": int(x["time"]), "o": float(x["open"]), "h": float(x["high"]),
                 "l": float(x["low"]), "c": float(x["close"])} for x in sess]
     zones = []
-    if _OB_OK and len(sess) > OB_PARAMS["consecutive_candles"] + 2:
+    if _OB_OK and len(candles) > OB_PARAMS["consecutive_candles"] + 2:
         try:
-            df = pd.DataFrame(sess)                       # columnas time,open,high,low,close,...
+            # armar el df desde las velas ya normalizadas (nombres correctos garantizados)
+            df = pd.DataFrame(candles).rename(columns={"t": "time", "o": "open", "h": "high", "l": "low", "c": "close"})
             for o in detect_order_blocks(df, OB_PARAMS):
                 later = df[df["time"] > o.confirmed_at]   # ¿precio cerró al otro lado? (zona gastada)
                 spent = bool((later["close"] < o.zone_low).any()) if o.ob_type == "bullish" \

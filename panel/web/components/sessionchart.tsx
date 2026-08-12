@@ -5,7 +5,7 @@ type Candle = { t: number; o: number; h: number; l: number; c: number };
 type Zone = { type: "bullish" | "bearish"; high: number; low: number; at: number; spent?: boolean };
 type Trade = {
   entry_price: number; exit_price: number; entry_time: string; exit_time: string;
-  direction: string; pnl_usd: number;
+  direction: string; pnl_usd: number; sl?: number | null; tp?: number | null;
 };
 
 export function SessionChart({ candles, zones, trades = [], dec = 1, height = 320 }: {
@@ -23,7 +23,7 @@ export function SessionChart({ candles, zones, trades = [], dec = 1, height = 32
       const W = cv.clientWidth, H = height;
       cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + "px"; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const PL = 6, PR = 62, PT = 10, PB = 10;
-      const tv = trades.flatMap((t) => [t.entry_price, t.exit_price]);
+      const tv = trades.flatMap((t) => [t.entry_price, t.exit_price, t.sl, t.tp].filter((v) => v != null) as number[]);
       let lo = Math.min(...candles.map((c) => c.l), ...zones.map((z) => z.low), ...tv);
       let hi = Math.max(...candles.map((c) => c.h), ...zones.map((z) => z.high), ...tv);
       const pad = (hi - lo) * 0.04 || 1; lo -= pad; hi += pad;
@@ -64,11 +64,18 @@ export function SessionChart({ candles, zones, trades = [], dec = 1, height = 32
         const yo = Y(c.o), yc = Y(c.c); ctx.fillRect(x - cw / 2, Math.min(yo, yc), cw, Math.max(1, Math.abs(yc - yo)));
       });
 
-      // operaciones de la sesión (entrada ▲/▼ + salida ✕)
+      // operaciones de la sesión (SL/TP + entrada ▲/▼ + salida ✕)
       trades.forEach((t) => {
         const xi = X(idxAt(Date.parse(t.entry_time) / 1000));
         const xe = X(idxAt(Date.parse(t.exit_time) / 1000));
         const ey = Y(t.entry_price);
+        // SL (rojo) y TP (verde) punteados, del ancho de la operación
+        const seg = (p: number | null | undefined, col: string) => {
+          if (p == null) return;
+          ctx.strokeStyle = col; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(Math.min(xi, xe) - 4, Y(p)); ctx.lineTo(Math.max(xi, xe) + 4, Y(p)); ctx.stroke(); ctx.setLineDash([]);
+        };
+        seg(t.tp, "rgba(38,166,154,.9)"); seg(t.sl, "rgba(239,83,80,.9)");
         ctx.fillStyle = t.direction === "short" ? "#ef5350" : "#26a69a";
         ctx.beginPath();
         if (t.direction === "short") { ctx.moveTo(xi, ey - 7); ctx.lineTo(xi - 4, ey - 14); ctx.lineTo(xi + 4, ey - 14); }
