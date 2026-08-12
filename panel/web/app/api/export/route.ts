@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { chDateTime } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 // Exporta el histórico de trades a CSV (se abre en Excel). ?bot=<id> filtra por cuenta; sin él, todo.
 export async function GET(req: Request) {

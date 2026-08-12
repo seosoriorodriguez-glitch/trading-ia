@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 
+export const runtime = "edge";
 export const metadata: Metadata = {
   title: "Panel de Trading",
   description: "Monitoreo de salud de los bots",

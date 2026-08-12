@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/sidebar";
 import { AutoRefresh } from "@/components/autorefresh";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const { totals, alerts, lastCollected } = await getDashboard();

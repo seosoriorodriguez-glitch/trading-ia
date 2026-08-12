@@ -3,6 +3,7 @@ import { BotCard, AggKPI } from "@/components/cards";
 import { PeriodSelector } from "@/components/selectors";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
 
 export default async function Ftmo({ searchParams }: { searchParams: { period?: string } }) {

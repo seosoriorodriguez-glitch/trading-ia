@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { chDateTime } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
 
 export default async function BotDetail({ params }: { params: { id: string } }) {
