@@ -65,7 +65,7 @@ export function SessionChart({ candles, zones, trades = [], dec = 1, height = 32
 
       // zonas OB — activas = sólidas; gastadas = tenues + punteadas (se marcan igual).
       // Se extienden ~30 velas desde su origen (no hasta el borde) para no ensuciar.
-      const ZONE_LEN = 30;
+      const ZONE_LEN = 60;
       zones.forEach((z) => {
         const i0 = idxAt(z.at);
         const x0 = X(i0) - 2, x1 = Math.min(W - PR, X(Math.min(candles.length - 1, i0 + ZONE_LEN)) + 2);
