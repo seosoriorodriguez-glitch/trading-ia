@@ -37,8 +37,7 @@ export default async function Vivo() {
           }
           const bull = zones.filter((z) => z.type === "bullish").length;
           const bear = zones.filter((z) => z.type === "bearish").length;
-          // "en vivo" si el colector actualizó hace poco (durante sesión); si no, quedó congelada
-          const live = v ? Date.now() - Date.parse(v.updatedAt) < 3 * 60 * 1000 : false;
+          const live = v?.live ?? false;   // el colector marca en vivo vs congelada
           return (
             <div key={a.symbol} className="bg-panel border border-border rounded-2xl p-5">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">

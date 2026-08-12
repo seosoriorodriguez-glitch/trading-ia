@@ -33,6 +33,7 @@ LIVE_VIEW = {
 }
 OB_PARAMS = {"consecutive_candles": 4, "min_impulse_pct": 0.0, "zone_type": "half_candle", "max_atr_mult": 3.5}
 SESSION_DONE = set()        # símbolos ya empujados en el ciclo actual (evita duplicar el pull)
+_LAST_SESSION = {}          # symbol -> date de la última sesión ya congelada (evita rehacerla fuera de horario)
 try:
     import sys
     import pandas as pd
@@ -62,14 +63,22 @@ def push_session_view(symbol: str):
     if not tick:
         return
     server_now = datetime.fromtimestamp(tick.time, tz=timezone.utc).replace(tzinfo=None)  # hora servidor (naive)
-    if not (start_h <= server_now.hour < end_h):
-        # Fuera de sesión: NO tocar la fila → la última sesión de London queda CONGELADA
-        # y visible todo el día (para analizarla). Se reemplaza sola al abrir la próxima London.
-        return
-    base = {"symbol": symbol, "session": "london",
-            "updated_at": datetime.now(timezone.utc).isoformat()}
-    sess_start = server_now.replace(hour=start_h, minute=0, second=0, microsecond=0)
-    rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_M5, sess_start, server_now + timedelta(minutes=5))
+    if start_h <= server_now.hour < end_h:
+        # EN VIVO: sesión de hoy, desde el inicio hasta ahora
+        sess_start = server_now.replace(hour=start_h, minute=0, second=0, microsecond=0)
+        sess_end = server_now + timedelta(minutes=5)
+        live = True
+    else:
+        # FUERA DE SESIÓN: mostrar la ÚLTIMA sesión completada (congelada). Solo una vez por proceso.
+        day = server_now.date()
+        if server_now.hour < start_h:
+            day = day - timedelta(days=1)          # antes de abrir → la de ayer
+        if _LAST_SESSION.get(symbol) == day:
+            return                                  # ya la tengo congelada este proceso
+        sess_start = datetime(day.year, day.month, day.day, start_h)
+        sess_end = datetime(day.year, day.month, day.day, end_h)
+        live = False
+    rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_M5, sess_start, sess_end)
     if rates is None or len(rates) == 0:
         return
     candles = [{"t": int(x["time"]), "o": float(x["open"]), "h": float(x["high"]),
@@ -89,8 +98,14 @@ def push_session_view(symbol: str):
             zones = zones[-12:]                            # limitar para no saturar el gráfico
         except Exception as e:
             print(f"[session_view {symbol}] zonas fallo ({e})", flush=True)
-    SB.table("session_view").upsert({**base, "candles": candles, "zones": zones}, on_conflict="symbol").execute()
-    print(f"[session_view {symbol}] {len(candles)} velas · {len(zones)} zonas", flush=True)
+    SB.table("session_view").upsert({
+        "symbol": symbol, "session": "london", "live": live,
+        "candles": candles, "zones": zones,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }, on_conflict="symbol").execute()
+    if not live:
+        _LAST_SESSION[symbol] = day
+    print(f"[session_view {symbol}] {'EN VIVO' if live else 'congelada'} · {len(candles)} velas · {len(zones)} zonas", flush=True)
 
 
 def upsert_bots():

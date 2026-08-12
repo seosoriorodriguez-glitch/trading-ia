@@ -229,14 +229,14 @@ export async function getTradeCandles(tickets: number[]): Promise<Record<number,
 }
 
 export type SessionZone = { type: "bullish" | "bearish"; high: number; low: number; at: number };
-export type SessionView = { symbol: string; session: string; candles: Candle[]; zones: SessionZone[]; updatedAt: string };
+export type SessionView = { symbol: string; session: string; live: boolean; candles: Candle[]; zones: SessionZone[]; updatedAt: string };
 export async function getSessionViews(symbols: string[]): Promise<Record<string, SessionView>> {
   if (!symbols.length || !process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return {};
   try {
     const { data } = await sb().from("session_view").select("*").in("symbol", symbols);
     const out: Record<string, SessionView> = {};
     for (const r of (data ?? []) as any[])
-      out[r.symbol] = { symbol: r.symbol, session: r.session, candles: r.candles ?? [], zones: r.zones ?? [], updatedAt: r.updated_at };
+      out[r.symbol] = { symbol: r.symbol, session: r.session, live: !!r.live, candles: r.candles ?? [], zones: r.zones ?? [], updatedAt: r.updated_at };
     return out;
   } catch {
     return {};

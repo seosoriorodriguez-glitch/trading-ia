@@ -71,6 +71,7 @@ create index if not exists idx_bops_bot on balance_ops(bot_id, ts desc);
 create table if not exists session_view (
   symbol     text primary key,          -- 'US30.cash', 'GER40.cash'
   session    text,                      -- 'london'
+  live       boolean not null default false,       -- true = llenándose en vivo; false = sesión congelada
   candles    jsonb not null default '[]'::jsonb,   -- [{t,o,h,l,c}]
   zones      jsonb not null default '[]'::jsonb,   -- [{type,high,low,at}]
   updated_at timestamptz not null default now()
