@@ -19,15 +19,21 @@ El colector corre en el VPS (`panel/collector/`), cada **60 segundos**.
 ## 1. Cuando RETIRES ganancias (payout)
 
 **Automático** — MT5 graba el retiro como operación de balance dentro de la cuenta; el colector la captura a `balance_ops`.
-- Se registra **lo que sale de la cuenta** = lo que retiras para ti (el colchón que dejes queda dentro del balance). El panel:
-  - **Retorno / PnL generado** = `balance actual + retirado − inicial`. Mide lo que generó la cuenta (retirado + colchón). Robusto sin importar cuántos trades capturó el colector.
-  - Tarjeta **"Retirado"** = suma de lo retirado (sin split; es tu monto).
+- Se registra el retiro **en BRUTO** (el monto que sale de la cuenta). **Sin repartición 80/20** — no se descuenta nada; el bruto es lo que mide la estrategia.
+- **Retorno / PnL generado** = `balance actual + retirado (bruto) − inicial`. Mide lo que generó la cuenta = **lo retirado + el colchón** que quede en el balance. Robusto sin importar cuántos trades capturó el colector.
+- Tarjeta **"Retirado (bruto)"** = suma de lo retirado, plano.
 - Las **métricas de trading** (WR, PF, R, expectancy) **NO cambian** — reflejan lo operativo.
 
-> Semilla del 10k previo (cuenta ya inaccesible), sembrada a mano = **$314.03** (lo retirado; el colchón vive en el balance):
+> Semilla del 10k previo (cuenta ya cerrada), sembrada a mano = **$392** (bruto retirado):
 > ```sql
-> update balance_ops set amount = -314.03 where bot_id = 'us30_live_10k' and amount < 0;
+> update balance_ops set amount = -392.00 where bot_id = 'us30_live_10k' and amount < 0;
 > ```
+
+### El colchón al ROTAR cuentas en el mismo terminal
+Cuando cierras una cuenta con profit y logueas la siguiente en el **mismo terminal** (misma lineage, mismo tamaño), el colchón que dejas debe quedar **bien medido**:
+- El colector snapshotea el **balance real** de la cuenta actualmente logueada → el colchón = `balance − initial_balance` se ve solo.
+- El retiro bruto de la cuenta anterior sigue sumado por `bot_id` (sobrevive la rotación).
+- ⚠️ Esto asume **mismo tamaño** de cuenta. Si el nuevo tamaño cambia (ej. 10k→25k), hay que resetear `initial_balance` (ver §2, cambio de fase = manual), o el colchón/retorno saldrán mal.
 
 ---
 

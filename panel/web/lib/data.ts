@@ -18,7 +18,6 @@ export type BotHealth = Bot & {
   n: number; wins: number; losses: number; wr: number; pf: number;
   sumR: number; retPct: number; pnlUsd: number; balance: number;
   realBalance: number | null; netFlows: number; withdrawn: number; deposited: number;
-  payoutNet: number; ftmoCut: number;
   realPnl: number; realRetPct: number;
   ddPct: number; maxDdPct: number; ddLimitPct: number;
   maxLossFromInitialPct: number; todayPnlUsd: number; todayPnlPct: number;
@@ -147,7 +146,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
 
   return {
     ...bot, category, n, wins, losses, wr, pf: pf(rs), sumR, retPct, pnlUsd, balance,
-    realBalance: null, netFlows: 0, withdrawn: 0, deposited: 0, payoutNet: 0, ftmoCut: 0, realPnl: pnlUsd, realRetPct: retPct,
+    realBalance: null, netFlows: 0, withdrawn: 0, deposited: 0, realPnl: pnlUsd, realRetPct: retPct,
     ddPct: Math.max(0, curDd), maxDdPct: maxDd, ddLimitPct: 10,
     maxLossFromInitialPct, todayPnlUsd, todayPnlPct,
     breakevenWr, rollingWr, aboveMa, health,
@@ -261,10 +260,8 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
       b.realBalance = rb ?? null;
       b.netFlows = rb != null ? rb - (b.initial_balance + b.pnlUsd) : 0;
       const w = wByBot.get(b.id);
-      b.withdrawn = w?.w ?? 0; // lo que salió de la cuenta = lo que retiraste para ti (mide la estrategia junto al colchón)
+      b.withdrawn = w?.w ?? 0; // BRUTO retirado de la cuenta (sin repartición); entra al retorno junto al colchón
       b.deposited = w?.d ?? 0;
-      b.payoutNet = b.withdrawn; // el usuario retira su monto completo; el colchón queda dentro del balance
-      b.ftmoCut = 0;
       // retorno REAL = lo que generó la cuenta (balance actual + retirado − inicial), robusto sin importar cuántos trades capturó el colector
       const rb2 = b.realBalance ?? b.balance;
       b.realPnl = rb2 + b.withdrawn - b.initial_balance;

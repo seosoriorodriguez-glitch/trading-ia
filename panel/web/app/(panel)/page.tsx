@@ -45,7 +45,7 @@ export default async function Overview({ searchParams }: { searchParams: { perio
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-5">
         <AggKPI label="Capital desplegado" value={money(totals.capital)} />
         <AggKPI label="PnL total (trading)" value={`${totals.pnlUsd >= 0 ? "+" : "-"}${money(Math.abs(totals.pnlUsd))}`} sub={`${avgRet >= 0 ? "+" : ""}${avgRet.toFixed(1)}% medio por cuenta`} tone={totals.pnlUsd >= 0 ? "win" : "loss"} />
-        <AggKPI label="Retirado" value={money(totalWithdrawn)} sub={totalWithdrawn > 0 ? "ganancias cobradas" : "aún nada"} tone={totalWithdrawn > 0 ? "win" : undefined} />
+        <AggKPI label="Retirado (bruto)" value={money(totalWithdrawn)} sub={totalWithdrawn > 0 ? "ganancias retiradas" : "aún nada"} tone={totalWithdrawn > 0 ? "win" : undefined} />
         <AggKPI label="WR combinado" value={`${totals.wr.toFixed(0)}%`} sub={`${totals.nTrades} ops · ${totals.wins}G/${totals.losses}P`} />
         <AggKPI label="Estado" value={`${totals.healthy}/${totals.nBots}`} sub={totals.bad ? `${totals.bad} en alerta` : totals.warn ? `${totals.warn} en atención` : "todos sanos"} tone={totals.bad ? "loss" : totals.warn ? undefined : "win"} />
       </div>

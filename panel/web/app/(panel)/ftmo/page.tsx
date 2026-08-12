@@ -24,7 +24,7 @@ export default async function Ftmo({ searchParams }: { searchParams: { period?: 
         <AggKPI label="Cuentas" value={`${ftmo.length}`} />
         <AggKPI label="Capital" value={money(capital)} />
         <AggKPI label="PnL generado" value={`${pnl >= 0 ? "+" : "-"}${money(Math.abs(pnl))}`} sub={`${capital ? ((pnl / capital) * 100).toFixed(1) : 0}%`} tone={pnl >= 0 ? "win" : "loss"} />
-        <AggKPI label="Retirado total" value={money(withdrawn)} sub={withdrawn > 0 ? "ganancias cobradas" : "aún nada"} tone={withdrawn > 0 ? "win" : undefined} />
+        <AggKPI label="Retirado (bruto)" value={money(withdrawn)} sub={withdrawn > 0 ? "ganancias retiradas" : "aún nada"} tone={withdrawn > 0 ? "win" : undefined} />
         <AggKPI label="En alerta" value={`${ftmo.filter((b) => b.health !== "good").length}`} tone={ftmo.some((b) => b.health !== "good") ? "loss" : "win"} />
       </div>
       {ftmo.length === 0 ? (
