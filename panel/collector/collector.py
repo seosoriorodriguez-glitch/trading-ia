@@ -85,9 +85,12 @@ def push_session_view(symbol: str):
         live = False
     # ventana AMPLIADA ±VIEW_MARGIN_H: contexto antes (zonas previas) y después (qué pasó)
     dstart, dend = start_h - VIEW_MARGIN_H, end_h + VIEW_MARGIN_H
+    # NO congelar al cerrar la sesión: el margen posterior aún no ha ocurrido. Seguir
+    # refrescando (ya con live=False) hasta que pasen las VIEW_MARGIN_H horas de cola.
+    tail_done = not (now.date() == target and now.hour < dend)
     sess = [x for x in bars if swc(x["time"]).date() == target and dstart <= swc(x["time"]).hour < dend]
     if not sess:
-        if not live:
+        if not live and tail_done:
             _LAST_SESSION[symbol] = target
         return
     candles = [{"t": int(x["time"]), "o": float(x["open"]), "h": float(x["high"]),
@@ -111,9 +114,10 @@ def push_session_view(symbol: str):
         "candles": candles, "zones": zones,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }, on_conflict="symbol").execute()
-    if not live:
+    if not live and tail_done:
         _LAST_SESSION[symbol] = target
-    print(f"[session_view {symbol}] {'EN VIVO' if live else 'congelada'} · {len(candles)} velas · {len(zones)} zonas", flush=True)
+    state = "EN VIVO" if live else ("congelada" if tail_done else "cerrada (+cola)")
+    print(f"[session_view {symbol}] {state} · {len(candles)} velas · {len(zones)} zonas", flush=True)
 
 
 def upsert_bots():
