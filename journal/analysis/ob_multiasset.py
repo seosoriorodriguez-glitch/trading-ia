@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 """
+⚠️⚠️ NO FIEL AL LIVE — NO USAR PARA VALIDAR LA ESTRATEGIA RENTABLE ⚠️⚠️
+Este motor entra a MERCADO al cierre de la vela (entry_price = candle_close en signals.py),
+NO con orden STOP en el borde como hacen los bots en vivo. Sirve solo para exploración rápida.
+Para validar/decidir usar SIEMPRE `bt_stop_entry.py` (entrada STOP fiel). Ver ../../CLAUDE.md y ./BACKTEST_FIEL.md.
+
 Valida la OB (motor REAL dual M5+M1) en OTROS activos.
 Params de escala (buffer/min/max_risk/spread) se RE-ESCALAN por instrumento
 segun su rango M5 mediano (el motor es R-normalizado; la escala de puntos no).

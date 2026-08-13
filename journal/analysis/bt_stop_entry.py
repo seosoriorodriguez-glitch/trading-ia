@@ -9,6 +9,7 @@ Replica lo que hacen los bots en vivo:
     (M5 cierra al otro lado) o expire. Si no, se cancela (no hay trade).
   - Luego SL/TP (SL primero).
 Compara vs el backtest de mercado (ob_multiasset). Uso: python bt_stop_entry.py <asset> [ses] [rr] [spread] [maxsim]
+FIEL AL LIVE (OB London): RR=2.5, maxsim=2 (defaults). NO cambiarlos al validar. Ver ../../CLAUDE.md y ./BACKTEST_FIEL.md.
 """
 import sys, copy
 from pathlib import Path
@@ -21,6 +22,10 @@ from strategies.order_block.backtest.data_loader import load_csv
 from strategies.order_block.backtest.ob_detection import detect_order_blocks
 
 ASSETS = {
+    "US30_2022": ("data/US30_dukas2022_M5.csv", "data/US30_dukas2022_M1.csv", 2.0),  # Dukascopy, hora broker EET (US-DST)
+    "US30_2023": ("data/US30_dukas2023_M5.csv", "data/US30_dukas2023_M1.csv", 2.0),
+    "US30_2024": ("data/US30_dukas2024_M5.csv", "data/US30_dukas2024_M1.csv", 2.0),
+    "US30_2025": ("data/US30_dukas2025_M5.csv", "data/US30_dukas2025_M1.csv", 2.0),
     "US30": ("data/US30_icm_M5_518d.csv", "data/US30_icm_M1_500k.csv", 3.0),
     "US30_F": ("data/US30_icm_M5_fresh.csv", "data/US30_icm_M1_fresh.csv", 2.0),
     "XAUUSD_F": ("data/XAUUSD_icm_M5_fresh.csv", "data/XAUUSD_icm_M1_fresh.csv", 0.40),
@@ -36,7 +41,7 @@ ses = sys.argv[2] if len(sys.argv) > 2 else "both"
 RR = float(sys.argv[3]) if len(sys.argv) > 3 else 2.5
 m5f, m1f, spread = ASSETS[asset]
 if len(sys.argv) > 4: spread = float(sys.argv[4])
-MAXSIM = int(sys.argv[5]) if len(sys.argv) > 5 else 1
+MAXSIM = int(sys.argv[5]) if len(sys.argv) > 5 else 2   # FIEL AL LIVE: OB London usa max_simultaneous_trades=2 (NO 1)
 SKIP = 15  # skip_minutes
 
 df5 = load_csv(m5f); df1 = load_csv(m1f)
