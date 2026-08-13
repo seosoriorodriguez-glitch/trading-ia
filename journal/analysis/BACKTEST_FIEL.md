@@ -57,16 +57,21 @@ Verificado alineando por precio contra la data `_icm_` real (verano +3h error 1.
 - Solo se necesita **M1**; el M5 se deriva resampleando (`resample('5min')`, open=first/high=max/low=min/close=last, dropna).
 - Convertir a hora broker (arriba) antes de guardar como `data/US30_dukasAAAA_M1.csv` y `_M5.csv`.
 
-## Resultados medidos (fieles, maxsim=2, RR 2.5, riesgo 0.5%) — referencia
-| Año | Trades | WR | PF | Retorno | Max DD |
-|---|---|---|---|---|---|
-| 2022 | 778 | 33.3% | 1.17 | +46.2% | 13.7% |
-| 2023 | 734 | 32.3% | 1.06 | +17.1% | 29.1% |
-| 2024 | 748 | 34.5% | 1.17 | +45.7% | 12.6% |
-| 2025 | 753 | 34.5% | 1.21 | +56.1% | 11.5% |
+## Resultados medidos (fieles, maxsim=2, RR 2.5, riesgo 0.5%, data Dukascopy) — referencia
+| Año | Régimen | Trades | WR | PF | Retorno | Max DD |
+|---|---|---|---|---|---|---|
+| 2020 | crash COVID + recup. | 719 | 34.2% | 1.22 | +54.3% | 13.8% |
+| 2021 | bull | 715 | 32.9% | 1.11 | +28.5% | 11.8% |
+| 2022 | bear (−9%) | 778 | 33.3% | 1.17 | +46.2% | 13.7% |
+| 2023 | choppy/plano | 734 | 32.3% | 1.06 | +17.1% | 29.1% |
+| 2024 | recuperación | 748 | 34.5% | 1.17 | +45.7% | 12.6% |
+| 2025 | bull | 753 | 34.5% | 1.21 | +56.1% | 11.5% |
 
-**Los 4 años positivos y robustos. Promedio ~+41%/año a 0.5%.** El DD es la restricción (hasta 29% en 2023):
-para FTMO hay que bajar el riesgo (~0.2%); en Darwinex (sin DD duro) se puede correr a riesgo moderado y componer.
+**6 de 6 años positivos y robustos, en TODOS los regímenes (crash, bull, bear, choppy). Promedio ~+41%/año a 0.5%.**
+WR consistente 33-35%, PF 1.06-1.22 (edge fino pero persistente). El **DD es la restricción** (11.5-29.1%; 2023 el peor):
+- FTMO (límite 10%): bajar riesgo a ~0.2% (peor DD ~12%).
+- Darwinex (sin DD duro): riesgo moderado + componer. A 0.2% → ~+16.5%/año promedio, ~2.5× en 6 años, DD máx ~12%.
+- El live rinde algo menos (slippage, feed FTMO≠Dukascopy). El futuro puede traer un régimen peor que 2023 → por eso riesgo bajo.
 
 ## Checklist antes de confiar en CUALQUIER número
 - [ ] ¿Entrada **STOP en el borde** (no a mercado/cierre)?

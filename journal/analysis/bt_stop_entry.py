@@ -22,7 +22,9 @@ from strategies.order_block.backtest.data_loader import load_csv
 from strategies.order_block.backtest.ob_detection import detect_order_blocks
 
 ASSETS = {
-    "US30_2022": ("data/US30_dukas2022_M5.csv", "data/US30_dukas2022_M1.csv", 2.0),  # Dukascopy, hora broker EET (US-DST)
+    "US30_2020": ("data/US30_dukas2020_M5.csv", "data/US30_dukas2020_M1.csv", 2.0),  # Dukascopy, hora broker EET (US-DST)
+    "US30_2021": ("data/US30_dukas2021_M5.csv", "data/US30_dukas2021_M1.csv", 2.0),
+    "US30_2022": ("data/US30_dukas2022_M5.csv", "data/US30_dukas2022_M1.csv", 2.0),
     "US30_2023": ("data/US30_dukas2023_M5.csv", "data/US30_dukas2023_M1.csv", 2.0),
     "US30_2024": ("data/US30_dukas2024_M5.csv", "data/US30_dukas2024_M1.csv", 2.0),
     "US30_2025": ("data/US30_dukas2025_M5.csv", "data/US30_dukas2025_M1.csv", 2.0),
