@@ -83,10 +83,10 @@ export default async function Overview({ searchParams }: { searchParams: { perio
                       </span>
                     )}
                   </div>
-                  <div className={`font-mono text-xl font-semibold ${pos ? "text-win" : "text-loss"}`}>{pos ? "+" : "-"}{money(Math.abs(b.dayPnlBal))}</div>
-                  <div className="text-[11px] font-mono text-dim">
+                  <div className={`font-mono text-lg sm:text-xl font-semibold tabular-nums truncate ${pos ? "text-win" : "text-loss"}`}>{pos ? "+" : "-"}{money(Math.abs(b.dayPnlBal))}</div>
+                  <div className="text-[11px] font-mono text-dim truncate">
                     <span className={pos ? "text-win" : "text-loss"}>{pos ? "+" : ""}{b.dayPnlBalPct.toFixed(2)}%</span> · saldo {money(b.realBalance ?? b.balance)}
-                    {Math.abs(b.floating) >= 0.01 && <span className="text-dim"> · c/flotante {money((b.realBalance ?? b.balance) + b.floating)}</span>}
+                    {Math.abs(b.floating) >= 0.01 && <span className="text-dim"> · c/flot. {money((b.realBalance ?? b.balance) + b.floating)}</span>}
                   </div>
                 </a>
               );
@@ -108,30 +108,30 @@ export default async function Overview({ searchParams }: { searchParams: { perio
               {ranked.map((b) => {
                 const pos = b.realRetPct >= 0;
                 return (
-                  <a key={b.id} href={`/bot/${b.id}`} className="group flex items-center gap-3 font-mono hover:opacity-90">
-                    <div className="w-40 shrink-0 truncate text-sm font-sans group-hover:text-accent transition">
-                      {b.name}<span className="text-dim text-[11px]"> · {money(b.initial_balance)}</span>
+                  <a key={b.id} href={`/bot/${b.id}`} className="group flex items-center gap-2 sm:gap-3 font-mono hover:opacity-90">
+                    <div className="w-24 sm:w-40 shrink-0 truncate text-xs sm:text-sm font-sans group-hover:text-accent transition">
+                      {b.name}<span className="hidden sm:inline text-dim text-[11px]"> · {money(b.initial_balance)}</span>
                     </div>
                     {/* barra divergente desde el centro */}
-                    <div className="relative flex-1 h-5">
+                    <div className="relative flex-1 h-5 min-w-0">
                       <div className="absolute inset-y-0 left-1/2 w-px bg-border" />
                       <div
                         className={`absolute inset-y-1 rounded ${pos ? "bg-win/70" : "bg-loss/70"}`}
                         style={{ left: pos ? "50%" : `${50 - (Math.abs(b.realRetPct) / maxAbs) * 50}%`, width: `${(Math.abs(b.realRetPct) / maxAbs) * 50}%` }}
                       />
                     </div>
-                    <div className={`w-16 shrink-0 text-right font-semibold ${pos ? "text-win" : "text-loss"}`}>{pos ? "+" : ""}{b.realRetPct.toFixed(1)}%</div>
-                    <div className="w-20 shrink-0 text-right text-[11px] text-dim">{b.realPnl >= 0 ? "+" : "-"}{money(Math.abs(b.realPnl))}</div>
+                    <div className={`w-14 sm:w-16 shrink-0 text-right text-xs sm:text-sm font-semibold ${pos ? "text-win" : "text-loss"}`}>{pos ? "+" : ""}{b.realRetPct.toFixed(1)}%</div>
+                    <div className="hidden sm:block w-20 shrink-0 text-right text-[11px] text-dim">{b.realPnl >= 0 ? "+" : "-"}{money(Math.abs(b.realPnl))}</div>
                   </a>
                 );
               })}
             </div>
             {/* total combinado de todas las cuentas */}
-            <div className="mt-4 pt-3 border-t border-border flex items-center gap-3 font-mono">
-              <div className="w-40 shrink-0 text-sm font-sans font-semibold">Total · {ranked.length} cuentas</div>
-              <div className="flex-1 text-[11px] text-dim font-sans">suma de retornos (cada cuenta sobre su tamaño) · media {avgRet2 >= 0 ? "+" : ""}{avgRet2.toFixed(1)}%</div>
-              <div className={`w-16 shrink-0 text-right text-lg font-bold ${sumRet >= 0 ? "text-win" : "text-loss"}`}>{sumRet >= 0 ? "+" : ""}{sumRet.toFixed(1)}%</div>
-              <div className={`w-20 shrink-0 text-right text-[11px] ${totalPnl >= 0 ? "text-win" : "text-loss"}`}>{totalPnl >= 0 ? "+" : "-"}{money(Math.abs(totalPnl))}</div>
+            <div className="mt-4 pt-3 border-t border-border flex items-center gap-2 sm:gap-3 font-mono">
+              <div className="w-24 sm:w-40 shrink-0 text-xs sm:text-sm font-sans font-semibold">Total · {ranked.length}<span className="hidden sm:inline"> cuentas</span></div>
+              <div className="flex-1 min-w-0 truncate text-[10px] sm:text-[11px] text-dim font-sans">suma de retornos · media {avgRet2 >= 0 ? "+" : ""}{avgRet2.toFixed(1)}%</div>
+              <div className={`w-14 sm:w-16 shrink-0 text-right text-base sm:text-lg font-bold ${sumRet >= 0 ? "text-win" : "text-loss"}`}>{sumRet >= 0 ? "+" : ""}{sumRet.toFixed(1)}%</div>
+              <div className={`hidden sm:block w-20 shrink-0 text-right text-[11px] ${totalPnl >= 0 ? "text-win" : "text-loss"}`}>{totalPnl >= 0 ? "+" : "-"}{money(Math.abs(totalPnl))}</div>
             </div>
           </div>
         );
@@ -169,10 +169,10 @@ export default async function Overview({ searchParams }: { searchParams: { perio
               <div><div className="font-semibold">{k}</div><div className="text-[11px] text-dim">{desc}</div></div>
               <span className="text-xs text-dim">{g.nBots} cuentas →</span>
             </div>
-            <div className="grid grid-cols-3 gap-3 font-mono">
-              <div><div className="text-[10px] uppercase text-dim">Capital</div><div className="text-lg">{money(g.capital)}</div></div>
-              <div><div className="text-[10px] uppercase text-dim">PnL</div><div className={`text-lg ${g.pnl >= 0 ? "text-win" : "text-loss"}`}>{g.pnl >= 0 ? "+" : ""}{money(g.pnl)}</div></div>
-              <div><div className="text-[10px] uppercase text-dim">WR</div><div className="text-lg">{g.wr.toFixed(0)}%</div></div>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 font-mono">
+              <div className="min-w-0"><div className="text-[10px] uppercase text-dim truncate">Capital</div><div className="text-base sm:text-lg tabular-nums truncate">{money(g.capital)}</div></div>
+              <div className="min-w-0"><div className="text-[10px] uppercase text-dim truncate">PnL</div><div className={`text-base sm:text-lg tabular-nums truncate ${g.pnl >= 0 ? "text-win" : "text-loss"}`}>{g.pnl >= 0 ? "+" : ""}{money(g.pnl)}</div></div>
+              <div className="min-w-0"><div className="text-[10px] uppercase text-dim truncate">WR</div><div className="text-base sm:text-lg tabular-nums truncate">{g.wr.toFixed(0)}%</div></div>
             </div>
           </a>
         ))}

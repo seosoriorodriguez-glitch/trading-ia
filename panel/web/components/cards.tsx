@@ -11,10 +11,10 @@ export const HEALTH = {
 export function KPI({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "win" | "loss" | "dim" }) {
   const color = tone === "win" ? "text-win" : tone === "loss" ? "text-loss" : "text-[#e6edf3]";
   return (
-    <div className="bg-panel2 rounded-lg px-3 py-2">
-      <div className="text-[10px] uppercase tracking-wider text-dim">{label}</div>
-      <div className={`font-mono text-lg font-semibold ${color}`}>{value}</div>
-      {sub && <div className="text-[10px] text-dim font-mono">{sub}</div>}
+    <div className="bg-panel2 rounded-lg px-3 py-2 min-w-0">
+      <div className="text-[10px] uppercase tracking-wider text-dim truncate">{label}</div>
+      <div className={`font-mono text-base sm:text-lg font-semibold tabular-nums truncate ${color}`}>{value}</div>
+      {sub && <div className="text-[10px] text-dim font-mono truncate">{sub}</div>}
     </div>
   );
 }
@@ -22,10 +22,10 @@ export function KPI({ label, value, sub, tone }: { label: string; value: string;
 export function AggKPI({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "win" | "loss" }) {
   const color = tone === "win" ? "text-win" : tone === "loss" ? "text-loss" : "text-[#e6edf3]";
   return (
-    <div className="bg-panel border border-border rounded-xl px-4 py-3">
-      <div className="text-[10px] uppercase tracking-wider text-dim">{label}</div>
-      <div className={`font-mono text-2xl font-semibold ${color}`}>{value}</div>
-      {sub && <div className="text-[11px] text-dim font-mono">{sub}</div>}
+    <div className="bg-panel border border-border rounded-xl px-3 py-3 sm:px-4 min-w-0">
+      <div className="text-[10px] uppercase tracking-wider text-dim truncate">{label}</div>
+      <div className={`font-mono text-lg sm:text-2xl font-semibold tabular-nums truncate ${color}`}>{value}</div>
+      {sub && <div className="text-[11px] text-dim font-mono truncate">{sub}</div>}
     </div>
   );
 }
