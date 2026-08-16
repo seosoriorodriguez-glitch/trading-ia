@@ -183,8 +183,18 @@ export type Dashboard = {
 function alertsFor(b: BotHealth): Alert[] {
   const out: Alert[] = [];
   const A = (level: Alert["level"], msg: string) => out.push({ botId: b.id, botName: b.name, level, msg });
-  if (b.ddPct >= b.ddLimitPct * 0.7)
-    A(b.ddPct >= b.ddLimitPct * 0.85 ? "bad" : "warn", `Drawdown ${b.ddPct.toFixed(1)}% — cerca del límite ${b.ddLimitPct}%`);
+  // Límite duro de la prop: FTMO lo mide desde el balance INICIAL (no puedes bajar
+  // del 90% del inicial), NO desde el pico. Medirlo desde el pico daba criticos
+  // falsos: una cuenta en +20% que retrocede a +10% marcaba "10% de drawdown".
+  const eqNow = (b.realBalance ?? b.balance) + b.floating;
+  const lossIni = b.initial_balance
+    ? Math.max(0, ((b.initial_balance - eqNow) / b.initial_balance) * 100) : 0;
+  if (lossIni >= b.ddLimitPct * 0.7)
+    A(lossIni >= b.ddLimitPct * 0.85 ? "bad" : "warn",
+      `Pérdida desde el inicial ${lossIni.toFixed(1)}% — límite ${b.ddLimitPct}% (incl. flotante)`);
+  // Devolución desde el pico: NO es el límite de la prop, es señal de deterioro.
+  if (b.ddPct >= 7)
+    A("warn", `Devolvió ${b.ddPct.toFixed(1)}% desde su pico — no es el límite de la prop, es deterioro`);
   if (b.n >= 10 && b.rollingWr < b.breakevenWr)
     A(b.rollingWr < b.breakevenWr - 4 ? "bad" : "warn", `WR reciente ${b.rollingWr.toFixed(0)}% bajo el breakeven ${b.breakevenWr.toFixed(0)}%`);
   if (b.n >= 20 && b.wr < b.breakevenWr)
@@ -193,12 +203,22 @@ function alertsFor(b: BotHealth): Alert[] {
     A("warn", "Equity bajo su media — posible cambio de régimen");
   if (b.retPct <= -5)
     A(b.retPct <= -8 ? "bad" : "warn", `Cuenta en pérdida ${b.retPct.toFixed(1)}% del balance`);
-  if (b.todayPnlPct <= -3)
-    A("warn", `Pérdida hoy ${b.todayPnlPct.toFixed(1)}% — límite diario 5%`);
+  // Día FTMO: se mide sobre el EQUITY (balance del día + flotante), no sobre los
+  // trades cerrados. El bot se apaga solo en -4% (ftmo_rules.yaml), FTMO corta en -5%.
+  const diaPct = b.dayPnlBalPct + (b.initial_balance ? (b.floating / b.initial_balance) * 100 : 0);
+  if (diaPct <= -3)
+    A(diaPct <= -3.5 ? "bad" : "warn",
+      `Pérdida hoy ${diaPct.toFixed(1)}% (incl. flotante) — el bot se detiene solo en -4%`);
   if (!b.streakWin && b.streak >= 6)
     A("warn", `Racha de ${b.streak} pérdidas seguidas`);
-  if (b.category === "ftmo" && b.retPct >= 8 && b.retPct < 10)
-    A("info", `Cerca del pase FTMO (+${b.retPct.toFixed(1)}% de +10%)`);
+  // El pase del +10% solo aplica al CHALLENGE. En la fondeada el target es 20% y
+  // el +10% no significa nada (ftmo_rules.yaml: profit_target_pct 0.20).
+  if (b.category === "ftmo" && b.kind === "challenge") {
+    if (b.retPct >= 10)
+      A("info", `Objetivo alcanzado +${b.retPct.toFixed(1)}% — PARAR MANUALMENTE (pase del challenge)`);
+    else if (b.retPct >= 8)
+      A("info", `Cerca del pase FTMO (+${b.retPct.toFixed(1)}% de +10%)`);
+  }
   return out;
 }
 

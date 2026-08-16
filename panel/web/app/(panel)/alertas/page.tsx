@@ -6,16 +6,17 @@ export const dynamic = "force-dynamic";
 const VOL_SYMBOLS = ["US30.cash"];   // solo US30: los umbrales se validaron ahí
 
 const REGLAS = [
-  { lvl: "bad", cond: "Drawdown ≥ 8.5% (crítico) / ≥ 7% (atención)", que: "Cerca del límite FTMO 10%" },
+  { lvl: "bad", cond: "Pérdida desde el inicial ≥ 8.5% / ≥ 7%", que: "Límite duro de la prop (FTMO 10%) — incluye flotante" },
+  { lvl: "warn", cond: "Devolución desde el pico ≥ 7%", que: "Deterioro, NO es el límite de la prop" },
   { lvl: "warn", cond: "WR reciente (últ. 30) < breakeven", que: "Las zonas dejan de respetarse" },
   { lvl: "warn", cond: "WR global < breakeven (≥20 ops)", que: "Cuenta no rentable en su historia" },
-  { lvl: "warn", cond: "Equity bajo su media móvil", que: "Posible cambio de régimen" },
+  { lvl: "warn", cond: "Equity bajo su media móvil (30)", que: "Posible cambio de régimen" },
   { lvl: "bad", cond: "Cuenta en pérdida ≥ -8% / ≥ -5%", que: "Sangrado fuerte de la cuenta" },
   { lvl: "bad", cond: "Portafolio en pérdida ≥ -5%", que: "Nivel global de todo el capital" },
-  { lvl: "warn", cond: "Pérdida del día ≥ -3%", que: "Cerca del límite diario 5%" },
+  { lvl: "bad", cond: "Pérdida del día ≥ -3.5% / ≥ -3%", que: "Equity + flotante · el bot se apaga solo en -4%" },
   { lvl: "warn", cond: "Racha de 6+ pérdidas seguidas", que: "Mala racha sostenida" },
   { lvl: "warn", cond: "Ratio de volatilidad ≥ 2.0 (rojo) / ≥ 1.6 (atención)", que: "El SL fijo se desalineó del mercado" },
-  { lvl: "info", cond: "Retorno ≥ +8% (FTMO)", que: "Cerca del pase 🟢" },
+  { lvl: "info", cond: "Retorno ≥ +10% / ≥ +8% (solo challenge)", que: "Pase alcanzado → parar manual · o cerca del pase 🟢" },
 ];
 const DOT = { bad: "bg-loss", warn: "bg-yellow-400", info: "bg-win" };
 const COL = { verde: "text-win", amarillo: "text-yellow-400", rojo: "text-loss" };
