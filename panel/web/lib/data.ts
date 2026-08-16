@@ -247,6 +247,28 @@ export async function getSessionViews(symbols: string[]): Promise<Record<string,
   }
 }
 
+// Régimen de volatilidad: mide si el buffer FIJO del SL sigue proporcionado al
+// mercado. Lo calcula el colector (necesita velas M5 de MT5); acá solo se lee.
+export type VolRegime = {
+  symbol: string; fecha: string; medianaM5: number; ratio: number;
+  bufferActual: number; bufferSug: number; estado: "verde" | "amarillo" | "rojo";
+  nSesiones: number; updatedAt: string;
+};
+export async function getVolRegime(symbols: string[]): Promise<VolRegime[]> {
+  if (!symbols.length || !process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return [];
+  try {
+    const { data } = await sb().from("vol_regime").select("*").in("symbol", symbols);
+    return ((data ?? []) as any[]).map((r) => ({
+      symbol: r.symbol, fecha: r.fecha, medianaM5: Number(r.mediana_m5),
+      ratio: Number(r.ratio), bufferActual: Number(r.buffer_actual),
+      bufferSug: Number(r.buffer_sug), estado: r.estado, nSesiones: r.n_sesiones,
+      updatedAt: r.updated_at,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
   const now0 = new Date().toISOString();
   const base = { bots: [], totals: EMPTY, alerts: [], portfolio: [], portfolioDaily: [], updatedAt: now0, lastCollected: now0 };

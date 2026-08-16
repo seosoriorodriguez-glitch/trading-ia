@@ -77,6 +77,21 @@ create table if not exists session_view (
   updated_at timestamptz not null default now()
 );
 
+-- Régimen de volatilidad: ¿sigue el buffer FIJO del SL proporcionado al mercado?
+-- ratio = buffer_actual / mediana del rango M5 de las últimas 20 sesiones de London.
+-- Solo diagnóstico: el bot NO lo lee ni ajusta nada. Ver la ayuda en /alertas.
+create table if not exists vol_regime (
+  symbol        text primary key,        -- 'US30.cash'
+  fecha         date,                    -- última sesión CERRADA incluida en la mediana
+  mediana_m5    numeric,                 -- mediana (high-low) en puntos
+  ratio         numeric,                 -- buffer_actual / mediana_m5
+  buffer_actual numeric,                 -- 35 (LONDON_PARAMS.buffer_points)
+  buffer_sug    numeric,                 -- 1.35 * mediana_m5
+  estado        text,                    -- 'verde' <1.6 | 'amarillo' <2.0 | 'rojo'
+  n_sesiones    int,                     -- 20
+  updated_at    timestamptz not null default now()
+);
+
 create index if not exists idx_trades_bot_time  on trades(bot_id, exit_time desc);
 create index if not exists idx_trades_exit_time  on trades(exit_time desc);
 create index if not exists idx_snap_account_ts   on account_snapshots(account, ts desc);
@@ -91,3 +106,4 @@ alter table bots              enable row level security;
 alter table trades            enable row level security;
 alter table account_snapshots enable row level security;
 alter table session_view      enable row level security;
+alter table vol_regime        enable row level security;

@@ -12,7 +12,7 @@ Env (.env o variables):
 Config de bots:  config.json  (ver config.example.json)
 Uso:  python collector.py
 """
-import os, json, time
+import os, json, time, statistics
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -44,6 +44,64 @@ try:
 except Exception as _e:      # pandas o la estrategia no disponibles → velas sin zonas
     _OB_OK = False
     print(f"[session_view] detección OB no disponible ({_e}); guardaré velas sin zonas", flush=True)
+
+
+# --- Régimen de volatilidad: ¿sigue el buffer fijo alineado con el mercado? ---
+# El SL del bot es un buffer FIJO en puntos. Si la volatilidad se comprime, ese mismo
+# buffer pasa a ser enorme en velas -> como el TP = riesgo * RR, el objetivo se aleja
+# y el WR cae. Esto lo MIDE (no lo corrige): ratio = buffer_fijo / mediana rango M5.
+# Validado sobre 2020-2025: con ratio > 2.0 un buffer adaptativo habria rendido
+# +15 a +35 pp/año; por debajo de 1.6 la diferencia es ruido.
+VOL_REGIME = {"US30.cash": 35.0}   # symbol -> buffer_points del live (LONDON_PARAMS)
+VOL_K       = 1.35                 # buffer sugerido = VOL_K * mediana (calibrado a 35 hoy)
+VOL_WIN     = 20                   # sesiones de la mediana movil
+VOL_SESSION = (10 * 60, 17 * 60)   # London en minutos, hora servidor (igual que el bot)
+VOL_DONE    = set()                # simbolos ya empujados en el ciclo actual
+
+
+def push_vol_regime(symbol: str):
+    """Mide si el buffer fijo del bot sigue proporcionado a la volatilidad actual.
+    Mediana movil de los rangos M5 de las ultimas VOL_WIN sesiones de London, usando
+    SOLO sesiones ya cerradas. 100% lectura: no toca ordenes ni parametros."""
+    buf_live = VOL_REGIME.get(symbol)
+    if not buf_live:
+        return
+    bars = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, 10000)
+    if bars is None or len(bars) < 2000:
+        return
+    swc = lambda t: datetime.fromtimestamp(int(t), tz=timezone.utc).replace(tzinfo=None)
+    m0, m1 = VOL_SESSION
+    por_dia = {}
+    for x in bars:
+        d = swc(x["time"])
+        if d.weekday() >= 5:
+            continue
+        if not (m0 <= d.hour * 60 + d.minute < m1):
+            continue
+        r = float(x["high"]) - float(x["low"])
+        if r > 0:
+            por_dia.setdefault(d.date(), []).append(r)
+    if not por_dia:
+        return
+    hoy = swc(bars[-1]["time"]).date()
+    fechas = sorted(f for f in por_dia if f < hoy)      # la sesion en curso NO cuenta
+    if len(fechas) < VOL_WIN:
+        return
+    pool = [r for f in fechas[-VOL_WIN:] for r in por_dia[f]]
+    if len(pool) < 200:
+        return
+    med   = float(statistics.median(pool))
+    ratio = buf_live / med
+    estado = "verde" if ratio < 1.6 else ("amarillo" if ratio < 2.0 else "rojo")
+    SB.table("vol_regime").upsert({
+        "symbol": symbol, "fecha": fechas[-1].isoformat(),
+        "mediana_m5": round(med, 2), "ratio": round(ratio, 3),
+        "buffer_actual": buf_live, "buffer_sug": round(VOL_K * med, 1),
+        "estado": estado, "n_sesiones": VOL_WIN,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }, on_conflict="symbol").execute()
+    print(f"[vol_regime {symbol}] ratio {ratio:.2f} ({estado}) · mediana M5 {med:.1f} "
+          f"· buffer {buf_live:.0f} vs sugerido {VOL_K*med:.1f}", flush=True)
 
 
 def session_of(hour_server: int) -> str:
@@ -248,6 +306,14 @@ def collect_bot(b: dict):
                 SESSION_DONE.add(b["symbol"])
             except Exception as e:
                 print(f"[{b['id']}] session_view error: {e}", flush=True)
+
+        # régimen de volatilidad (una vez por símbolo por ciclo, aditivo y aislado)
+        if b["symbol"] in VOL_REGIME and b["symbol"] not in VOL_DONE:
+            try:
+                push_vol_regime(b["symbol"])
+                VOL_DONE.add(b["symbol"])
+            except Exception as e:
+                print(f"[{b['id']}] vol_regime error: {e}", flush=True)
     finally:
         mt5.shutdown()
 
@@ -257,6 +323,7 @@ def main():
     upsert_bots()
     while True:
         SESSION_DONE.clear()   # reset de la vista en vivo por ciclo
+        VOL_DONE.clear()       # idem para el régimen de volatilidad
         for b in CFG["bots"]:
             try:
                 collect_bot(b)
