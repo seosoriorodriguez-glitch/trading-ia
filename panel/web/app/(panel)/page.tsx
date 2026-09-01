@@ -39,8 +39,10 @@ export default async function Overview({ searchParams }: { searchParams: { perio
     const label = `${b.name.split("—")[0].trim()} ${shortSize(b.initial_balance)}${tag}`;
     return { name: label, color: pctPalette[i % pctPalette.length], points };
   });
-  // retorno MEDIO por cuenta (equal-weight): cada cuenta sobre su propio tamaño, sin que la aplaste el nominal grande
-  const avgRet = bots.length ? bots.reduce((a, b) => a + b.realRetPct, 0) / bots.length : 0;
+  // El KPI muestra DINERO, asi que su % tiene que ser el del dinero: PnL total sobre
+  // capital total (totals.retPct). Antes era el promedio simple de los retornos por
+  // cuenta, que mezclaba una metrica equal-weight con una cifra en dolares.
+  const avgRet = totals.retPct;
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
@@ -58,7 +60,7 @@ export default async function Overview({ searchParams }: { searchParams: { perio
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
         <AggKPI label="Capital desplegado" value={money(totals.capital)} />
         <AggKPI label="Retirado · ganado" value={money(totalWithdrawn)} sub={totalWithdrawn > 0 ? "efectivo cobrado" : "aún nada"} tone={totalWithdrawn > 0 ? "win" : undefined} />
-        <AggKPI label="PnL en cuentas · dinero" value={`${totals.pnlUsd >= 0 ? "+" : "-"}${money(Math.abs(totals.pnlUsd))}`} sub={`${avgRet >= 0 ? "+" : ""}${avgRet.toFixed(1)}% medio · activas`} tone={totals.pnlUsd >= 0 ? "win" : "loss"} />
+        <AggKPI label="PnL en cuentas · dinero" value={`${totals.pnlUsd >= 0 ? "+" : "-"}${money(Math.abs(totals.pnlUsd))}`} sub={`${avgRet >= 0 ? "+" : ""}${avgRet.toFixed(1)}% del capital · activas`} tone={totals.pnlUsd >= 0 ? "win" : "loss"} />
         <AggKPI label="PnL histórico · trades" value={`${totalTradePnl >= 0 ? "+" : "-"}${money(Math.abs(totalTradePnl))}`} sub={`${totals.nTrades} ops · track record`} tone={totalTradePnl >= 0 ? "win" : "loss"} />
         <AggKPI label="WR combinado" value={`${totals.wr.toFixed(0)}%`} sub={`${totals.nTrades} ops · ${totals.wins}G/${totals.losses}P`} />
         <AggKPI label="Estado" value={`${totals.healthy}/${totals.nBots}`} sub={totals.bad ? `${totals.bad} en alerta` : totals.warn ? `${totals.warn} en atención` : "todos sanos"} tone={totals.bad ? "loss" : totals.warn ? undefined : "win"} />
@@ -99,8 +101,11 @@ export default async function Overview({ searchParams }: { searchParams: { perio
         const ranked = [...bots].sort((a, b) => b.realRetPct - a.realRetPct);
         const maxAbs = Math.max(1, ...ranked.map((b) => Math.abs(b.realRetPct)));
         const totalPnl = ranked.reduce((a, b) => a + b.realPnl, 0);
-        const sumRet = ranked.reduce((a, b) => a + b.realRetPct, 0);
-        const avgRet2 = sumRet / ranked.length;
+        // Retorno del portafolio = PnL total / capital total. NO la suma ni el promedio
+        // de los retornos por cuenta: sumar el % de una de 10k con el de una de 100k no
+        // significa nada (llegaba a mostrar -90,5% siendo la suma de 6,8 + 0 - 0,6 - 96,7).
+        const totalCapital = ranked.reduce((a, b) => a + b.initial_balance, 0);
+        const wRet = totalCapital ? (totalPnl / totalCapital) * 100 : 0;
         return (
           <div className="bg-panel border border-border rounded-2xl p-5 mb-8">
             <div className="text-[10px] uppercase tracking-wider text-dim mb-4">Rentabilidad por cuenta <span className="text-[#6b7684] normal-case">· relativa a su propio tamaño</span></div>
@@ -129,8 +134,8 @@ export default async function Overview({ searchParams }: { searchParams: { perio
             {/* total combinado de todas las cuentas */}
             <div className="mt-4 pt-3 border-t border-border flex items-center gap-2 sm:gap-3 font-mono">
               <div className="w-24 sm:w-40 shrink-0 text-xs sm:text-sm font-sans font-semibold">Total · {ranked.length}<span className="hidden sm:inline"> cuentas</span></div>
-              <div className="flex-1 min-w-0 truncate text-[10px] sm:text-[11px] text-dim font-sans">suma de retornos · media {avgRet2 >= 0 ? "+" : ""}{avgRet2.toFixed(1)}%</div>
-              <div className={`w-14 sm:w-16 shrink-0 text-right text-base sm:text-lg font-bold ${sumRet >= 0 ? "text-win" : "text-loss"}`}>{sumRet >= 0 ? "+" : ""}{sumRet.toFixed(1)}%</div>
+              <div className="flex-1 min-w-0 truncate text-[10px] sm:text-[11px] text-dim font-sans">ponderado por capital · {money(totalCapital)}</div>
+              <div className={`w-14 sm:w-16 shrink-0 text-right text-base sm:text-lg font-bold ${wRet >= 0 ? "text-win" : "text-loss"}`}>{wRet >= 0 ? "+" : ""}{wRet.toFixed(1)}%</div>
               <div className={`hidden sm:block w-20 shrink-0 text-right text-[11px] ${totalPnl >= 0 ? "text-win" : "text-loss"}`}>{totalPnl >= 0 ? "+" : "-"}{money(Math.abs(totalPnl))}</div>
             </div>
           </div>

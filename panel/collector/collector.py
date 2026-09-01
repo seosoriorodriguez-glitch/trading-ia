@@ -198,9 +198,27 @@ def collect_bot(b: dict):
         live_acct = int(acc.login)
         # El usuario ROTA la cuenta en el mismo terminal (mismo bot). No saltamos:
         # seguimos con la cuenta actual y actualizamos el registro del bot.
-        if b.get("account") and live_acct != int(b["account"]):
+        rotó = bool(b.get("account")) and live_acct != int(b["account"])
+        if rotó:
             print(f"[{b['id']}] cuenta rotó: {b['account']} -> {live_acct}. Actualizo registro.", flush=True)
         SB.table("bots").update({"account": live_acct}).eq("id", b["id"]).execute()
+
+        # Ciclos de cuenta: deja rastro de cada cuenta por la que pasa el bot, para que
+        # el historial sobreviva a las rotaciones (payout / pase de fase / breach).
+        # Tolerante a fallos: si la tabla todavia no existe, el colector sigue igual.
+        try:
+            if rotó:
+                SB.table("account_cycles").update({
+                    "ended_at": datetime.now(timezone.utc).isoformat(),
+                    "end_reason": "rotacion",
+                }).eq("bot_id", b["id"]).eq("account", int(b["account"])).is_("ended_at", "null").execute()
+            SB.table("account_cycles").upsert({
+                "bot_id": b["id"], "account": live_acct,
+                "account_size": b.get("initial_balance"),
+                "started_at": datetime.now(timezone.utc).isoformat(),
+            }, on_conflict="bot_id,account", ignore_duplicates=True).execute()
+        except Exception as e:
+            print(f"[{b['id']}] account_cycles no disponible ({e}); sigo sin registrar ciclo", flush=True)
 
         # snapshot balance/equity
         SB.table("account_snapshots").insert({
@@ -257,7 +275,17 @@ def collect_bot(b: dict):
                 sl, tp = float(op.sl) or None, float(op.tp) or None
             risk_pts = abs(entry - sl) if sl else None
             pnl_pts = (exitp - entry) if direction == "long" else (entry - exitp)
-            pnl_r = round(pnl_pts / risk_pts, 3) if risk_pts else None
+            # SANIDAD: un SL degenerado (a 2 puntos del entry) dispara un pnl_r absurdo.
+            # Caso real: ticket 159176706, risk_points=2.13 -> +26.3R con $44.80 de ganancia,
+            # que inflaba el PF de todo un mes. Por debajo del riesgo minimo de la estrategia
+            # el R no es representativo: guardamos el trade con su pnl_usd real pero sin R.
+            min_risk = b.get("min_risk_points", 15)
+            if risk_pts is not None and risk_pts < min_risk:
+                print(f"[{b['id']}] ticket {pid}: risk_points={risk_pts:.2f} < {min_risk} "
+                      f"-> pnl_r descartado (pnl_usd se conserva)", flush=True)
+                pnl_r = None
+            else:
+                pnl_r = round(pnl_pts / risk_pts, 3) if risk_pts else None
             reason = "other"
             if sl and tp:
                 reason = "tp" if abs(exitp - tp) < abs(exitp - sl) else "sl"

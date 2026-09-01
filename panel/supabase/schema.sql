@@ -107,3 +107,51 @@ alter table trades            enable row level security;
 alter table account_snapshots enable row level security;
 alter table session_view      enable row level security;
 alter table vol_regime        enable row level security;
+
+-- ============================================================================
+-- Recompensas de prop firm (REGISTRO MANUAL)
+-- ============================================================================
+-- Por que a mano: cuando FTMO paga una recompensa, CIERRA la cuenta y emite otra.
+-- El colector deja de consultar la cuenta vieja en cuanto cambias el terminal, asi
+-- que el retiro de cierre NUNCA queda en balance_ops. Rastrear payouts desde MT5
+-- subestima siempre. Esta tabla es la fuente de verdad del efectivo cobrado.
+--
+-- Se llena copiando de FTMO > Recompensas > Historial de Recompensas.
+create table if not exists payouts (
+  id           bigserial primary key,
+  bot_id       text references bots(id),
+  account      bigint,                    -- cuenta de la que salio
+  fecha        date not null,             -- fecha de la factura
+  beneficio    numeric,                   -- beneficio total de la cuenta (antes del split)
+  recompensa   numeric,                   -- tu parte tras el split (80:20)
+  retiro       numeric default 0,         -- cobrado en efectivo
+  reinversion  numeric default 0,         -- rollover que quedo en la cuenta siguiente
+  reembolso    numeric default 0,         -- devolucion del fee del challenge
+  estado       text default 'esperando',  -- 'esperando' | 'pagado'
+  nota         text,
+  created_at   timestamptz default now(),
+  unique(bot_id, fecha)
+);
+create index if not exists idx_payouts_bot on payouts(bot_id, fecha desc);
+
+-- ============================================================================
+-- Ciclos de cuenta — historial que sobrevive a las rotaciones
+-- ============================================================================
+-- Un bot_id pasa por varias cuentas a lo largo del tiempo (payout, pase de fase,
+-- breach). Los trades ya guardan `account`, asi que el historial por cuenta existe;
+-- esta tabla le pone nombre, tamaño y fechas a cada ciclo para poder segmentarlo.
+--
+-- account_size es el tamaño NOMINAL (10000), no el balance con rollover. Es la base
+-- sobre la que la prop calcula el limite de perdida.
+create table if not exists account_cycles (
+  id           bigserial primary key,
+  bot_id       text references bots(id),
+  account      bigint not null,
+  account_size numeric,                   -- 10000 / 100000 — base del limite de perdida
+  seed_extra   numeric default 0,         -- rollover con el que arranco
+  started_at   timestamptz,
+  ended_at     timestamptz,               -- null = ciclo activo
+  end_reason   text,                      -- 'payout' | 'phase_pass' | 'breach'
+  unique(bot_id, account)
+);
+create index if not exists idx_cycles_bot on account_cycles(bot_id, started_at desc);

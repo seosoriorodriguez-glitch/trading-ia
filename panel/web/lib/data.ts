@@ -19,6 +19,13 @@ export type Bot = {
   session: string; risk_pct: number; initial_balance: number; rr: number; magic: number;
 };
 export type EquityPoint = { i: number; t: string; equity: number; ma: number | null };
+// Un tramo del historial: lo que hizo el bot mientras vivio UNA cuenta concreta.
+// Un bot_id pasa por varias (payout, pase de fase, breach) y todas cuentan como
+// la misma estrategia — esto permite ver cada rotacion por separado sin partir la serie.
+export type AccountRun = {
+  account: number; n: number; wins: number; wr: number;
+  pnlUsd: number; sumR: number; pf: number; from: string; to: string;
+};
 export type DayPnl = { date: string; pnl: number; n: number; wins: number };
 export type BotHealth = Bot & {
   category: "ftmo" | "darwinex" | "demo";
@@ -26,6 +33,7 @@ export type BotHealth = Bot & {
   n: number; wins: number; losses: number; wr: number; pf: number;
   sumR: number; retPct: number; pnlUsd: number; balance: number;
   realBalance: number | null; netFlows: number; withdrawn: number; deposited: number;
+  payoutCash: number;   // efectivo cobrado segun la tabla payouts (registro manual)
   floating: number;   // P&L flotante de operaciones abiertas (equity − balance); 0 si no hay abiertas
   realPnl: number; realRetPct: number;
   ddPct: number; maxDdPct: number; ddLimitPct: number;
@@ -41,6 +49,7 @@ export type BotHealth = Bot & {
   health: "good" | "warn" | "bad";
   equity: EquityPoint[]; recent: Trade[]; todayN: number; todayWins: number;
   daily: DayPnl[];  // para el calendario
+  byAccount: AccountRun[];  // desglose por cuenta: sobrevive a las rotaciones
 };
 
 const MA_WINDOW = 30;
@@ -144,6 +153,26 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
     dmap.set(d, e);
   }
   const daily: DayPnl[] = Array.from(dmap.entries()).map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date));
+  // Desglose por cuenta. Los trades guardan `account`, asi que el historial de cada
+  // rotacion esta completo; aqui solo se agrupa. La serie global (equity, daily, stats)
+  // sigue siendo continua sobre bot_id: la estrategia es la misma aunque cambie la cuenta.
+  const accMap = new Map<number, Trade[]>();
+  for (const t of ts) {
+    const arr = accMap.get(t.account) ?? [];
+    arr.push(t);
+    accMap.set(t.account, arr);
+  }
+  const byAccount: AccountRun[] = Array.from(accMap.entries()).map(([account, arr]) => {
+    const w = arr.filter((t) => t.pnl_usd > 0).length;
+    const ars = arr.map((t) => t.pnl_r ?? (t.pnl_usd > 0 ? bot.rr : -1));
+    return {
+      account, n: arr.length, wins: w, wr: arr.length ? (w / arr.length) * 100 : 0,
+      pnlUsd: arr.reduce((a, t) => a + t.pnl_usd, 0),
+      sumR: ars.reduce((a, b2) => a + b2, 0), pf: pf(ars),
+      from: arr[0].exit_time, to: arr[arr.length - 1].exit_time,
+    };
+  }).sort((x, y) => +new Date(y.from) - +new Date(x.from));   // mas reciente primero
+
   const category = catOf(bot.id);
   const kind: "live" | "challenge" = bot.id.includes("live") ? "live" : "challenge";
   const todayPnlUsd = todayTs.reduce((a, t) => a + t.pnl_usd, 0);
@@ -157,13 +186,13 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
 
   return {
     ...bot, category, kind, n, wins, losses, wr, pf: pf(rs), sumR, retPct, pnlUsd, balance,
-    realBalance: null, netFlows: 0, withdrawn: 0, deposited: 0, floating: 0, realPnl: pnlUsd, realRetPct: retPct,
+    realBalance: null, netFlows: 0, withdrawn: 0, deposited: 0, payoutCash: 0, floating: 0, realPnl: pnlUsd, realRetPct: retPct,
     ddPct: Math.max(0, curDd), maxDdPct: maxDd, ddLimitPct: 10,
     maxLossFromInitialPct, todayPnlUsd, todayPnlPct, dayPnlBal: 0, dayPnlBalPct: 0,
     breakevenWr, rollingWr, aboveMa, health,
     expectancyUsd, expectancyR, avgWinUsd, avgLossUsd, avgWinR, avgLossR, rrr,
     streak, streakWin, bestUsd, worstUsd, avgDurationMin, wrLondon, wrNy, wrLong, wrShort,
-    equity, recent: ts.slice(-80).reverse(), daily,
+    equity, recent: ts.slice(-80).reverse(), daily, byAccount,
     todayN: todayTs.length, todayWins: todayTs.filter((t) => t.pnl_usd > 0).length,
   };
 }
@@ -203,6 +232,17 @@ function alertsFor(b: BotHealth): Alert[] {
     A("warn", "Equity bajo su media — posible cambio de régimen");
   if (b.retPct <= -5)
     A(b.retPct <= -8 ? "bad" : "warn", `Cuenta en pérdida ${b.retPct.toFixed(1)}% del balance`);
+  // Coherencia entre las dos formas de medir el retorno: por trades (retPct) y por
+  // reconciliación de balance (realRetPct). Si divergen mucho, el problema son los
+  // DATOS, no la estrategia — trades sin recoger, rotación de cuenta mal contada, un
+  // payout sin registrar en `payouts`. El panel llegó a mostrar −96,7% con la cuenta
+  // sana porque nadie comparaba estas dos cifras.
+  // Solo salta cuando se CONTRADICEN: los trades dicen ganancia y el balance dice
+  // pérdida fuerte (o al revés). Una diferencia de magnitud es normal y esperable —
+  // retPct es bruto de la estrategia y realRetPct es tu parte neta tras el split 80:20.
+  // Lo que nunca puede pasar es que tengan signo opuesto.
+  if (b.n >= 5 && b.retPct > 0 && b.realRetPct <= -5)
+    A("bad", `Descuadre de datos: trades +${b.retPct.toFixed(1)}% pero balance ${b.realRetPct.toFixed(1)}% — falta registrar un payout o hubo rotación de cuenta`);
   // Día FTMO: se mide sobre el EQUITY (balance del día + flotante), no sobre los
   // trades cerrados. El bot se apaga solo en -4% (ftmo_rules.yaml), FTMO corta en -5%.
   const diaPct = b.dayPnlBalPct + (b.initial_balance ? (b.floating / b.initial_balance) * 100 : 0);
@@ -300,12 +340,13 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     const nowD = new Date();
     const reset = new Date(Date.UTC(nowD.getUTCFullYear(), nowD.getUTCMonth(), nowD.getUTCDate(), 22, 0, 0));
     if (nowD.getTime() < reset.getTime()) reset.setUTCDate(reset.getUTCDate() - 1);
-    const [{ data: botsRaw }, { data: tradesRaw }, { data: snapsRaw }, { data: bopsRaw }, { data: daySnaps }] = await Promise.all([
+    const [{ data: botsRaw }, { data: tradesRaw }, { data: snapsRaw }, { data: bopsRaw }, { data: daySnaps }, { data: payoutsRaw }] = await Promise.all([
       client.from("bots").select("*").eq("active", true),
       client.from("trades").select("*").order("exit_time", { ascending: true }).limit(5000),
       client.from("account_snapshots").select("account,balance,equity,ts").order("ts", { ascending: false }).limit(1000),
-      client.from("balance_ops").select("bot_id,amount").limit(2000),
+      client.from("balance_ops").select("bot_id,account,amount,comment").limit(2000),
       client.from("account_snapshots").select("account,balance,ts").gte("ts", reset.toISOString()).order("ts", { ascending: true }).limit(400),
+      client.from("payouts").select("bot_id,retiro,reinversion,reembolso,estado,fecha").limit(500),
     ]);
     let botsList = (botsRaw ?? []) as Bot[];
     if (opts.category) botsList = botsList.filter((b) => catOf(b.id) === opts.category);
@@ -329,26 +370,47 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     const balAtReset = new Map<number, number>();
     for (const s of (daySnaps ?? []) as { account: number; balance: number }[])
       if (!balAtReset.has(s.account)) balAtReset.set(s.account, s.balance);
-    // retiros/depósitos acumulados por bot (sobrevive rotaciones de cuenta)
-    const wByBot = new Map<string, { w: number; d: number }>();
-    for (const o of (bopsRaw ?? []) as { bot_id: string; amount: number }[]) {
-      const e = wByBot.get(o.bot_id) ?? { w: 0, d: 0 };
-      if (o.amount < 0) e.w += -o.amount; else e.d += o.amount;
-      wByBot.set(o.bot_id, e);
+    // Movimientos de balance por bot. Un bot pasa por VARIAS cuentas (payout, pase de
+    // fase, breach) y todas comparten bot_id, así que aquí conviven los movimientos de
+    // todas ellas. Hay que separar el fondeo del bróker del dinero real.
+    //
+    // El bróker abre cada cuenta con un depósito "Initial account balance" del tamaño
+    // nominal. Tras una rotación hay UNO POR CUENTA. Contarlos como aportes tuyos era
+    // el bug que hundía la Live 10k a −96,7%: al rotar aparecía un segundo +10.000 que
+    // se restaba del retorno.
+    const isBrokerFunding = (c: string | null) => /initial\s+account\s+balance/i.test(c ?? "");
+    const flowByBot = new Map<string, { wd: number; funding: number; dep: number }>();
+    for (const o of (bopsRaw ?? []) as { bot_id: string; amount: number; comment: string | null }[]) {
+      const e = flowByBot.get(o.bot_id) ?? { wd: 0, funding: 0, dep: 0 };
+      if (o.amount < 0) e.wd += -o.amount;
+      else if (isBrokerFunding(o.comment)) e.funding += o.amount;
+      else e.dep += o.amount;
+      flowByBot.set(o.bot_id, e);
     }
+    // Efectivo cobrado, de la tabla payouts (registro MANUAL). Es la fuente de verdad:
+    // FTMO cierra la cuenta al pagar y el colector deja de verla, así que el retiro de
+    // cierre nunca llega a balance_ops. Rastrearlo desde MT5 subestima siempre.
+    const cashByBot = new Map<string, number>();
+    for (const p of (payoutsRaw ?? []) as { bot_id: string; retiro: number | null }[])
+      cashByBot.set(p.bot_id, (cashByBot.get(p.bot_id) ?? 0) + (p.retiro ?? 0));
     for (const b of health) {
       const rb = b.account != null ? latestBal.get(b.account) : undefined;
       b.realBalance = rb ?? null;
       b.netFlows = rb != null ? rb - (b.initial_balance + b.pnlUsd) : 0;
-      const w = wByBot.get(b.id);
-      b.withdrawn = w?.w ?? 0; // BRUTO retirado de la cuenta (sin repartición); entra al retorno junto al colchón
-      b.deposited = w?.d ?? 0; // incluye el fondeo inicial (~initial) + depósitos extra (colchón traído de otra cuenta)
-      // Depósitos EXTRA = todo lo depositado por encima del fondeo inicial (el colchón que llevas a la cuenta nueva).
-      // NO son ganancia de la estrategia → hay que restarlos o se cuenta doble (están en el balance actual).
-      const extraDep = b.deposited >= b.initial_balance ? b.deposited - b.initial_balance : b.deposited;
-      // retorno REAL = lo que generó la estrategia = (balance − inicial) + retirado − depósitos extra
+      const f = flowByBot.get(b.id);
+      b.deposited = (f?.funding ?? 0) + (f?.dep ?? 0);
+      // Efectivo cobrado: payouts si están registrados; si no, los retiros que sí vio MT5
+      // (sirve para Darwinex y cualquier cuenta que no rote).
+      const cash = cashByBot.get(b.id);
+      b.withdrawn = cash != null && cash > 0 ? cash : (f?.wd ?? 0);
+      b.payoutCash = cash ?? 0;
+      // Retorno REAL de la estrategia, robusto a rotaciones:
+      //   (balance actual − tamaño de cuenta) + efectivo ya cobrado
+      // El rollover NO se resta: es ganancia que elegiste no cobrar y ya está dentro del
+      // balance actual. El fondeo del bróker se descuenta UNA vez vía initial_balance,
+      // sin importar cuántas cuentas hayas usado.
       const rb2 = b.realBalance ?? b.balance;
-      b.realPnl = rb2 + b.withdrawn - b.initial_balance - extraDep;
+      b.realPnl = rb2 - b.initial_balance + b.withdrawn;
       b.realRetPct = b.initial_balance ? (b.realPnl / b.initial_balance) * 100 : 0;
       // día FTMO: balance actual − balance al inicio del día
       const b0 = b.account != null ? balAtReset.get(b.account) : undefined;

@@ -65,6 +65,54 @@ export default async function BotDetail({ params }: { params: { id: string } }) 
         <Calendar days={b.daily} />
       </div>
 
+      {b.byAccount.length > 0 && (
+        <div className="bg-panel border border-border rounded-2xl p-5 mb-8">
+          <div className="text-[10px] uppercase tracking-wider text-dim mb-1">
+            Historial por cuenta
+            <span className="text-[#6b7684] normal-case"> · {b.byAccount.length} {b.byAccount.length === 1 ? "cuenta" : "cuentas"} · la serie de arriba es continua</span>
+          </div>
+          <p className="text-[11px] text-dim mb-3">
+            Cada payout o pase de fase cierra la cuenta y abre otra. El desempeño de la
+            estrategia no se corta: todas las cuentas cuentan como la misma serie.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs sm:text-sm font-mono">
+              <thead>
+                <tr className="text-dim text-[10px] uppercase border-b border-border">
+                  <th className="text-left py-2 font-normal">Cuenta</th>
+                  <th className="text-left py-2 font-normal">Periodo</th>
+                  <th className="text-right py-2 font-normal">Ops</th>
+                  <th className="text-right py-2 font-normal">WR</th>
+                  <th className="text-right py-2 font-normal">PF</th>
+                  <th className="text-right py-2 font-normal">R</th>
+                  <th className="text-right py-2 font-normal">PnL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {b.byAccount.map((a) => (
+                  <tr key={a.account} className="border-b border-border/40 last:border-0">
+                    <td className="py-2 text-left">
+                      #{a.account}
+                      {a.account === b.account && <span className="ml-2 text-[10px] text-win font-sans">activa</span>}
+                    </td>
+                    <td className="py-2 text-left text-dim text-[11px]">
+                      {chDateTime(a.from).slice(0, 10)} → {chDateTime(a.to).slice(0, 10)}
+                    </td>
+                    <td className="py-2 text-right">{a.n}</td>
+                    <td className="py-2 text-right">{a.wr.toFixed(1)}%</td>
+                    <td className={`py-2 text-right ${a.pf >= 1 ? "text-win" : "text-loss"}`}>{a.pf.toFixed(2)}</td>
+                    <td className={`py-2 text-right ${a.sumR >= 0 ? "text-win" : "text-loss"}`}>{a.sumR >= 0 ? "+" : ""}{a.sumR.toFixed(1)}</td>
+                    <td className={`py-2 text-right font-semibold ${a.pnlUsd >= 0 ? "text-win" : "text-loss"}`}>
+                      {a.pnlUsd >= 0 ? "+" : "-"}{money(Math.abs(a.pnlUsd))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <div className="bg-panel border border-border rounded-2xl p-5">
         <div className="text-[10px] uppercase text-dim mb-3">Operaciones ({b.n})</div>
         <div className="overflow-x-auto">
