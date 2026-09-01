@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Backtest FIEL AL LIVE: entrada STOP en el borde (no mercado al cierre como el otro backtest).
-Replica lo que hacen los bots en vivo:
-  - M5 detecta OBs.
-  - M1 cierra dentro de la zona (en sesion) -> se coloca STOP en el borde:
-      alcista -> BUY STOP en zone_high ; bajista -> SELL STOP en zone_low.
-  - El STOP se LLENA solo si el precio alcanza el borde ANTES de que la zona se destruya
-    (M5 cierra al otro lado) o expire. Si no, se cancela (no hay trade).
-  - Luego SL/TP (SL primero).
-Compara vs el backtest de mercado (ob_multiasset). Uso: python bt_stop_entry.py <asset> [ses] [rr] [spread] [maxsim]
-FIEL AL LIVE (OB London): RR=2.5, maxsim=2 (defaults). NO cambiarlos al validar. Ver ../../CLAUDE.md y ./BACKTEST_FIEL.md.
+NO ES EL MOTOR CANONICO — NO usar para validar ni decidir. Ver ../../BACKTEST_SPEC.md.
+Este script ESCALA los params por la mediana del rango M5 (buffer = med*1.276, etc.), asi que
+NO usa el buffer FIJO del live (35 pts de LONDON_PARAMS). Por eso subestima el retorno
+(buffer chico -> SL ajustado -> mas stops prematuros). Ej.: 2022 dio +46% aca vs +90% con el
+motor canonico. Es solo exploratorio.
+
+El motor fiel al live es: strategies/order_block/backtest/backtester.py (OrderBlockBacktester)
++ strategies/order_block_london/backtest/config.py (LONDON_PARAMS). Correr validate_engine.py.
+
+Entrada STOP en el borde (M5 detecta OBs; M1 cierra dentro -> BUY STOP zone_high / SELL STOP
+zone_low; SL/TP resueltos en M1, SL primero). Uso: python bt_stop_entry.py <asset> [ses] [rr] [spread] [maxsim]
 """
 import sys, copy
 from pathlib import Path

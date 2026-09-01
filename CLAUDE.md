@@ -1,37 +1,28 @@
 # Instrucciones para Claude
 
+## ⚠️ ANTES DE CUALQUIER BACKTEST — OBLIGATORIO
+
+**Leer `BACKTEST_SPEC.md` antes de correr, escribir o interpretar cualquier backtest
+de este repo.** Hay 7 motores y ~100 scripts sueltos con supuestos distintos, y ya se
+sacaron cuatro conclusiones falsas por usar el equivocado.
+
+Lo mínimo, sin excepciones:
+- Motor canónico: `strategies/order_block/backtest/backtester.py` + `LONDON_PARAMS`
+- **Salidas resueltas en M1** (con M5 la estrategia se ve perdedora: PF 0.98 vs 1.30 real)
+- **`max_simultaneous_trades = 2`** (con 1 el retorno cae de +56.8% a +43.5%)
+- Zona horaria servidor UTC+3: el pico de rango horario debe caer en 16-17h
+- Ningún filtro puede usar la vela **en curso**, solo la cerrada anterior
+
+Verificar con `python validate_engine.py` — compara contra números de referencia y
+falla si el motor no es fiel al live.
+
+Si un resultado se ve demasiado bien, buscar el lookahead **antes** de reportarlo.
+Los scripts en la raíz y en `journal/analysis/` son exploratorios, no fuente de verdad.
+
 ## Proyecto
 Dos bots de trading automatizado Order Block:
 - **US30.cash** — FTMO Challenge $10,000 — RR 3.5 — sesión NY 13:30-23:00 UTC+3
 - **BTCUSD**    — FTMO Free Trial $100,000 — RR 2.0 — 24/7
-
----
-
-## ⚠️ BACKTEST FIEL AL LIVE (regla dura — leer SIEMPRE antes de backtestear)
-
-**Antes de correr o interpretar CUALQUIER backtest, leer `journal/analysis/BACKTEST_FIEL.md`.**
-Un backtest con params distintos al live NO significa nada y el error suele apuntar hacia abajo
-(te hace descartar cosas que funcionan). Ya pasó varias veces (maxsim mal, entrada a mercado, salidas en M5).
-
-**El ÚNICO backtester fiel es `journal/analysis/bt_stop_entry.py`.**
-NUNCA usar `ob_multiasset.py` para validar (entra a **mercado al cierre**, no con STOP → NO es el live).
-
-**Parámetros canónicos del OB London (US30) — DEBEN coincidir SIEMPRE:**
-| Parámetro | Valor live | |
-|---|---|---|
-| Entrada | **STOP en el borde** (M1 cierra dentro → BUY STOP `zone_high` / SELL STOP `zone_low`). Nunca a mercado. |
-| Detección zonas | **M5** | consecutive_candles 4, zone_type half_candle, max_atr_mult 3.5, min_impulse 0 |
-| Entrada + salidas (SL/TP) | **M1** (SL/TP se resuelven en cada vela M1, SL primero) |
-| **RR (target_rr)** | **2.5** | min_rr_ratio 1.2 |
-| **max_simultaneous_trades** | **2** | ← el default del script es 2; NO pasar 1 |
-| Sesión London | **10:00–17:00 hora broker**, skip 15 min |
-| Zona horaria data | broker = **EET con DST de US** (UTC+2 inv / UTC+3 ver, transición 2°dom-mar → 1°dom-nov). Data Dukascopy viene en UTC → convertir. Si no, la sesión agarra otras velas. |
-| Riesgo | 0.5% para el % (escalar al riesgo real) |
-
-**Comando fiel:** `python journal/analysis/bt_stop_entry.py <asset> london 2.5 <spread> 2`
-
-**Checklist antes de confiar en un número de backtest:** ¿entrada STOP (no mercado)? ¿maxsim=2? ¿RR 2.5?
-¿salidas resueltas en M1? ¿detección en M5? ¿zona horaria de la data convertida a hora broker? Si alguna falla → el número NO vale.
 
 ---
 

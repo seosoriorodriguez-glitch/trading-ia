@@ -7,7 +7,21 @@
       "Bash(python strategies/order_block/backtest/run_backtest.py --data-higher data/US30_cash_M5_260d.csv --data-lower data/US30_cash_M1_260d.csv --tf-higher M5 --tf-lower M1 --session london --output strategies/order_block/backtest/results/ob_london.csv)",
       "Bash(python strategies/order_block/backtest/run_backtest.py --data-higher data/US30_cash_M5_260d.csv --data-lower data/US30_cash_M1_260d.csv --tf-higher M5 --tf-lower M1 --session both --output strategies/order_block/backtest/results/ob_london_test.csv)",
       "Bash(python strategies/order_block/backtest/experimental/bos_fractal_test.py)",
-      "Bash(python strategies/order_block/backtest/experimental/fvg_backtest.py)"
+      "Bash(python strategies/order_block/backtest/experimental/fvg_backtest.py)",
+      "mcp__tradingview__tv_health_check",
+      "Bash(python journal/analysis/mt5_convert.py \"C:/Users/sosor/OneDrive/Documentos/velas m1/US30.cash_M5_202608110105_202608111455.csv\" US30_recent_M5)",
+      "Bash(python journal/analysis/mt5_convert.py \"C:/Users/sosor/OneDrive/Documentos/velas m1/US30.cash_M1_202608110105_202608111459.csv\" US30_recent_M1)",
+      "Bash(python -c ' *)",
+      "Bash(python journal/analysis/make_chart.py __TRACKED_VAR__/us30_recent.json __TRACKED_VAR__/us30_chart.html)",
+      "Bash(python journal/analysis/mt5_convert.py __TRACKED_VAR__/XAUUSD_M5_202608110105_202608111500.csv XAUUSD_recent_M5)",
+      "Bash(python journal/analysis/mt5_convert.py __TRACKED_VAR__/XAUUSD_M1_202608110105_202608111504.csv XAUUSD_recent_M1)",
+      "Bash(python journal/analysis/bt_visual.py data/XAUUSD_recent_M5.csv data/XAUUSD_recent_M1.csv oro __TRACKED_VAR__/oro_recent.json 2)",
+      "Bash(python journal/analysis/bt_freshstats.py data/US30_long_M5.csv data/US30_long_M1.csv us30 \"35\")",
+      "Bash(python -m py_compile panel/collector/collector.py)",
+      "Bash(git commit *)",
+      "Bash(python -)",
+      "Bash(python \"C:/Users/sosor/AppData/Local/Temp/claude/c--Users-sosor-OneDrive-Escritorio-dev-trading-trading-ia/194fd397-dcca-46cd-b45e-f187ff2dfda5/scratchpad/gen_charts.py\")",
+      "Bash(cp research/motor/motor_fiel.py \"C:/Users/sosor/AppData/Local/Temp/mf_dbg.py\")"
     ]
   }
 }
