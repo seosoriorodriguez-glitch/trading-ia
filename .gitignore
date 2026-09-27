@@ -22,3 +22,7 @@ data/*.csv
 # OS
 .DS_Store
 Thumbs.db
+
+# Antecedentes / accesos con credenciales — NUNCA subir
+ACCESOS.local.md
+*.local.md
