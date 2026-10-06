@@ -1,4 +1,5 @@
 import { getDashboard, periodRange, type BotHealth } from "@/lib/data";
+import { chToday } from "@/lib/tz";
 import { AggKPI } from "@/components/cards";
 import { PctLines } from "@/components/pctlines";
 import { Calendar } from "@/components/calendar";
@@ -29,7 +30,6 @@ export default async function Overview({ searchParams }: { searchParams: { perio
     { k: "Darwinex", g: groupSummary(bots.filter((b) => b.category === "darwinex")), href: "/darwinex", desc: "Asignación de capital · track record" },
   ];
   const totalWithdrawn = bots.reduce((a, b) => a + b.withdrawn, 0);
-  const totalTradePnl = bots.reduce((a, b) => a + b.pnlUsd, 0); // suma de TRADES (track record, incl. histórico)
   // series de retorno % acumulado por cuenta (alineadas por fecha), cada una con su color
   const pctPalette = ["#26a69a", "#3b82f6", "#f59e0b", "#ef5350", "#a855f7", "#e879f9"];
   // Con el periodo "Todo" la curva arranca el 01-jun-2026: desde ahi opera la estrategia
@@ -47,14 +47,12 @@ export default async function Overview({ searchParams }: { searchParams: { perio
     const label = `${b.name.split("—")[0].trim()} ${shortSize(b.initial_balance)}${tag}`;
     return { name: label, color: pctPalette[i % pctPalette.length], points };
   });
-  // El KPI muestra DINERO, asi que su % tiene que ser el del dinero: PnL total sobre
-  // capital total (totals.retPct). Antes era el promedio simple de los retornos por
-  // cuenta, que mezclaba una metrica equal-weight con una cifra en dolares.
-  const avgRet = totals.retPct;
-  // Rentabilidad por mes de la cuenta de referencia (10k live), desde la estrategia actual.
-  // % del mes = PnL del mes / tamano de la cuenta: mismo criterio que la curva de arriba,
-  // asi la suma coincide con ella. Solo con periodo "Todo" (con 7d/30d quedarian meses a medias).
-  const ref = !pr.since ? bots.find((b) => b.id === REF_MENSUAL) : undefined;
+  // Cuenta de referencia (10k live): tarjetas de estrategia + rentabilidad por mes. Siempre
+  // con su historial COMPLETO desde 01-jun, sin importar el periodo o el tipo elegido.
+  const ref = (pr.since || category)
+    ? (await getDashboard({})).bots.find((b) => b.id === REF_MENSUAL)
+    : bots.find((b) => b.id === REF_MENSUAL);
+  // % del mes = PnL del mes / tamano de la cuenta: mismo criterio que la curva (no compuesto).
   const mensual = new Map<string, number[]>();   // año -> 12 meses (NaN = sin operar)
   if (ref?.initial_balance) {
     for (const d of ref.daily) {
@@ -70,6 +68,33 @@ export default async function Overview({ searchParams }: { searchParams: { perio
   const sumaAnio = (a: number[]) => a.reduce((s, v) => s + (Number.isNaN(v) ? 0 : v), 0);
   const totalMensual = anios.reduce((s, y) => s + sumaAnio(mensual.get(y)!), 0);
   const pct = (v: number) => `${v >= 0 ? "" : "-"}${Math.abs(v).toFixed(2)}%`;
+
+  // --- Tarjetas de la estrategia (cuenta de referencia), en % y en R (1R = riesgo por trade)
+  const unidadR = ref ? ref.initial_balance * (ref.risk_pct || 0.005) : 0;
+  const diasRef = (ref?.daily ?? []).filter((d) => d.date >= ESTRATEGIA_ACTUAL_DESDE);
+  const mesActual = chToday().slice(0, 7);
+  const delMes = diasRef.filter((d) => d.date.startsWith(mesActual));
+  const mesPnl = delMes.reduce((a, d) => a + d.pnl, 0);
+  const mesN = delMes.reduce((a, d) => a + d.n, 0);
+  const totPnl = diasRef.reduce((a, d) => a + d.pnl, 0);
+  const totN = diasRef.reduce((a, d) => a + d.n, 0);
+  const aR = (usd: number) => (unidadR ? usd / unidadR : 0);
+  const aPct = (usd: number) => (ref?.initial_balance ? (usd / ref.initial_balance) * 100 : 0);
+  // Drawdown en R sobre el cierre de cada dia (no ve el intradia). Umbrales = las reglas
+  // acordadas: peor visto en vivo ~17R; preocuparse si pasa de ~20R.
+  let cumR = 0, picoR = 0, ddMaxR = 0;
+  for (const d of diasRef) { cumR += aR(d.pnl); picoR = Math.max(picoR, cumR); ddMaxR = Math.max(ddMaxR, picoR - cumR); }
+  const ddNowR = picoR - cumR;
+  const sgn = (v: number, dec = 1) => `${v >= 0 ? "+" : "-"}${Math.abs(v).toFixed(dec)}`;
+  // --- Margen FTMO: la cuenta FTMO mas cerca del limite de perdida maxima (10% desde el
+  // balance inicial, con flotante) y su perdida del dia (limite 5%). Mismo calculo que las alertas.
+  const margenes = bots.filter((b) => b.category === "ftmo" && b.initial_balance).map((b) => {
+    const eqNow = (b.realBalance ?? b.balance) + b.floating;
+    const lossIni = Math.max(0, ((b.initial_balance - eqNow) / b.initial_balance) * 100);
+    const dia = b.dayPnlBalPct + (b.floating / b.initial_balance) * 100;
+    return { b, lossIni, dia };
+  }).sort((x, y) => y.lossIni - x.lossIni || x.dia - y.dia);
+  const peor = margenes[0];
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
@@ -85,11 +110,11 @@ export default async function Overview({ searchParams }: { searchParams: { perio
       {!totals.nBots && <div className="text-dim py-16">Sin operaciones en este período.</div>}
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
-        <AggKPI label="Capital desplegado" value={money(totals.capital)} />
         <AggKPI label="Retirado · ganado" value={money(totalWithdrawn)} sub={totalWithdrawn > 0 ? "efectivo cobrado" : "aún nada"} tone={totalWithdrawn > 0 ? "win" : undefined} />
-        <AggKPI label="PnL en cuentas · dinero" value={`${totals.pnlUsd >= 0 ? "+" : "-"}${money(Math.abs(totals.pnlUsd))}`} sub={`${avgRet >= 0 ? "+" : ""}${avgRet.toFixed(1)}% del capital · activas`} tone={totals.pnlUsd >= 0 ? "win" : "loss"} />
-        <AggKPI label="PnL histórico · trades" value={`${totalTradePnl >= 0 ? "+" : "-"}${money(Math.abs(totalTradePnl))}`} sub={`${totals.nTrades} ops · track record`} tone={totalTradePnl >= 0 ? "win" : "loss"} />
-        <AggKPI label="WR combinado" value={`${totals.wr.toFixed(0)}%`} sub={`${totals.nTrades} ops · ${totals.wins}G/${totals.losses}P`} />
+        <AggKPI label="Estrategia · este mes" value={ref ? `${sgn(aPct(mesPnl), 2)}%` : "—"} sub={ref ? `${sgn(aR(mesPnl))}R · ${mesN} ops · ref. 10k` : "sin cuenta de referencia"} tone={!ref ? undefined : mesPnl >= 0 ? "win" : "loss"} />
+        <AggKPI label="Estrategia · desde 01-jun" value={ref ? `${sgn(aPct(totPnl))}%` : "—"} sub={ref ? `${sgn(aR(totPnl))}R · ${totN} ops · ref. 10k` : ""} tone={!ref ? undefined : totPnl >= 0 ? "win" : "loss"} />
+        <AggKPI label="Drawdown actual" value={ref ? `${ddNowR > 0.05 ? "-" : ""}${ddNowR.toFixed(1)}R` : "—"} sub={ref ? `peor visto ${ddMaxR.toFixed(1)}R · alerta > 20R` : ""} tone={!ref ? undefined : ddNowR >= 20 ? "loss" : ddNowR < 10 ? "win" : undefined} />
+        <AggKPI label="Margen FTMO · más ajustado" value={peor ? `${peor.lossIni.toFixed(1)}% / 10%` : "—"} sub={peor ? `${peor.b.name.split("—").pop()?.trim()} · día ${sgn(peor.dia)}% / -5%` : "sin cuentas FTMO"} tone={!peor ? undefined : peor.lossIni >= 7 || peor.dia <= -3.5 ? "loss" : peor.lossIni < 5 && peor.dia > -2.5 ? "win" : undefined} />
         <AggKPI label="Estado" value={`${totals.healthy}/${totals.nBots}`} sub={totals.bad ? `${totals.bad} en alerta` : totals.warn ? `${totals.warn} en atención` : "todos sanos"} tone={totals.bad ? "loss" : totals.warn ? undefined : "win"} />
       </div>
 
