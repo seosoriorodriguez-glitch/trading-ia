@@ -124,50 +124,6 @@ export default async function Overview({ searchParams }: { searchParams: { perio
         </div>
       )}
 
-      {bots.length > 0 && (() => {
-        const ranked = [...bots].sort((a, b) => b.realRetPct - a.realRetPct);
-        const maxAbs = Math.max(1, ...ranked.map((b) => Math.abs(b.realRetPct)));
-        const totalPnl = ranked.reduce((a, b) => a + b.realPnl, 0);
-        // Retorno del portafolio = PnL total / capital total. NO la suma ni el promedio
-        // de los retornos por cuenta: sumar el % de una de 10k con el de una de 100k no
-        // significa nada (llegaba a mostrar -90,5% siendo la suma de 6,8 + 0 - 0,6 - 96,7).
-        const totalCapital = ranked.reduce((a, b) => a + b.initial_balance, 0);
-        const wRet = totalCapital ? (totalPnl / totalCapital) * 100 : 0;
-        return (
-          <div className="bg-panel border border-border rounded-2xl p-5 mb-8">
-            <div className="text-[10px] uppercase tracking-wider text-dim mb-4">Rentabilidad por cuenta <span className="text-[#6b7684] normal-case">· relativa a su propio tamaño</span></div>
-            <div className="flex flex-col gap-3">
-              {ranked.map((b) => {
-                const pos = b.realRetPct >= 0;
-                return (
-                  <a key={b.id} href={`/bot/${b.id}`} className="group flex items-center gap-2 sm:gap-3 font-mono hover:opacity-90">
-                    <div className="w-24 sm:w-40 shrink-0 truncate text-xs sm:text-sm font-sans group-hover:text-accent transition">
-                      {b.name}<span className="hidden sm:inline text-dim text-[11px]"> · {money(b.initial_balance)}</span>
-                    </div>
-                    {/* barra divergente desde el centro */}
-                    <div className="relative flex-1 h-5 min-w-0">
-                      <div className="absolute inset-y-0 left-1/2 w-px bg-border" />
-                      <div
-                        className={`absolute inset-y-1 rounded ${pos ? "bg-win/70" : "bg-loss/70"}`}
-                        style={{ left: pos ? "50%" : `${50 - (Math.abs(b.realRetPct) / maxAbs) * 50}%`, width: `${(Math.abs(b.realRetPct) / maxAbs) * 50}%` }}
-                      />
-                    </div>
-                    <div className={`w-14 sm:w-16 shrink-0 text-right text-xs sm:text-sm font-semibold ${pos ? "text-win" : "text-loss"}`}>{pos ? "+" : ""}{b.realRetPct.toFixed(1)}%</div>
-                    <div className="hidden sm:block w-20 shrink-0 text-right text-[11px] text-dim">{b.realPnl >= 0 ? "+" : "-"}{money(Math.abs(b.realPnl))}</div>
-                  </a>
-                );
-              })}
-            </div>
-            {/* total combinado de todas las cuentas */}
-            <div className="mt-4 pt-3 border-t border-border flex items-center gap-2 sm:gap-3 font-mono">
-              <div className="w-24 sm:w-40 shrink-0 text-xs sm:text-sm font-sans font-semibold">Total · {ranked.length}<span className="hidden sm:inline"> cuentas</span></div>
-              <div className="flex-1 min-w-0 truncate text-[10px] sm:text-[11px] text-dim font-sans">ponderado por capital · {money(totalCapital)}</div>
-              <div className={`w-14 sm:w-16 shrink-0 text-right text-base sm:text-lg font-bold ${wRet >= 0 ? "text-win" : "text-loss"}`}>{wRet >= 0 ? "+" : ""}{wRet.toFixed(1)}%</div>
-              <div className={`hidden sm:block w-20 shrink-0 text-right text-[11px] ${totalPnl >= 0 ? "text-win" : "text-loss"}`}>{totalPnl >= 0 ? "+" : "-"}{money(Math.abs(totalPnl))}</div>
-            </div>
-          </div>
-        );
-      })()}
 
       <div className="grid lg:grid-cols-2 gap-5 mb-8 items-start">
         <div className="bg-panel border border-border rounded-2xl p-5">
