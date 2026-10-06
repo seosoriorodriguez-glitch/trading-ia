@@ -8,6 +8,8 @@ import { PeriodSelector, TypeSelector } from "@/components/selectors";
 export const dynamic = "force-dynamic";
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
 const ESTRATEGIA_ACTUAL_DESDE = "2026-06-01";
+const REF_MENSUAL = "us30_live_10k";   // cuenta de referencia para la rentabilidad por mes
+const MESES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 function groupSummary(bots: BotHealth[]) {
   const capital = bots.reduce((a, b) => a + b.initial_balance, 0);
@@ -49,6 +51,25 @@ export default async function Overview({ searchParams }: { searchParams: { perio
   // capital total (totals.retPct). Antes era el promedio simple de los retornos por
   // cuenta, que mezclaba una metrica equal-weight con una cifra en dolares.
   const avgRet = totals.retPct;
+  // Rentabilidad por mes de la cuenta de referencia (10k live), desde la estrategia actual.
+  // % del mes = PnL del mes / tamano de la cuenta: mismo criterio que la curva de arriba,
+  // asi la suma coincide con ella. Solo con periodo "Todo" (con 7d/30d quedarian meses a medias).
+  const ref = !pr.since ? bots.find((b) => b.id === REF_MENSUAL) : undefined;
+  const mensual = new Map<string, number[]>();   // año -> 12 meses (NaN = sin operar)
+  if (ref?.initial_balance) {
+    for (const d of ref.daily) {
+      if (d.date < ESTRATEGIA_ACTUAL_DESDE) continue;
+      const [y, m] = d.date.split("-");
+      if (!mensual.has(y)) mensual.set(y, Array(12).fill(NaN));
+      const arr = mensual.get(y)!;
+      const i = Number(m) - 1;
+      arr[i] = (Number.isNaN(arr[i]) ? 0 : arr[i]) + (d.pnl / ref.initial_balance) * 100;
+    }
+  }
+  const anios = Array.from(mensual.keys()).sort();
+  const sumaAnio = (a: number[]) => a.reduce((s, v) => s + (Number.isNaN(v) ? 0 : v), 0);
+  const totalMensual = anios.reduce((s, y) => s + sumaAnio(mensual.get(y)!), 0);
+  const pct = (v: number) => `${v >= 0 ? "" : "-"}${Math.abs(v).toFixed(2)}%`;
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
@@ -172,6 +193,47 @@ export default async function Overview({ searchParams }: { searchParams: { perio
           <Calendar days={portfolioDaily} />
         </div>
       </div>
+
+      {anios.length > 0 && (
+        <div className="bg-panel border border-border rounded-2xl p-5 mb-8">
+          <div className="flex flex-wrap items-baseline justify-between gap-2 mb-4">
+            <h2 className="text-lg font-semibold">Rentabilidad por mes</h2>
+            <span className="text-[10px] text-dim">referencia: {ref?.name} · desde 01-jun-2026 (estrategia actual) · % sobre el tamaño de la cuenta</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] font-mono text-sm tabular-nums">
+              <thead>
+                <tr className="text-[11px] text-dim">
+                  <th className="text-left font-normal pb-3 w-14"></th>
+                  {MESES_CORTOS.map((m) => <th key={m} className="font-normal pb-3 text-right">{m}</th>)}
+                  <th className="font-normal pb-3 text-right">Año</th>
+                </tr>
+              </thead>
+              <tbody>
+                {anios.map((y) => {
+                  const arr = mensual.get(y)!;
+                  const tot = sumaAnio(arr);
+                  return (
+                    <tr key={y} className="border-t border-border">
+                      <td className="py-3 text-left text-[12px] font-semibold font-sans">{y}</td>
+                      {arr.map((v, i) => (
+                        <td key={i} className={`py-3 text-right ${Number.isNaN(v) ? "text-dim" : v >= 0 ? "text-win" : "text-loss"}`}>
+                          {Number.isNaN(v) ? "—" : pct(v)}
+                        </td>
+                      ))}
+                      <td className={`py-3 text-right font-semibold ${tot >= 0 ? "text-win" : "text-loss"}`}>{pct(tot)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4 pt-3 border-t border-border flex items-end justify-end gap-3">
+            <span className="text-[11px] text-dim">Rentabilidad total</span>
+            <span className={`font-mono text-2xl font-bold ${totalMensual >= 0 ? "text-win" : "text-loss"}`}>{pct(totalMensual)}</span>
+          </div>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-5 mb-8">
         {groups.map(({ k, g, href, desc }) => (
