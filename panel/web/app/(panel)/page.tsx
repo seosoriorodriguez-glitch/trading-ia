@@ -7,6 +7,7 @@ import { PeriodSelector, TypeSelector } from "@/components/selectors";
 
 export const dynamic = "force-dynamic";
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
+const ESTRATEGIA_ACTUAL_DESDE = "2026-06-01";
 
 function groupSummary(bots: BotHealth[]) {
   const capital = bots.reduce((a, b) => a + b.initial_balance, 0);
@@ -29,7 +30,12 @@ export default async function Overview({ searchParams }: { searchParams: { perio
   const totalTradePnl = bots.reduce((a, b) => a + b.pnlUsd, 0); // suma de TRADES (track record, incl. histórico)
   // series de retorno % acumulado por cuenta (alineadas por fecha), cada una con su color
   const pctPalette = ["#26a69a", "#3b82f6", "#f59e0b", "#ef5350", "#a855f7", "#e879f9"];
-  const allDates = Array.from(new Set(bots.flatMap((b) => b.daily.map((d) => d.date)))).sort();
+  // Con el periodo "Todo" la curva arranca el 01-jun-2026: desde ahi opera la estrategia
+  // actual (corte de sesion London a las 17:00). Lo anterior era otra config y ensucia la
+  // comparacion. Si se elige un periodo, se respeta el periodo.
+  const curvaDesde = pr.since ? "" : ESTRATEGIA_ACTUAL_DESDE;
+  const allDates = Array.from(new Set(bots.flatMap((b) => b.daily.map((d) => d.date))))
+    .filter((d) => d >= curvaDesde).sort();
   const shortSize = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`);
   const pctSeries = bots.map((b, i) => {
     const dm = new Map(b.daily.map((d) => [d.date, d.pnl]));
@@ -145,7 +151,7 @@ export default async function Overview({ searchParams }: { searchParams: { perio
       <div className="grid lg:grid-cols-2 gap-5 mb-8 items-start">
         <div className="bg-panel border border-border rounded-2xl p-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] uppercase tracking-wider text-dim">Retorno % por cuenta <span className="text-[#6b7684] normal-case">· relativo a su tamaño · arrastra/rueda para escalar</span></span>
+            <span className="text-[10px] uppercase tracking-wider text-dim">Retorno % por cuenta <span className="text-[#6b7684] normal-case">· {curvaDesde ? "desde 01-jun (estrategia actual) · " : ""}relativo a su tamaño · arrastra/rueda para escalar</span></span>
           </div>
           <PctLines series={pctSeries} dates={allDates} height={300} />
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[11px] font-mono">
