@@ -1,4 +1,4 @@
-import { getDashboard, getVolRegime, type Alert } from "@/lib/data";
+import { getDashboard, getVolRegime, RIESGO_REDUCIDO_DESDE_PCT, type Alert } from "@/lib/data";
 import { AlertList } from "@/components/alerts";
 
 export const dynamic = "force-dynamic";
@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 const VOL_SYMBOLS = ["US30.cash"];   // solo US30: los umbrales se validaron ahí
 
 const REGLAS = [
+  { lvl: "bad", cond: `Cuenta live con balance ≤ -${RIESGO_REDUCIDO_DESDE_PCT}% del inicial`, que: "POLÍTICA DE RIESGO → bajar a 0.25% hasta recuperar el inicial" },
   { lvl: "bad", cond: "Pérdida desde el inicial ≥ 8.5% / ≥ 7%", que: "Límite duro de la prop (FTMO 10%) — incluye flotante" },
   { lvl: "warn", cond: "Devolución desde el pico ≥ 7%", que: "Deterioro, NO es el límite de la prop" },
   { lvl: "warn", cond: "WR reciente (últ. 30) < breakeven", que: "Las zonas dejan de respetarse" },
@@ -13,7 +14,7 @@ const REGLAS = [
   { lvl: "warn", cond: "Equity bajo su media móvil (30)", que: "Posible cambio de régimen" },
   { lvl: "bad", cond: "Cuenta en pérdida ≥ -8% / ≥ -5%", que: "Sangrado fuerte de la cuenta" },
   { lvl: "bad", cond: "Portafolio en pérdida ≥ -5%", que: "Nivel global de todo el capital" },
-  { lvl: "bad", cond: "Pérdida del día ≥ -3.5% / ≥ -3%", que: "Equity + flotante · el bot se apaga solo en -4%" },
+  { lvl: "bad", cond: "Pérdida del día ≥ -3.5% / ≥ -3%", que: "Equity + flotante · el bot deja de abrir trades en -3.5% (cerrado)" },
   { lvl: "warn", cond: "Racha de 6+ pérdidas seguidas", que: "Mala racha sostenida" },
   { lvl: "warn", cond: "Ratio de volatilidad ≥ 2.0 (rojo) / ≥ 1.6 (atención)", que: "El SL fijo se desalineó del mercado" },
   { lvl: "info", cond: "Retorno ≥ +10% / ≥ +8% (solo challenge)", que: "Pase alcanzado → parar manual · o cerca del pase 🟢" },
@@ -63,6 +64,21 @@ export default async function Alertas() {
     <div className="max-w-4xl">
       <h1 className="text-2xl font-bold mb-1">Alertas {todas.length > 0 && <span className="text-loss">({todas.length})</span>}</h1>
       <p className="text-sm text-dim mb-6">Cada alerta indica la cuenta afectada. Se recalculan en cada recolección.</p>
+
+      {/* ------------------------- política de riesgo (regla dura) ------------------------- */}
+      <div className="mb-8 rounded-xl border-2 border-loss/60 bg-loss/10 px-5 py-4">
+        <div className="text-xs font-bold uppercase tracking-wider text-loss mb-2">Política de riesgo · regla dura · desde 16-oct-2026</div>
+        <div className="text-base font-semibold leading-snug">
+          Si una cuenta live cae bajo <span className="text-loss">-{RIESGO_REDUCIDO_DESDE_PCT}% de su balance inicial</span> → el bot opera a <span className="text-loss">0.25%</span>.
+          <br />Vuelve a <span className="text-win">0.5%</span> cuando el balance recupera el inicial.
+        </div>
+        <ul className="mt-3 text-xs text-dim space-y-1 list-disc pl-4">
+          <li>Se mide sobre el <b>balance</b> (trades cerrados) contra el <b>inicial</b>, igual que el piso fijo de FTMO (-10%).</li>
+          <li>Por qué: misma ganancia esperada que 0.5% fijo, pero menos cuentas quemadas en rachas malas (simulación 12 meses: 46% → ~35% en régimen tipo 2024-26).</li>
+          <li>Cómo se aplica: reiniciar el bot de esa cuenta con su YAML de 0.25% (<code>--ftmo-config</code>) fuera de sesión, y poner <code>risk_pct = 0.0025</code> en la tabla <code>bots</code> para que esta alerta lo reconozca.</li>
+          <li>Challenges: opcional (son baratos). Darwinex no aplica (0.1%).</li>
+        </ul>
+      </div>
 
       <h2 className="text-sm font-semibold text-dim uppercase tracking-wider mb-3">Activas ahora</h2>
       <AlertList alerts={todas} />

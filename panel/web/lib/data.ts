@@ -209,6 +209,8 @@ export type Dashboard = {
   portfolioDaily: DayPnl[]; updatedAt: string; lastCollected: string; error?: string;
 };
 
+export const RIESGO_REDUCIDO_DESDE_PCT = 4;
+
 function alertsFor(b: BotHealth): Alert[] {
   const out: Alert[] = [];
   const A = (level: Alert["level"], msg: string) => out.push({ botId: b.id, botName: b.name, level, msg });
@@ -232,6 +234,22 @@ function alertsFor(b: BotHealth): Alert[] {
     A("warn", "Equity bajo su media — posible cambio de régimen");
   if (b.retPct <= -5)
     A(b.retPct <= -8 ? "bad" : "warn", `Cuenta en pérdida ${b.retPct.toFixed(1)}% del balance`);
+  // Política de riesgo (16-oct-2026): cuenta FTMO live con el balance bajo -4% del
+  // inicial → operar a 0.25% hasta recuperar el inicial; ahí se vuelve a 0.5%.
+  // Se mide sobre el BALANCE (trades cerrados) contra el inicial, igual que el piso de FTMO.
+  // `risk_pct` de la tabla bots es lo que dice tener configurado el bot: se actualiza a
+  // mano al cambiar el YAML, y con eso la alerta sabe si la regla ya se aplicó.
+  if (b.category === "ftmo" && b.kind === "live" && b.initial_balance) {
+    const bal = b.realBalance ?? b.balance;
+    const caida = ((b.initial_balance - bal) / b.initial_balance) * 100;
+    const riesgo = b.risk_pct || 0.005;
+    if (caida >= RIESGO_REDUCIDO_DESDE_PCT && riesgo > 0.0025)
+      A("bad", `REGLA DE RIESGO: balance ${(-caida).toFixed(1)}% bajo el inicial (límite -${RIESGO_REDUCIDO_DESDE_PCT}%) → BAJAR A 0.25% hasta volver a $${b.initial_balance.toLocaleString("en-US")}`);
+    else if (caida >= RIESGO_REDUCIDO_DESDE_PCT)
+      A("warn", `Regla de riesgo activa: operando a 0.25% — vuelve a 0.5% al recuperar $${b.initial_balance.toLocaleString("en-US")} (falta ${caida.toFixed(1)}%)`);
+    else if (caida <= 0 && riesgo <= 0.0025)
+      A("info", `Recuperó el inicial → la regla de riesgo terminó: VOLVER A 0.5%`);
+  }
   // Coherencia entre las dos formas de medir el retorno: por trades (retPct) y por
   // reconciliación de balance (realRetPct). Si divergen mucho, el problema son los
   // DATOS, no la estrategia — trades sin recoger, rotación de cuenta mal contada, un
@@ -244,11 +262,12 @@ function alertsFor(b: BotHealth): Alert[] {
   if (b.n >= 5 && b.retPct > 0 && b.realRetPct <= -5)
     A("bad", `Descuadre de datos: trades +${b.retPct.toFixed(1)}% pero balance ${b.realRetPct.toFixed(1)}% — falta registrar un payout o hubo rotación de cuenta`);
   // Día FTMO: se mide sobre el EQUITY (balance del día + flotante), no sobre los
-  // trades cerrados. El bot se apaga solo en -4% (ftmo_rules.yaml), FTMO corta en -5%.
+  // trades cerrados. El bot deja de abrir trades NUEVOS al -3.5% del día (ftmo_rules.yaml
+  // 4% menos 0.5% de margen, solo con trades cerrados); FTMO corta en -5%.
   const diaPct = b.dayPnlBalPct + (b.initial_balance ? (b.floating / b.initial_balance) * 100 : 0);
   if (diaPct <= -3)
     A(diaPct <= -3.5 ? "bad" : "warn",
-      `Pérdida hoy ${diaPct.toFixed(1)}% (incl. flotante) — el bot se detiene solo en -4%`);
+      `Pérdida hoy ${diaPct.toFixed(1)}% (incl. flotante) — el bot deja de abrir trades nuevos en -3.5% (cerrado)`);
   if (!b.streakWin && b.streak >= 6)
     A("warn", `Racha de ${b.streak} pérdidas seguidas`);
   // El pase del +10% solo aplica al CHALLENGE. En la fondeada el target es 20% y
