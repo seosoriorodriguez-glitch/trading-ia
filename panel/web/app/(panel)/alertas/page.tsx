@@ -65,21 +65,6 @@ export default async function Alertas() {
       <h1 className="text-2xl font-bold mb-1">Alertas {todas.length > 0 && <span className="text-loss">({todas.length})</span>}</h1>
       <p className="text-sm text-dim mb-6">Cada alerta indica la cuenta afectada. Se recalculan en cada recolección.</p>
 
-      {/* ------------------------- política de riesgo (regla dura) ------------------------- */}
-      <div className="mb-8 rounded-xl border-2 border-loss/60 bg-loss/10 px-5 py-4">
-        <div className="text-xs font-bold uppercase tracking-wider text-loss mb-2">Política de riesgo · regla dura · desde 16-oct-2026</div>
-        <div className="text-base font-semibold leading-snug">
-          Si una cuenta live cae bajo <span className="text-loss">-{RIESGO_REDUCIDO_DESDE_PCT}% de su balance inicial</span> → el bot opera a <span className="text-loss">0.25%</span>.
-          <br />Vuelve a <span className="text-win">0.5%</span> cuando el balance recupera el inicial.
-        </div>
-        <ul className="mt-3 text-xs text-dim space-y-1 list-disc pl-4">
-          <li>Se mide sobre el <b>balance</b> (trades cerrados) contra el <b>inicial</b>, igual que el piso fijo de FTMO (-10%).</li>
-          <li>Por qué: misma ganancia esperada que 0.5% fijo, pero menos cuentas quemadas en rachas malas (simulación 12 meses: 46% → ~35% en régimen tipo 2024-26).</li>
-          <li>Cómo se aplica: reiniciar el bot de esa cuenta con su YAML de 0.25% (<code>--ftmo-config</code>) fuera de sesión, y poner <code>risk_pct = 0.0025</code> en la tabla <code>bots</code> para que esta alerta lo reconozca.</li>
-          <li>Challenges: opcional (son baratos). Darwinex no aplica (0.1%).</li>
-        </ul>
-      </div>
-
       <h2 className="text-sm font-semibold text-dim uppercase tracking-wider mb-3">Activas ahora</h2>
       <AlertList alerts={todas} />
 
