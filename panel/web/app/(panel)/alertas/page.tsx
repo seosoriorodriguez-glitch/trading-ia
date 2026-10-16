@@ -6,6 +6,8 @@ export const dynamic = "force-dynamic";
 const VOL_SYMBOLS = ["US30.cash"];   // solo US30: los umbrales se validaron ahí
 
 const REGLAS = [
+  { lvl: "bad", cond: "Estrategia: caída ≥ 20R desde el máximo (10k live, desde 01-jun) · aviso en 15R", que: "Peor que todo lo visto en live → DEJAR DE COMPRAR CHALLENGES y revisar" },
+  { lvl: "bad", cond: "Estrategia: últimos 135 trades suman negativo", que: "Ya no es ruido: la estrategia no está ganando → pausar y revisar a fondo" },
   { lvl: "bad", cond: "Pérdida desde el inicial ≥ 8.5% / ≥ 7%", que: "Límite duro de la prop (FTMO 10%) — incluye flotante" },
   { lvl: "warn", cond: "Devolución desde el pico ≥ 7%", que: "Deterioro, NO es el límite de la prop" },
   { lvl: "warn", cond: "WR reciente (últ. 30) < breakeven", que: "Las zonas dejan de respetarse" },

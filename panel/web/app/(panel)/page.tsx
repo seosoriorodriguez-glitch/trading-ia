@@ -23,7 +23,7 @@ function groupSummary(bots: BotHealth[]) {
 export default async function Overview({ searchParams }: { searchParams: { period?: string; type?: string } }) {
   const pr = periodRange(searchParams.period);
   const category = searchParams.type === "ftmo" || searchParams.type === "darwinex" ? searchParams.type : undefined;
-  const { bots, totals, alerts, portfolio, portfolioDaily, error } = await getDashboard({ since: pr.since, until: pr.until, category });
+  const { bots, totals, alerts, portfolio, portfolioDaily, error, estrategia } = await getDashboard({ since: pr.since, until: pr.until, category });
   if (error) return <div className="text-dim py-20">Sin datos: <span className="text-loss font-mono">{error}</span></div>;
   const groups = [
     { k: "FTMO", g: groupSummary(bots.filter((b) => b.category === "ftmo")), href: "/ftmo", desc: "Challenges y fondeo · profit split" },
@@ -113,7 +113,7 @@ export default async function Overview({ searchParams }: { searchParams: { perio
         <AggKPI label="Retirado · ganado" value={money(totalWithdrawn)} sub={totalWithdrawn > 0 ? "efectivo cobrado" : "aún nada"} tone={totalWithdrawn > 0 ? "win" : undefined} />
         <AggKPI label="Estrategia · este mes" value={ref ? `${sgn(aPct(mesPnl), 2)}%` : "—"} sub={ref ? `${sgn(aR(mesPnl))}R · ${mesN} ops · ref. 10k` : "sin cuenta de referencia"} tone={!ref ? undefined : mesPnl >= 0 ? "win" : "loss"} />
         <AggKPI label="Estrategia · desde 01-jun" value={ref ? `${sgn(aPct(totPnl))}%` : "—"} sub={ref ? `${sgn(aR(totPnl))}R · ${totN} ops · ref. 10k` : ""} tone={!ref ? undefined : totPnl >= 0 ? "win" : "loss"} />
-        <AggKPI label="Drawdown actual" value={ref ? `${ddNowR > 0.05 ? "-" : ""}${ddNowR.toFixed(1)}R` : "—"} sub={ref ? `peor visto ${ddMaxR.toFixed(1)}R · alerta > 20R` : ""} tone={!ref ? undefined : ddNowR >= 20 ? "loss" : ddNowR < 10 ? "win" : undefined} />
+        <AggKPI label="Drawdown actual" value={ref ? `${ddNowR > 0.05 ? "-" : ""}${ddNowR.toFixed(1)}R` : "—"} sub={ref ? `peor ${ddMaxR.toFixed(1)}R · alarma 20R${estrategia && estrategia.n >= 135 ? ` · últ.135: ${sgn(estrategia.ultR)}R` : ""}` : ""} tone={!ref ? undefined : ddNowR >= 20 ? "loss" : ddNowR < 10 ? "win" : undefined} />
         <AggKPI label="Margen FTMO · más ajustado" value={peor ? `${peor.lossIni.toFixed(1)}% / 10%` : "—"} sub={peor ? `${peor.b.name.split("—").pop()?.trim()} · día ${sgn(peor.dia)}% / -5%` : "sin cuentas FTMO"} tone={!peor ? undefined : peor.lossIni >= 7 || peor.dia <= -3.5 ? "loss" : peor.lossIni < 5 && peor.dia > -2.5 ? "win" : undefined} />
         <AggKPI label="Estado" value={`${totals.healthy}/${totals.nBots}`} sub={totals.bad ? `${totals.bad} en alerta` : totals.warn ? `${totals.warn} en atención` : "todos sanos"} tone={totals.bad ? "loss" : totals.warn ? undefined : "win"} />
       </div>

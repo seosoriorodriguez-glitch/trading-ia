@@ -207,7 +207,30 @@ export type PortPoint = { i: number; equity: number; ma: number | null };
 export type Dashboard = {
   bots: BotHealth[]; totals: Totals; alerts: Alert[]; portfolio: PortPoint[];
   portfolioDaily: DayPnl[]; updatedAt: string; lastCollected: string; error?: string;
+  estrategia?: { n: number; ddR: number; ultN: number; ultR: number } | null;
 };
+
+// Alarmas de la estrategia (16-oct-2026). Referencia: 10k live, estrategia actual desde 01-jun.
+//  - caída ≥ 20R desde el máximo = peor que todo lo visto en live → dejar de comprar challenges
+//  - últimos 135 trades en negativo: ~135 trades es lo que hace falta para separar un edge de
+//    +0.3R/trade de uno nulo (sd ≈ 1.7R/trade) → ya no es ruido
+export const EST_REF = "us30_live_10k";
+export const EST_DESDE = "2026-06-01";
+export const EST_DD_ALERTA_R = 20;
+export const EST_VENTANA = 135;
+export function estrategiaRef(bots: Bot[], trades: Trade[]) {
+  const ref = bots.find((b) => b.id === EST_REF);
+  if (!ref?.initial_balance) return null;
+  const unidad = ref.initial_balance * (ref.risk_pct || 0.005);
+  const rs = trades
+    .filter((t) => t.bot_id === EST_REF && t.exit_time >= EST_DESDE)
+    .sort((a, b) => +new Date(a.exit_time) - +new Date(b.exit_time))
+    .map((t) => t.pnl_usd / unidad);
+  let cum = 0, pico = 0;
+  for (const r of rs) { cum += r; pico = Math.max(pico, cum); }
+  const ult = rs.slice(-EST_VENTANA);
+  return { n: rs.length, ddR: pico - cum, ultN: ult.length, ultR: ult.reduce((a, b) => a + b, 0) };
+}
 
 function alertsFor(b: BotHealth): Alert[] {
   const out: Alert[] = [];
@@ -439,6 +462,18 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     const alerts = health.flatMap(alertsFor);
     if (totals.retPct <= -5)
       alerts.unshift({ botId: "__portfolio__", botName: "Portafolio", level: totals.retPct <= -8 ? "bad" : "warn", msg: `Portafolio en pérdida ${totals.retPct.toFixed(1)}% del capital total` });
+    // Alarmas de la ESTRATEGIA (no de una cuenta): se miden sobre la cuenta de referencia
+    // con todo su historial desde que corre la estrategia actual, sin el filtro de período.
+    const est = estrategiaRef((botsRaw ?? []) as Bot[], (tradesRaw ?? []) as Trade[]);
+    if (est && opts.category !== "darwinex") {
+      const A = (level: Alert["level"], msg: string) => alerts.unshift({ botId: "__estrategia__", botName: "Estrategia OB London", level, msg });
+      if (est.ddR >= EST_DD_ALERTA_R)
+        A("bad", `Caída de ${est.ddR.toFixed(1)}R desde el máximo (alarma ${EST_DD_ALERTA_R}R) → DEJAR DE COMPRAR CHALLENGES y revisar la estrategia`);
+      else if (est.ddR >= EST_DD_ALERTA_R * 0.75)
+        A("warn", `Caída de ${est.ddR.toFixed(1)}R desde el máximo — la alarma de compra de challenges salta en ${EST_DD_ALERTA_R}R`);
+      if (est.n >= EST_VENTANA && est.ultR < 0)
+        A("bad", `Últimos ${EST_VENTANA} trades suman ${est.ultR.toFixed(1)}R → la estrategia NO está ganando: PAUSAR y revisar a fondo`);
+    }
     alerts.sort((a, b) => rankLvl[a.level] - rankLvl[b.level]);
 
     // equity del portafolio: todos los trades ordenados por salida
@@ -461,7 +496,7 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     const portfolioDaily: DayPnl[] = Array.from(pdmap.entries()).map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date));
 
     const lastCollected = ((snapsRaw?.[0] as { ts?: string } | undefined)?.ts) ?? new Date().toISOString();
-    return { bots: health, totals, alerts, portfolio, portfolioDaily, updatedAt: new Date().toISOString(), lastCollected };
+    return { bots: health, totals, alerts, portfolio, portfolioDaily, updatedAt: new Date().toISOString(), lastCollected, estrategia: est };
   } catch (e) {
     return { ...base, error: String(e) };
   }
