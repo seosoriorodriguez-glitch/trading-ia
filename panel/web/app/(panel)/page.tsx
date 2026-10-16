@@ -1,4 +1,4 @@
-import { getDashboard, periodRange, reglaRiesgo, RIESGO_REDUCIDO_DESDE_PCT, type BotHealth } from "@/lib/data";
+import { getDashboard, periodRange, type BotHealth } from "@/lib/data";
 import { chToday } from "@/lib/tz";
 import { AggKPI } from "@/components/cards";
 import { PctLines } from "@/components/pctlines";
@@ -95,15 +95,6 @@ export default async function Overview({ searchParams }: { searchParams: { perio
     return { b, lossIni, dia };
   }).sort((x, y) => y.lossIni - x.lossIni || x.dia - y.dia);
   const peor = margenes[0];
-  // --- Política de riesgo: estado de cada cuenta FTMO live frente a la regla del -4%
-  const ESTADO_RIESGO = {
-    normal: { txt: "0.5% · OK", cls: "text-win", box: "border-border" },
-    bajar: { txt: "BAJAR A 0.25%", cls: "text-loss font-bold", box: "border-loss/70 bg-loss/10" },
-    activa: { txt: "0.25% · regla activa", cls: "text-yellow-400", box: "border-yellow-400/50" },
-    volver: { txt: "VOLVER A 0.5%", cls: "text-win font-bold", box: "border-win/70 bg-win/10" },
-  } as const;
-  const cuentasRiesgo = bots.map((b) => ({ b, r: reglaRiesgo(b) })).filter((x) => x.r !== null) as { b: BotHealth; r: NonNullable<ReturnType<typeof reglaRiesgo>> }[];
-  const hayAccion = cuentasRiesgo.some((x) => x.r.estado === "bajar" || x.r.estado === "volver");
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
@@ -126,37 +117,6 @@ export default async function Overview({ searchParams }: { searchParams: { perio
         <AggKPI label="Margen FTMO · más ajustado" value={peor ? `${peor.lossIni.toFixed(1)}% / 10%` : "—"} sub={peor ? `${peor.b.name.split("—").pop()?.trim()} · día ${sgn(peor.dia)}% / -5%` : "sin cuentas FTMO"} tone={!peor ? undefined : peor.lossIni >= 7 || peor.dia <= -3.5 ? "loss" : peor.lossIni < 5 && peor.dia > -2.5 ? "win" : undefined} />
         <AggKPI label="Estado" value={`${totals.healthy}/${totals.nBots}`} sub={totals.bad ? `${totals.bad} en alerta` : totals.warn ? `${totals.warn} en atención` : "todos sanos"} tone={totals.bad ? "loss" : totals.warn ? undefined : "win"} />
       </div>
-
-      {cuentasRiesgo.length > 0 && (
-        <div className={`mb-6 rounded-xl border-2 px-4 py-3 ${hayAccion ? "border-loss/60 bg-loss/5" : "border-border bg-panel"}`}>
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-3">
-            <div>
-              <span className={`text-[10px] font-bold uppercase tracking-wider ${hayAccion ? "text-loss" : "text-dim"}`}>Política de riesgo · cuentas live</span>
-              <div className="text-sm font-semibold mt-0.5">
-                Balance bajo <span className="text-loss">-{RIESGO_REDUCIDO_DESDE_PCT}% del inicial</span> → operar a <span className="text-loss">0.25%</span> · vuelve a <span className="text-win">0.5%</span> al recuperar el inicial
-              </div>
-            </div>
-            <span className="text-[10px] text-dim font-mono">regla dura desde 16-oct-2026</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
-            {cuentasRiesgo.map(({ b, r }) => {
-              const e = ESTADO_RIESGO[r.estado];
-              return (
-                <a key={b.id} href={`/bot/${b.id}`} className={`rounded-lg border px-3 py-2 block hover:border-accent/50 transition ${e.box}`}>
-                  <div className="text-[11px] text-dim truncate">{b.name}</div>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className={`font-mono text-sm ${r.caida > 0 ? "text-loss" : "text-win"}`}>{r.caida > 0 ? "-" : "+"}{Math.abs(r.caida).toFixed(1)}% vs inicial</span>
-                    <span className={`text-xs ${e.cls}`}>{e.txt}</span>
-                  </div>
-                  <div className="text-[10px] text-dim font-mono">
-                    {r.estado === "activa" && r.caida > 0 ? `falta ${r.caida.toFixed(1)}% para volver a 0.5%` : `configurado ${(r.riesgo * 100).toFixed(2)}%`}
-                  </div>
-                </a>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {bots.length > 0 && (
         <div className="mb-8">

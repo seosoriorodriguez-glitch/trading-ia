@@ -1,4 +1,4 @@
-import { getDashboard, getVolRegime, RIESGO_REDUCIDO_DESDE_PCT, type Alert } from "@/lib/data";
+import { getDashboard, getVolRegime, type Alert } from "@/lib/data";
 import { AlertList } from "@/components/alerts";
 
 export const dynamic = "force-dynamic";
@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 const VOL_SYMBOLS = ["US30.cash"];   // solo US30: los umbrales se validaron ahí
 
 const REGLAS = [
-  { lvl: "bad", cond: `Cuenta live con balance ≤ -${RIESGO_REDUCIDO_DESDE_PCT}% del inicial`, que: "POLÍTICA DE RIESGO → bajar a 0.25% hasta recuperar el inicial" },
   { lvl: "bad", cond: "Pérdida desde el inicial ≥ 8.5% / ≥ 7%", que: "Límite duro de la prop (FTMO 10%) — incluye flotante" },
   { lvl: "warn", cond: "Devolución desde el pico ≥ 7%", que: "Deterioro, NO es el límite de la prop" },
   { lvl: "warn", cond: "WR reciente (últ. 30) < breakeven", que: "Las zonas dejan de respetarse" },

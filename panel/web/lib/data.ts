@@ -209,26 +209,6 @@ export type Dashboard = {
   portfolioDaily: DayPnl[]; updatedAt: string; lastCollected: string; error?: string;
 };
 
-export const RIESGO_REDUCIDO_DESDE_PCT = 4;
-
-// Política de riesgo (16-oct-2026): cuenta FTMO live con el balance bajo -4% del
-// inicial → operar a 0.25% hasta recuperar el inicial; ahí se vuelve a 0.5%.
-// Se mide sobre el BALANCE (trades cerrados) contra el inicial, igual que el piso de FTMO.
-// `risk_pct` de la tabla bots es lo que dice tener configurado el bot: se actualiza a
-// mano al cambiar el YAML, y con eso se sabe si la regla ya se aplicó.
-export type EstadoRiesgo = "normal" | "bajar" | "activa" | "volver";
-export function reglaRiesgo(b: BotHealth): { caida: number; riesgo: number; estado: EstadoRiesgo } | null {
-  if (b.category !== "ftmo" || b.kind !== "live" || !b.initial_balance) return null;
-  const bal = b.realBalance ?? b.balance;
-  const caida = ((b.initial_balance - bal) / b.initial_balance) * 100;
-  const riesgo = b.risk_pct || 0.005;
-  const reducido = riesgo <= 0.0025;
-  const estado: EstadoRiesgo = caida >= RIESGO_REDUCIDO_DESDE_PCT
-    ? (reducido ? "activa" : "bajar")
-    : reducido ? (caida <= 0 ? "volver" : "activa") : "normal";
-  return { caida, riesgo, estado };
-}
-
 function alertsFor(b: BotHealth): Alert[] {
   const out: Alert[] = [];
   const A = (level: Alert["level"], msg: string) => out.push({ botId: b.id, botName: b.name, level, msg });
@@ -252,11 +232,6 @@ function alertsFor(b: BotHealth): Alert[] {
     A("warn", "Equity bajo su media — posible cambio de régimen");
   if (b.retPct <= -5)
     A(b.retPct <= -8 ? "bad" : "warn", `Cuenta en pérdida ${b.retPct.toFixed(1)}% del balance`);
-  const rr = reglaRiesgo(b);
-  if (rr?.estado === "bajar")
-    A("bad", `REGLA DE RIESGO: balance ${(-rr.caida).toFixed(1)}% bajo el inicial (límite -${RIESGO_REDUCIDO_DESDE_PCT}%) → BAJAR A 0.25% hasta volver a $${b.initial_balance.toLocaleString("en-US")}`);
-  else if (rr?.estado === "volver")
-    A("info", `Recuperó el inicial → la regla de riesgo terminó: VOLVER A 0.5%`);
   // Coherencia entre las dos formas de medir el retorno: por trades (retPct) y por
   // reconciliación de balance (realRetPct). Si divergen mucho, el problema son los
   // DATOS, no la estrategia — trades sin recoger, rotación de cuenta mal contada, un
