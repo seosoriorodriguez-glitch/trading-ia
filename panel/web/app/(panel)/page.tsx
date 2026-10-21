@@ -1,4 +1,4 @@
-import { getDashboard, periodRange, type BotHealth } from "@/lib/data";
+import { getDashboard, periodRange, etapaRecuperacion, type BotHealth } from "@/lib/data";
 import { chToday } from "@/lib/tz";
 import { AggKPI } from "@/components/cards";
 import { PctLines } from "@/components/pctlines";
@@ -95,6 +95,10 @@ export default async function Overview({ searchParams }: { searchParams: { perio
     return { b, lossIni, dia };
   }).sort((x, y) => y.lossIni - x.lossIni || x.dia - y.dia);
   const peor = margenes[0];
+  // --- Recuperación: cuentas congeladas cerca del piso que corren con riesgo por etapas
+  const enRecuperacion = bots.map((b) => ({ b, r: etapaRecuperacion(b) }))
+    .filter((x): x is { b: BotHealth; r: NonNullable<ReturnType<typeof etapaRecuperacion>> } => x.r !== null);
+  const RIESGO_ETAPA = { 1: "$45/trade", 2: "0.3%", 3: "0.5% normal" } as const;
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
@@ -117,6 +121,42 @@ export default async function Overview({ searchParams }: { searchParams: { perio
         <AggKPI label="Margen FTMO · más ajustado" value={peor ? `${peor.lossIni.toFixed(1)}% / 10%` : "—"} sub={peor ? `${peor.b.name.split("—").pop()?.trim()} · día ${sgn(peor.dia)}% / -5%` : "sin cuentas FTMO"} tone={!peor ? undefined : peor.lossIni >= 7 || peor.dia <= -3.5 ? "loss" : peor.lossIni < 5 && peor.dia > -2.5 ? "win" : undefined} />
         <AggKPI label="Estado" value={`${totals.healthy}/${totals.nBots}`} sub={totals.bad ? `${totals.bad} en alerta` : totals.warn ? `${totals.warn} en atención` : "todos sanos"} tone={totals.bad ? "loss" : totals.warn ? undefined : "win"} />
       </div>
+
+      {enRecuperacion.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold">Recuperación por etapas</h2>
+            <span className="text-[10px] text-dim font-mono">cambio manual: Ctrl+C y relanzar con el --ftmo-config indicado</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {enRecuperacion.map(({ b, r }) => {
+              const cambiar = r.enUso !== null && r.enUso !== r.etapa;
+              const bal = b.realBalance ?? b.balance;
+              return (
+                <a key={b.id} href={`/bot/${b.id}`} className={`rounded-xl border px-4 py-3 block hover:border-accent/50 transition ${cambiar ? "border-loss/70 bg-loss/10" : "border-border bg-panel"}`}>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-[11px] text-dim truncate">{b.name}</span>
+                    <span className="font-mono text-sm">{money(bal)}</span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-2 mt-1">
+                    <span className="text-sm font-semibold">Etapa {r.etapa} · {RIESGO_ETAPA[r.etapa]}</span>
+                    <span className="text-[11px] font-mono text-dim">
+                      {r.falta != null ? `faltan ${money(r.falta)} para etapa ${r.etapa + 1}` : "recuperada"}
+                    </span>
+                  </div>
+                  <div className={`text-[11px] font-mono mt-1 ${cambiar ? "text-loss font-bold" : "text-dim"}`}>
+                    {cambiar
+                      ? `CAMBIAR: el bot corre etapa ${r.enUso} → reiniciar con ${r.config}`
+                      : r.enUso === null ? `sin trades aún · usar ${r.config}`
+                      : `bot en etapa ${r.enUso} ✓ (último trade arriesgó ${money(r.riesgoUsd ?? 0)})`}
+                  </div>
+                  <div className="text-[10px] text-dim font-mono mt-1">etapa 1 &lt; {money(r.hasta1)} · etapa 2 &lt; {money(r.hasta2)} · etapa 3 desde {money(r.hasta2)}</div>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {bots.length > 0 && (
         <div className="mb-8">

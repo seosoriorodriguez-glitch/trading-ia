@@ -13,6 +13,7 @@ export type Trade = {
   direction: string; entry_price: number; sl: number | null; tp: number | null;
   exit_price: number; entry_time: string; exit_time: string; exit_reason: string;
   pnl_usd: number; pnl_r: number | null; volume: number; session: string;
+  risk_points?: number | null;
 };
 export type Bot = {
   id: string; name: string; symbol: string; account: number | null;
@@ -210,6 +211,38 @@ export type Dashboard = {
   estrategia?: { n: number; ddR: number; ultN: number; ultR: number } | null;
 };
 
+// Recuperación de cuentas congeladas cerca del piso (21-oct-2026). Cada bot corre con un YAML
+// de config_recuperacion/ según su balance; el cambio de etapa es MANUAL (reiniciar con otro
+// --ftmo-config) y el panel avisa cuándo toca. El riesgo en uso se deduce del último trade
+// (lotes × puntos de riesgo; en US30 1 lote = 1 USD por punto), así no hay que registrarlo a mano.
+// Quitar la cuenta de aquí cuando termine su recuperación.
+export const RECUPERACION: Record<string, { hasta1: number; hasta2: number; yaml1: string }> = {
+  us30_live_100k: { hasta1: 93200, hasta2: 96000, yaml1: "etapa1_45usd_100k.yaml" },
+  dax_50k: { hasta1: 46600, hasta2: 48000, yaml1: "etapa1_45usd_50k.yaml" },
+};
+export type EtapaRec = {
+  etapa: 1 | 2 | 3; enUso: 1 | 2 | 3 | null; riesgoUsd: number | null;
+  falta: number | null; config: string; hasta1: number; hasta2: number;
+};
+export function etapaRecuperacion(b: BotHealth): EtapaRec | null {
+  const r = RECUPERACION[b.id];
+  if (!r || !b.initial_balance) return null;
+  const bal = b.realBalance ?? b.balance;
+  const etapa: 1 | 2 | 3 = bal < r.hasta1 ? 1 : bal < r.hasta2 ? 2 : 3;
+  const esperado = { 1: 45, 2: b.initial_balance * 0.003, 3: b.initial_balance * 0.005 };
+  const t = b.recent[0];
+  const pts = t ? (t.risk_points ?? (t.sl != null ? Math.abs(t.entry_price - t.sl) : null)) : null;
+  const riesgoUsd = t && pts ? t.volume * pts : null;
+  let enUso: 1 | 2 | 3 | null = null;
+  if (riesgoUsd != null) {
+    const d = ([1, 2, 3] as const).map((e) => [e, Math.abs(Math.log(riesgoUsd / esperado[e]))] as const);
+    enUso = d.sort((x, y) => x[1] - y[1])[0][0];
+  }
+  const config = etapa === 1 ? r.yaml1 : etapa === 2 ? "etapa2_03pct.yaml" : "sin --ftmo-config (0.5% normal)";
+  const falta = etapa === 1 ? r.hasta1 - bal : etapa === 2 ? r.hasta2 - bal : null;
+  return { etapa, enUso, riesgoUsd, falta, config, hasta1: r.hasta1, hasta2: r.hasta2 };
+}
+
 // Alarmas de la estrategia (16-oct-2026). Referencia: 10k live, estrategia actual desde 01-jun.
 //  - caída ≥ 20R desde el máximo = peor que todo lo visto en live → dejar de comprar challenges
 //  - últimos 135 trades en negativo: ~135 trades es lo que hace falta para separar un edge de
@@ -255,6 +288,9 @@ function alertsFor(b: BotHealth): Alert[] {
     A("warn", "Equity bajo su media — posible cambio de régimen");
   if (b.retPct <= -5)
     A(b.retPct <= -8 ? "bad" : "warn", `Cuenta en pérdida ${b.retPct.toFixed(1)}% del balance`);
+  const rec = etapaRecuperacion(b);
+  if (rec && rec.enUso !== null && rec.enUso !== rec.etapa)
+    A("bad", `RECUPERACIÓN: el balance está en etapa ${rec.etapa} pero el bot corre la etapa ${rec.enUso} → reiniciar con ${rec.config}`);
   // Coherencia entre las dos formas de medir el retorno: por trades (retPct) y por
   // reconciliación de balance (realRetPct). Si divergen mucho, el problema son los
   // DATOS, no la estrategia — trades sin recoger, rotación de cuenta mal contada, un
