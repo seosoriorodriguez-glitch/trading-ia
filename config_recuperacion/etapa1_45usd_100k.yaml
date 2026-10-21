@@ -22,7 +22,7 @@ ftmo:
   weekend_close_hour: 19      # Viernes 19:00 UTC = 15:00 NY = 22:00 servidor
                               # (cierra TODO ~1h antes del cierre del US30, regla FTMO 5.15.2)
 
-  risk_per_trade_pct: 0.00045 # $45 por trade en la 100k (etapa 1 de recuperacion)
+  risk_per_trade_pct: 0.00045 # $45 por trade en la 100k (etapa 1 de recuperacion, hasta $93,200)
   max_simultaneous_trades: 2
   max_spread_points: 5        # No operar si spread > 5 pts
 
