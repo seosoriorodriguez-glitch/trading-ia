@@ -6,16 +6,16 @@ Prueba de PARIDAD: la logica del bot (estrategia.py) da exactamente los mismos t
 Como lo haria el bot en vivo: en cada minuto ve solo el pasado. Las velas H1 que recibe son las ultimas 600 MAS la
 vela en formacion (de ella solo se usa la hora), los niveles se recalculan al empezar cada hora, los activos y
 usados salen de estrategia.py y los bloqueos (noticias, viernes, fin de semana) de sus funciones de horario.
-El llenado y las salidas los simula strategies/sr_pivot_live/backtest.py (reglas del motor: velas Bid,
+El llenado y las salidas los simula papel/estrategias/sr_pivot_h1/backtest.py (reglas del motor: velas Bid,
 Ask = Bid + 2.1, desliz SL 0.7); el bot en papel y papel/fidelidad.py usan ese mismo archivo.
 
-    python strategies/sr_pivot_live/herramientas/paridad.py                    # 2026-01-01 a 2026-11-01
-    python strategies/sr_pivot_live/herramientas/paridad.py 2025-01-01 2026-01-01
+    python papel/estrategias/sr_pivot_h1/herramientas/paridad.py                    # 2026-01-01 a 2026-11-01
+    python papel/estrategias/sr_pivot_h1/herramientas/paridad.py 2025-01-01 2026-01-01
 """
 import sys
 from pathlib import Path
 
-RAIZ = Path(__file__).resolve().parents[3]
+RAIZ = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "research" / "pa_lab"))
 sys.path.insert(0, str(RAIZ / "research" / "pa_lab" / "repaso"))
@@ -26,9 +26,9 @@ import pandas as pd
 from datos import es_cierre_viernes, es_noticia, m1_periodo, tf
 import motor_toque2 as MT
 from strategies.sr_pivot.backtest.levels import find_levels as find_levels_backtest
-from strategies.sr_pivot_live.estrategia import EstrategiaSR, bloqueado, ventanas_de_texto
-from strategies.sr_pivot_live.niveles import find_levels
-from strategies.sr_pivot_live.backtest import simular as simular_bot
+from papel.estrategias.sr_pivot_h1.estrategia import EstrategiaSR, bloqueado, ventanas_de_texto
+from papel.estrategias.sr_pivot_h1.niveles import find_levels
+from papel.estrategias.sr_pivot_h1.backtest import simular as simular_bot
 
 SPREAD, DESLIZ_SL = 2.1, 0.7
 VENTANAS = ventanas_de_texto(["08:26-08:34"])

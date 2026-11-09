@@ -36,7 +36,7 @@ import MetaTrader5 as mt5
 import pandas as pd
 
 from papel import fidelidad as F
-from papel.estrategias import BACKTESTS, PLUGINS
+from papel.registro import BACKTESTS, PLUGINS
 from papel.sincro import DESFASE_BT, Sincro, fila_trade
 
 ESTADO = RAIZ / "papel" / "estado"

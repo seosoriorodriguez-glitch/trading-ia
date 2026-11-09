@@ -7,15 +7,15 @@ no repita niveles (usados), cancele por noticias y fin de semana, cierre el vier
 El MT5 falso llena y cierra con las reglas del backtest (velas Bid, Ask = Bid + 2.1, desliz SL 0.7, SL antes que TP,
 el TP no se mira en la vela de entrada). El bot "despierta" una vez por minuto, al abrir cada vela M1.
 
-    python strategies/sr_pivot_live/herramientas/simulacro.py                 # 2026-01-01 a 2026-11-01
-    python strategies/sr_pivot_live/herramientas/simulacro.py 2026-09-01 2026-10-01
+    python papel/estrategias/sr_pivot_h1/herramientas/simulacro.py                 # 2026-01-01 a 2026-11-01
+    python papel/estrategias/sr_pivot_h1/herramientas/simulacro.py 2026-09-01 2026-10-01
 """
 import sys
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
-RAIZ = Path(__file__).resolve().parents[3]
+RAIZ = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "research" / "pa_lab"))
 sys.path.insert(0, str(RAIZ / "research" / "pa_lab" / "repaso"))
@@ -26,9 +26,9 @@ import yaml
 
 from datos import m1_periodo, tf
 import motor_toque2 as MT
-from strategies.sr_pivot_live.bot import BotSR
-from strategies.sr_pivot_live.estrategia import clave_de_comentario
-from strategies.sr_pivot_live.niveles import find_levels
+from papel.estrategias.sr_pivot_h1.bot import BotSR
+from papel.estrategias.sr_pivot_h1.estrategia import clave_de_comentario
+from papel.estrategias.sr_pivot_h1.niveles import find_levels
 
 SPREAD, DESLIZ_SL = 2.1, 0.7
 
@@ -185,7 +185,7 @@ def main():
     ini = pd.Timestamp(sys.argv[1] if len(sys.argv) > 1 else "2026-01-01")
     fin = pd.Timestamp(sys.argv[2] if len(sys.argv) > 2 else "2026-11-01")
     m1 = m1_periodo(ini, fin, margen_dias=40)
-    cfg = yaml.safe_load((RAIZ / "strategies" / "sr_pivot_live" / "config" / "demo.yaml").read_text(encoding="utf-8"))
+    cfg = yaml.safe_load((RAIZ / "papel" / "estrategias" / "sr_pivot_h1" / "config" / "demo.yaml").read_text(encoding="utf-8"))
     falso = MT5Falso(m1)
     bot = BotSR(cfg)
     bot.broker = falso

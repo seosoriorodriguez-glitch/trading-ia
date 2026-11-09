@@ -26,7 +26,7 @@ import pandas as pd
 from .broker_mt5 import BrokerMT5
 from .estrategia import EstrategiaSR, bloqueado, clave_de_comentario, corte_viernes, ventanas_de_texto
 
-RAIZ = Path(__file__).resolve().parents[2]
+RAIZ = Path(__file__).resolve().parents[3]
 
 
 class BotSR:

@@ -8,14 +8,14 @@ Compara con el backtest del mismo periodo. No sale identico a proposito: en pape
 que lo cruza (en el backtest SL - 0.7) y el orden de los extremos dentro de la vela es una suposicion. Las entradas
 (nivel, hora) si deben coincidir.
 
-    python strategies/sr_pivot_live/herramientas/prueba_papel.py 2026-09-01 2026-10-01
+    python papel/estrategias/sr_pivot_h1/herramientas/prueba_papel.py 2026-09-01 2026-10-01
 """
 import sys
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
-RAIZ = Path(__file__).resolve().parents[3]
+RAIZ = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "research" / "pa_lab"))
 sys.path.insert(0, str(RAIZ / "research" / "pa_lab" / "repaso"))
@@ -27,8 +27,8 @@ import yaml
 
 from datos import m1_periodo, tf
 import motor_toque2 as MT
-from strategies.sr_pivot_live.bot import BotSR
-from strategies.sr_pivot_live.niveles import find_levels
+from papel.estrategias.sr_pivot_h1.bot import BotSR
+from papel.estrategias.sr_pivot_h1.niveles import find_levels
 
 SPREAD = 2.1
 
@@ -94,7 +94,7 @@ def main():
     mt5.initialize = lambda *a, **k: True
     mt5.shutdown = lambda: None
     mt5.symbol_select = lambda *a: True
-    cfg = yaml.safe_load((RAIZ / "strategies" / "sr_pivot_live" / "config" / "demo.yaml").read_text(encoding="utf-8"))
+    cfg = yaml.safe_load((RAIZ / "papel" / "estrategias" / "sr_pivot_h1" / "config" / "demo.yaml").read_text(encoding="utf-8"))
     cfg["mt5"]["valor_punto_lote"] = 1.0
     bot = BotSR(cfg, papel=True)
     bot.verbose = False

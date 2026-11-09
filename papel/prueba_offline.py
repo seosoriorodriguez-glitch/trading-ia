@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Prueba SIN CONEXION del laboratorio completo (runner + bot en papel + subida al panel + comparacion con backtest):
-  - MT5 falso con ticks armados desde velas M1 (strategies/sr_pivot_live/herramientas/prueba_papel.Mercado);
+  - MT5 falso con ticks armados desde velas M1 (papel/estrategias/sr_pivot_h1/herramientas/prueba_papel.Mercado);
   - Supabase falso que solo anota lo que se subiria (no toca la base real);
   - carpeta de estado temporal.
 Revisa: formato de las filas (ids lab_, cuentas y tickets virtuales, horas), que los trades subidos sean los del papel,
@@ -18,7 +18,7 @@ from types import SimpleNamespace
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "research" / "pa_lab"))
-sys.path.insert(0, str(RAIZ / "strategies" / "sr_pivot_live" / "herramientas"))
+sys.path.insert(0, str(RAIZ / "papel" / "estrategias" / "sr_pivot_h1" / "herramientas"))
 
 import json
 import MetaTrader5 as mt5

@@ -54,7 +54,7 @@ orden**:
   quedado puestas en el servidor.
 
 ```
-python strategies/sr_pivot_live/run_bot.py --config strategies/sr_pivot_live/config/darwinex.yaml --papel
+python papel/estrategias/sr_pivot_h1/run_bot.py --config papel/estrategias/sr_pivot_h1/config/darwinex.yaml --papel
 ```
 
 **Archivos** (en `logs_sr_pivot/papel_<login>/`):
@@ -74,17 +74,17 @@ confirma con los primeros trades reales; el bot avisa si el valor por punto no c
    es una demo de Darwinex, porque tiene el mismo WS30, spread y swap.
 2. Revisar los costos del símbolo. Este paso no envía órdenes:
    ```
-   python strategies/sr_pivot_live/herramientas/costos_broker.py --terminal "C:\Program Files\MT5_SR_DEMO\terminal64.exe" --simbolo WS30
+   python papel/estrategias/sr_pivot_h1/herramientas/costos_broker.py --terminal "C:\Program Files\MT5_SR_DEMO\terminal64.exe" --simbolo WS30
    ```
 3. Completar `config/demo.yaml`: `terminal`, `simbolo` (`WS30` o `US30.cash`) y `balance_esperado`.
 4. Ver qué haría sin operar:
    ```
-   python strategies/sr_pivot_live/run_bot.py --config strategies/sr_pivot_live/config/demo.yaml --dry-run
+   python papel/estrategias/sr_pivot_h1/run_bot.py --config papel/estrategias/sr_pivot_h1/config/demo.yaml --dry-run
    ```
    Muestra los 5 niveles activos y las órdenes que pondría.
 5. Operar:
    ```
-   python strategies/sr_pivot_live/run_bot.py --config strategies/sr_pivot_live/config/demo.yaml
+   python papel/estrategias/sr_pivot_h1/run_bot.py --config papel/estrategias/sr_pivot_h1/config/demo.yaml
    ```
 6. **Primer trade:** si en `eventos.log` aparece `OJO valor por punto`, el riesgo real no es el configurado. Hay que
    ajustar `valor_punto_lote`. En Darwinex WS30, MT5 informa 0.1 pero la P&L real es ~1.0.

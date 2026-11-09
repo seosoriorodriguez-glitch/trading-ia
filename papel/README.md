@@ -52,15 +52,15 @@ python papel/runner.py --feed darwinex                 # en su propia ventana, c
    - `cuenta` única ≥ 9000000000.
    - `feed`: la terminal de la que lee precios.
    - `destino`: `darwinex` o `ftmo`.
-2. **Si es una estrategia nueva:** su lógica y su bot (como `strategies/sr_pivot_live/`), una línea en
-   `estrategias.py` (`PLUGINS` y `BACKTESTS`) y la referencia de su backtest en `panel/web/lib/lab.ts` (`LAB`),
+2. **Si es una estrategia nueva:** su lógica y su bot (como `papel/estrategias/sr_pivot_h1/`), una línea en
+   `registro.py` (`PLUGINS` y `BACKTESTS`) y la referencia de su backtest en `panel/web/lib/lab.ts` (`LAB`),
    para que el panel la compare contra lo esperado.
 
 ## Pruebas (sin conexión, no tocan nada)
 - `python papel/prueba_offline.py 2026-09-01 2026-10-01`: el laboratorio completo con un MT5 falso (ticks armados
   con velas M1) y un Supabase falso. Revisa las filas que se subirían y la comparación con el backtest
   (sep-2026: 16/16).
-- `python strategies/sr_pivot_live/herramientas/paridad.py`: la lógica del S/R contra el backtest de investigación.
+- `python papel/estrategias/sr_pivot_h1/herramientas/paridad.py`: la lógica del S/R contra el backtest de investigación.
   Da 163/163 trades idénticos en 2026 y 192/192 en 2025.
 
 ## Qué mirar en el panel

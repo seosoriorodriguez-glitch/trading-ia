@@ -3,9 +3,9 @@
 Arranque del bot S/R Pivot al toque H1.
 
     # ver que haria, sin enviar ordenes:
-    python strategies/sr_pivot_live/run_bot.py --config strategies/sr_pivot_live/config/demo.yaml --dry-run
+    python papel/estrategias/sr_pivot_h1/run_bot.py --config papel/estrategias/sr_pivot_h1/config/demo.yaml --dry-run
     # operar:
-    python strategies/sr_pivot_live/run_bot.py --config strategies/sr_pivot_live/config/demo.yaml
+    python papel/estrategias/sr_pivot_h1/run_bot.py --config papel/estrategias/sr_pivot_h1/config/demo.yaml
 
 Para detener: crear el archivo indicado en el config (STOP_SR_PIVOT.txt en la raiz del proyecto).
 """
@@ -21,9 +21,9 @@ from pathlib import Path
 
 import yaml
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from strategies.sr_pivot_live.bot import BotSR
+from papel.estrategias.sr_pivot_h1.bot import BotSR
 
 
 def main():

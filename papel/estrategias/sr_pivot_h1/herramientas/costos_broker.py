@@ -3,7 +3,7 @@
 Costos reales del simbolo en un terminal MT5 (SOLO LECTURA: no envia ni cancela nada).
 Sirve para correr el backtest con los costos de Darwinex (o de la cuenta de prueba) en vez de los de FTMO.
 
-    python strategies/sr_pivot_live/herramientas/costos_broker.py --terminal "C:\\Program Files\\MT5_BREAKERBLOCKS\\terminal64.exe" --simbolo WS30
+    python papel/estrategias/sr_pivot_h1/herramientas/costos_broker.py --terminal "C:\\Program Files\\MT5_BREAKERBLOCKS\\terminal64.exe" --simbolo WS30
 
 Muestra: valor por punto, spread (ahora y mediana de los ultimos dias por hora), swap largo/corto y como se cobra,
 dia del swap triple, margen de 1 lote, comision observada en los ultimos trades de la cuenta y hora del servidor.
