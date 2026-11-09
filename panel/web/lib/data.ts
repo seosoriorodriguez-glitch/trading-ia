@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { chDate, chToday } from "./tz";
+import { chDate, chToday, ftmoDayStart } from "./tz";
 
 // Categoría inferida del id del bot. "demo"/"lab" = laboratorio (independiente del resto).
 export function catOf(id: string): "ftmo" | "darwinex" | "demo" {
@@ -31,6 +31,7 @@ export type DayPnl = { date: string; pnl: number; n: number; wins: number };
 export type BotHealth = Bot & {
   category: "ftmo" | "darwinex" | "demo";
   kind: "live" | "challenge";   // FTMO: fondeada (live) vs challenge — profit target solo aplica en challenge
+  objetivoPct: number;   // profit target del challenge: 10 en fase 1, 5 en verificación
   n: number; wins: number; losses: number; wr: number; pf: number;
   sumR: number; retPct: number; pnlUsd: number; balance: number;
   realBalance: number | null; netFlows: number; withdrawn: number; deposited: number;
@@ -39,7 +40,7 @@ export type BotHealth = Bot & {
   realPnl: number; realRetPct: number;
   ddPct: number; maxDdPct: number; ddLimitPct: number;
   maxLossFromInitialPct: number; todayPnlUsd: number; todayPnlPct: number;
-  dayPnlBal: number; dayPnlBalPct: number;   // día FTMO (desde balance real, reinicia 00:00 CEST = 18:00 CL)
+  dayPnlBal: number; dayPnlBalPct: number;   // día FTMO (desde balance real, reinicia 00:00 Praga)
   breakevenWr: number; rollingWr: number; aboveMa: boolean;
   // stats avanzadas (estilo FTMO)
   expectancyUsd: number; expectancyR: number;
@@ -176,6 +177,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
 
   const category = catOf(bot.id);
   const kind: "live" | "challenge" = bot.id.includes("live") ? "live" : "challenge";
+  const objetivoPct = bot.id.includes("f2") ? 5 : 10;
   const todayPnlUsd = todayTs.reduce((a, t) => a + t.pnl_usd, 0);
   const todayPnlPct = bot.initial_balance ? (todayPnlUsd / bot.initial_balance) * 100 : 0;
 
@@ -186,7 +188,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
   if (curDd >= 8 || (n >= 15 && rollingWr < breakevenWr - 4)) health = "bad";
 
   return {
-    ...bot, category, kind, n, wins, losses, wr, pf: pf(rs), sumR, retPct, pnlUsd, balance,
+    ...bot, category, kind, objetivoPct, n, wins, losses, wr, pf: pf(rs), sumR, retPct, pnlUsd, balance,
     realBalance: null, netFlows: 0, withdrawn: 0, deposited: 0, payoutCash: 0, floating: 0, realPnl: pnlUsd, realRetPct: retPct,
     ddPct: Math.max(0, curDd), maxDdPct: maxDd, ddLimitPct: 10,
     maxLossFromInitialPct, todayPnlUsd, todayPnlPct, dayPnlBal: 0, dayPnlBalPct: 0,
@@ -209,16 +211,18 @@ export type Dashboard = {
   bots: BotHealth[]; totals: Totals; alerts: Alert[]; portfolio: PortPoint[];
   portfolioDaily: DayPnl[]; updatedAt: string; lastCollected: string; error?: string;
   estrategia?: { n: number; ddR: number; ultN: number; ultR: number } | null;
+  vol?: VolRegime | null;
 };
 
 // Recuperación de cuentas congeladas cerca del piso (21-oct-2026). Cada bot corre con un YAML
 // de config_recuperacion/ según su balance; el cambio de etapa es MANUAL (reiniciar con otro
 // --ftmo-config) y el panel avisa cuándo toca. El riesgo en uso se deduce del último trade
 // (lotes × puntos de riesgo; en US30 1 lote = 1 USD por punto), así no hay que registrarlo a mano.
-// Quitar la cuenta de aquí cuando termine su recuperación.
-export const RECUPERACION: Record<string, { hasta1: number; hasta2: number; yaml1: string }> = {
-  us30_live_100k: { hasta1: 93200, hasta2: 96000, yaml1: "etapa1_45usd_100k.yaml" },
-  dax_50k: { hasta1: 46600, hasta2: 48000, yaml1: "etapa1_45usd_50k.yaml" },
+// Quitar la cuenta de aquí cuando termine su recuperación. La etapa 1 subió de $45 a $100 por
+// trade el 09-nov-2026; los YAML conservan el nombre "45usd".
+export const RECUPERACION: Record<string, { hasta1: number; hasta2: number; yaml1: string; riesgo1: number }> = {
+  us30_live_100k: { hasta1: 93200, hasta2: 96000, yaml1: "etapa1_45usd_100k.yaml", riesgo1: 100 },
+  dax_50k: { hasta1: 46600, hasta2: 48000, yaml1: "etapa1_45usd_50k.yaml", riesgo1: 100 },
 };
 export type EtapaRec = {
   etapa: 1 | 2 | 3; enUso: 1 | 2 | 3 | null; riesgoUsd: number | null;
@@ -229,7 +233,7 @@ export function etapaRecuperacion(b: BotHealth): EtapaRec | null {
   if (!r || !b.initial_balance) return null;
   const bal = b.realBalance ?? b.balance;
   const etapa: 1 | 2 | 3 = bal < r.hasta1 ? 1 : bal < r.hasta2 ? 2 : 3;
-  const esperado = { 1: 45, 2: b.initial_balance * 0.003, 3: b.initial_balance * 0.005 };
+  const esperado = { 1: r.riesgo1, 2: b.initial_balance * 0.003, 3: b.initial_balance * 0.005 };
   const t = b.recent[0];
   const pts = t ? (t.risk_points ?? (t.sl != null ? Math.abs(t.entry_price - t.sl) : null)) : null;
   const riesgoUsd = t && pts ? t.volume * pts : null;
@@ -311,13 +315,13 @@ function alertsFor(b: BotHealth): Alert[] {
       `Pérdida hoy ${diaPct.toFixed(1)}% (incl. flotante) — el bot deja de abrir trades nuevos en -3.5% (cerrado)`);
   if (!b.streakWin && b.streak >= 6)
     A("warn", `Racha de ${b.streak} pérdidas seguidas`);
-  // El pase del +10% solo aplica al CHALLENGE. En la fondeada el target es 20% y
-  // el +10% no significa nada (ftmo_rules.yaml: profit_target_pct 0.20).
+  // El pase solo aplica al CHALLENGE (+10% fase 1, +5% verificación). En la fondeada el
+  // target es 20% y esos niveles no significan nada (ftmo_rules.yaml: profit_target_pct 0.20).
   if (b.category === "ftmo" && b.kind === "challenge") {
-    if (b.retPct >= 10)
+    if (b.retPct >= b.objetivoPct)
       A("info", `Objetivo alcanzado +${b.retPct.toFixed(1)}% — PARAR MANUALMENTE (pase del challenge)`);
-    else if (b.retPct >= 8)
-      A("info", `Cerca del pase FTMO (+${b.retPct.toFixed(1)}% de +10%)`);
+    else if (b.retPct >= b.objetivoPct * 0.8)
+      A("info", `Cerca del pase FTMO (+${b.retPct.toFixed(1)}% de +${b.objetivoPct}%)`);
   }
   return out;
 }
@@ -389,6 +393,63 @@ export async function getVolRegime(symbols: string[]): Promise<VolRegime[]> {
   }
 }
 
+// Mercado quieto (03-nov-2026). Modelo que replica el live, 2020-hoy: con la vela M5 mediana de 20
+// sesiones ≤ 23 pts (≈ rango de sesión de 300 pts) el OB pierde y no le gana a zonas al azar.
+// Sin abrir en ese régimen: -51R → +154R, peor caída 264R → 43R. 26 = aviso previo.
+// Usa mediana_m5 porque ya la sube el colector. El bot no lo lee: la pausa es decisión manual.
+export const VOL_OB = "US30.cash";
+export const VOL_QUIETO_PTS = 23;
+export const VOL_AVISO_PTS = 26;
+export const MERCADO = {
+  normal: { txt: "se mueve", col: "text-win", ico: "✅" },
+  cerca: { txt: "cerca de quieto", col: "text-yellow-400", ico: "⚠️" },
+  quieto: { txt: "quieto", col: "text-loss", ico: "🔴" },
+};
+export const mercadoVol = (v: VolRegime): keyof typeof MERCADO =>
+  v.medianaM5 <= VOL_QUIETO_PTS ? "quieto" : v.medianaM5 <= VOL_AVISO_PTS ? "cerca" : "normal";
+
+// Fases archivadas (09-nov-2026). Cada fase de un challenge tiene su propio id inactivo, así el
+// objetivo y los avisos miran solo la fase en curso. Aquí se juntan aparte para ver el recorrido.
+export type FaseArchivada = {
+  id: string; name: string; account: number | null; n: number; wr: number;
+  pnlUsd: number; retPct: number; desde: string; hasta: string;
+};
+export async function getFasesArchivadas(): Promise<{ fases: FaseArchivada[]; error?: string }> {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return { fases: [], error: "sin configuración de Supabase" };
+  const client = sb();
+  const { data: botsRaw, error: e1 } = await client.from("bots").select("*").eq("active", false);
+  if (e1) return { fases: [], error: `bots: ${e1.message}` };
+  const bots = ((botsRaw ?? []) as Bot[]).filter((b) => catOf(b.id) === "ftmo");
+  if (!bots.length) return { fases: [], error: `sin cuentas archivadas (${botsRaw?.length ?? 0} filas)` };
+  const { data, error: e2 } = await todasLasFilas((a, z) => client.from("trades").select("bot_id,pnl_usd,exit_time")
+    .in("bot_id", bots.map((b) => b.id)).order("exit_time", { ascending: true }).order("account").order("ticket").range(a, z));
+  if (e2) return { fases: [], error: `trades: ${e2.message ?? e2}` };
+  const ts = (data ?? []) as { bot_id: string; pnl_usd: number; exit_time: string }[];
+  const fases = bots.map((b) => {
+    const mios = ts.filter((t) => t.bot_id === b.id);
+    const pnlUsd = mios.reduce((a, t) => a + t.pnl_usd, 0);
+    return {
+      id: b.id, name: b.name, account: b.account, n: mios.length,
+      wr: mios.length ? (mios.filter((t) => t.pnl_usd > 0).length / mios.length) * 100 : 0,
+      pnlUsd, retPct: b.initial_balance ? (pnlUsd / b.initial_balance) * 100 : 0,
+      desde: mios[0]?.exit_time ?? "", hasta: mios[mios.length - 1]?.exit_time ?? "",
+    };
+  }).filter((f) => f.n > 0).sort((x, y) => y.hasta.localeCompare(x.hasta));
+  return { fases, error: fases.length ? undefined : `${bots.length} cuentas archivadas sin trades (${ts.length} leídos)` };
+}
+
+// Supabase entrega como máximo 1000 filas por consulta aunque se pida más. Con más de 1000
+// trades el panel perdía los más recientes, así que se pide por páginas hasta traer todo.
+export async function todasLasFilas(pagina: (desde: number, hasta: number) => PromiseLike<{ data: any[] | null; error: any }>) {
+  const data: any[] = [];
+  for (let i = 0; ; i += 1000) {
+    const r = await pagina(i, i + 999);
+    if (r.error) return { data: null, error: r.error };
+    data.push(...(r.data ?? []));
+    if ((r.data?.length ?? 0) < 1000) return { data, error: null };
+  }
+}
+
 export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
   const now0 = new Date().toISOString();
   const base = { bots: [], totals: EMPTY, alerts: [], portfolio: [], portfolioDaily: [], updatedAt: now0, lastCollected: now0 };
@@ -396,16 +457,13 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     return { ...base, error: "Falta configurar SUPABASE_URL / SUPABASE_SERVICE_KEY en .env.local" };
   try {
     const client = sb();
-    // inicio del día FTMO = 00:00 CEST = 22:00 UTC = 18:00 Chile
-    const nowD = new Date();
-    const reset = new Date(Date.UTC(nowD.getUTCFullYear(), nowD.getUTCMonth(), nowD.getUTCDate(), 22, 0, 0));
-    if (nowD.getTime() < reset.getTime()) reset.setUTCDate(reset.getUTCDate() - 1);
-    const [{ data: botsRaw }, { data: tradesRaw }, { data: snapsRaw }, { data: bopsRaw }, { data: daySnaps }, { data: payoutsRaw }] = await Promise.all([
+    const reset = ftmoDayStart();
+    const [{ data: botsRaw }, { data: tradesRaw }, { data: snapsRaw }, { data: bopsRaw }, { data: payoutsRaw }] = await Promise.all([
       client.from("bots").select("*").eq("active", true),
-      client.from("trades").select("*").order("exit_time", { ascending: true }).limit(5000),
+      todasLasFilas((a, z) => client.from("trades").select("*")
+        .order("exit_time", { ascending: true }).order("account").order("ticket").range(a, z)),
       client.from("account_snapshots").select("account,balance,equity,ts").order("ts", { ascending: false }).limit(1000),
       client.from("balance_ops").select("bot_id,account,amount,comment").limit(2000),
-      client.from("account_snapshots").select("account,balance,ts").gte("ts", reset.toISOString()).order("ts", { ascending: true }).limit(400),
       client.from("payouts").select("bot_id,retiro,reinversion,reembolso,estado,fecha").limit(500),
     ]);
     let botsList = (botsRaw ?? []) as Bot[];
@@ -426,10 +484,15 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
       if (!latestBal.has(s.account)) latestBal.set(s.account, s.balance);
       if (!latestEq.has(s.account)) latestEq.set(s.account, s.equity);
     }
-    // balance de apertura del día FTMO (primer snapshot ≥ reset, orden asc)
+    // balance de apertura del día FTMO (primer snapshot ≥ reset). Va por cuenta: con un límite
+    // global, una cuenta que arranca a mitad del día quedaba fuera y su día se veía en $0.
     const balAtReset = new Map<number, number>();
-    for (const s of (daySnaps ?? []) as { account: number; balance: number }[])
-      if (!balAtReset.has(s.account)) balAtReset.set(s.account, s.balance);
+    await Promise.all(health.map(async (b) => {
+      if (b.account == null) return;
+      const { data } = await client.from("account_snapshots").select("balance").eq("account", b.account)
+        .gte("ts", reset.toISOString()).order("ts", { ascending: true }).limit(1);
+      if (data?.length) balAtReset.set(b.account, data[0].balance);
+    }));
     // Movimientos de balance por bot. Un bot pasa por VARIAS cuentas (payout, pase de
     // fase, breach) y todas comparten bot_id, así que aquí conviven los movimientos de
     // todas ellas. Hay que separar el fondeo del bróker del dinero real.
@@ -510,6 +573,15 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
       if (est.n >= EST_VENTANA && est.ultR < 0)
         A("bad", `Últimos ${EST_VENTANA} trades suman ${est.ultR.toFixed(1)}R → la estrategia NO está ganando: PAUSAR y revisar a fondo`);
     }
+    const vol = (await getVolRegime([VOL_OB]))[0] ?? null;
+    const mercado = vol ? mercadoVol(vol) : "normal";
+    if (vol && mercado !== "normal" && opts.category !== "darwinex")
+      alerts.unshift({
+        botId: "__mercado__", botName: "Mercado US30", level: mercado === "quieto" ? "bad" : "warn",
+        msg: mercado === "quieto"
+          ? `Vela M5 mediana ${vol.medianaM5.toFixed(1)} pts (≤ ${VOL_QUIETO_PTS}, ≈ rango de sesión 300) → mercado quieto: la estrategia pierde en este régimen, considerar pausar`
+          : `Vela M5 mediana ${vol.medianaM5.toFixed(1)} pts — la alerta de mercado quieto salta en ${VOL_QUIETO_PTS}`,
+      });
     alerts.sort((a, b) => rankLvl[a.level] - rankLvl[b.level]);
 
     // equity del portafolio: todos los trades ordenados por salida
@@ -532,7 +604,7 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     const portfolioDaily: DayPnl[] = Array.from(pdmap.entries()).map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date));
 
     const lastCollected = ((snapsRaw?.[0] as { ts?: string } | undefined)?.ts) ?? new Date().toISOString();
-    return { bots: health, totals, alerts, portfolio, portfolioDaily, updatedAt: new Date().toISOString(), lastCollected, estrategia: est };
+    return { bots: health, totals, alerts, portfolio, portfolioDaily, updatedAt: new Date().toISOString(), lastCollected, estrategia: est, vol };
   } catch (e) {
     return { ...base, error: String(e) };
   }

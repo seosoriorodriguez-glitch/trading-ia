@@ -1,5 +1,5 @@
-import { getDashboard, periodRange, etapaRecuperacion, type BotHealth } from "@/lib/data";
-import { chToday } from "@/lib/tz";
+import { getDashboard, periodRange, etapaRecuperacion, mercadoVol, MERCADO, VOL_QUIETO_PTS, type BotHealth } from "@/lib/data";
+import { chToday, ftmoResetCL } from "@/lib/tz";
 import { AggKPI } from "@/components/cards";
 import { PctLines } from "@/components/pctlines";
 import { Calendar } from "@/components/calendar";
@@ -23,8 +23,9 @@ function groupSummary(bots: BotHealth[]) {
 export default async function Overview({ searchParams }: { searchParams: { period?: string; type?: string } }) {
   const pr = periodRange(searchParams.period);
   const category = searchParams.type === "ftmo" || searchParams.type === "darwinex" ? searchParams.type : undefined;
-  const { bots, totals, alerts, portfolio, portfolioDaily, error, estrategia } = await getDashboard({ since: pr.since, until: pr.until, category });
+  const { bots, totals, alerts, portfolio, portfolioDaily, error, estrategia, vol } = await getDashboard({ since: pr.since, until: pr.until, category });
   if (error) return <div className="text-dim py-20">Sin datos: <span className="text-loss font-mono">{error}</span></div>;
+  const mercado = vol ? MERCADO[mercadoVol(vol)] : null;
   const groups = [
     { k: "FTMO", g: groupSummary(bots.filter((b) => b.category === "ftmo")), href: "/ftmo", desc: "Challenges y fondeo · profit split" },
     { k: "Darwinex", g: groupSummary(bots.filter((b) => b.category === "darwinex")), href: "/darwinex", desc: "Asignación de capital · track record" },
@@ -98,7 +99,7 @@ export default async function Overview({ searchParams }: { searchParams: { perio
   // --- Recuperación: cuentas congeladas cerca del piso que corren con riesgo por etapas
   const enRecuperacion = bots.map((b) => ({ b, r: etapaRecuperacion(b) }))
     .filter((x): x is { b: BotHealth; r: NonNullable<ReturnType<typeof etapaRecuperacion>> } => x.r !== null);
-  const RIESGO_ETAPA = { 1: "$45/trade", 2: "0.3%", 3: "0.5% normal" } as const;
+  const RIESGO_ETAPA = { 1: "$100/trade", 2: "0.3%", 3: "0.5% normal" } as const;
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
@@ -121,6 +122,13 @@ export default async function Overview({ searchParams }: { searchParams: { perio
         <AggKPI label="Margen FTMO · más ajustado" value={peor ? `${peor.lossIni.toFixed(1)}% / 10%` : "—"} sub={peor ? `${peor.b.name.split("—").pop()?.trim()} · día ${sgn(peor.dia)}% / -5%` : "sin cuentas FTMO"} tone={!peor ? undefined : peor.lossIni >= 7 || peor.dia <= -3.5 ? "loss" : peor.lossIni < 5 && peor.dia > -2.5 ? "win" : undefined} />
         <AggKPI label="Estado" value={`${totals.healthy}/${totals.nBots}`} sub={totals.bad ? `${totals.bad} en alerta` : totals.warn ? `${totals.warn} en atención` : "todos sanos"} tone={totals.bad ? "loss" : totals.warn ? undefined : "win"} />
       </div>
+
+      {vol && mercado && category !== "darwinex" && (
+        <a href="/alertas" className="flex flex-wrap items-baseline gap-x-3 gap-y-1 bg-panel border border-border rounded-xl px-4 py-2.5 mb-6 hover:bg-panel2">
+          <span className={`text-sm font-semibold ${mercado.col}`}>{mercado.ico} Mercado US30: {mercado.txt}</span>
+          <span className="text-xs text-dim font-mono">vela M5 {vol.medianaM5.toFixed(1)} pts · quieto ≤ {VOL_QUIETO_PTS} (≈ rango de sesión 300)</span>
+        </a>
+      )}
 
       {enRecuperacion.length > 0 && (
         <div className="mb-6">
@@ -162,7 +170,7 @@ export default async function Overview({ searchParams }: { searchParams: { perio
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold">El día por cuenta</h2>
-            <span className="text-[10px] text-dim font-mono">reinicia 18:00 CL · 00:00 CEST (regla diaria FTMO)</span>
+            <span className="text-[10px] text-dim font-mono">reinicia {ftmoResetCL()} CL · 00:00 Praga (regla diaria FTMO)</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
             {bots.map((b) => {

@@ -182,6 +182,12 @@ balance-op**, así que el colector no lo detecta como retiro; solo actualiza el 
 
 > **Regla simple: cada fase/fondeo = un `id` nuevo.** El retorno de un challenge es *virtual* (no te
 > pagan por pasar); lo que mide la estrategia (WR/PF/R) igual se ve sumando las fases en el histórico.
+> Así el gráfico "Retorno % por cuenta" muestra cada challenge mientras existe y, al fondear, solo la
+> curva de la fondeada. Las fases archivadas se ven en FTMO → **Fases anteriores**.
+>
+> **Excepciones, siempre con el mismo `id`:** `us30_live_10k` (rendimiento histórico de la estrategia:
+> si rota de cuenta sigue bajo el mismo id, opción B de PROCEDIMIENTOS §2b) y `us30_darwinex` (track
+> record de largo plazo).
 
 **Qué VIGILAR al pasar de fase:**
 - [ ] La cuenta vieja desapareció del panel (archivada) pero su histórico sigue.
@@ -196,7 +202,8 @@ panel lo **resta** solo (depósito extra) para no contarlo como ganancia. Cero i
 
 ### 8.5 SUMAR una cuenta / challenge nuevo
 1. En `config.json`, agrega el bloque del bot (id, name, symbol, account, terminal_path, session,
-   risk_pct, initial_balance, rr, magic).
+   risk_pct, initial_balance, rr, magic). **Usa `"magic": null`** si la cuenta tiene un solo bot: con un
+   número, un cierre manual (sale con magic 0) no se registra y el panel se descuadra del saldo.
 2. Reinicia el colector. El panel lo detecta solo y lo ubica por categoría (según el `id`).
 
 ### 8.6 Agregar una DEMO / Lab

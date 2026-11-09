@@ -105,7 +105,7 @@ export function BotCard({ b, href }: { b: BotHealth; href?: string }) {
         <div className="border-t border-border pt-3 flex flex-col gap-2">
           <div className="text-[10px] uppercase tracking-wider text-dim">{b.kind === "live" ? "Límites FTMO · fondeada" : "Objetivos FTMO · challenge"}</div>
           {b.kind === "challenge" && (
-            <Bar label="Profit target (+10%)" valueTxt={`${b.retPct >= 0 ? "+" : ""}${b.retPct.toFixed(1)}% / 10%`} pct={(b.retPct / 10) * 100} tone="win" />
+            <Bar label={`Profit target (+${b.objetivoPct}%)`} valueTxt={`${b.retPct >= 0 ? "+" : ""}${b.retPct.toFixed(1)}% / ${b.objetivoPct}%`} pct={(b.retPct / b.objetivoPct) * 100} tone="win" />
           )}
           <Bar label="Pérdida máx (límite 10%)" valueTxt={`${b.maxLossFromInitialPct.toFixed(1)}% / 10%`} pct={(b.maxLossFromInitialPct / 10) * 100} tone="loss" />
           <Bar label="Pérdida hoy (límite 5%)" valueTxt={`${Math.max(0, -b.dayPnlBalPct).toFixed(1)}% / 5%`} pct={(Math.max(0, -b.dayPnlBalPct) / 5) * 100} tone="loss" />

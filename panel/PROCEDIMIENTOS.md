@@ -87,9 +87,11 @@ Si es la misma cuenta (mismo tamaño, misma lineage) y sólo cambió el login:
      "account": 12345678,
      "terminal_path": "C:\\Program Files\\MT5_XXX\\terminal64.exe",
      "session": "london", "risk_pct": 0.005, "initial_balance": 25000,
-     "rr": 2.5, "magic": 345680
+     "rr": 2.5, "magic": null
    }
    ```
+   `magic: null` toma todos los trades de la cuenta. Con un número (345680), un cierre manual
+   sale con magic 0 y el colector descarta la posición entera (pasó el 9-oct, 12-oct y 5-nov-2026).
 2. Reinicia el colector → registra el bot y empieza a recolectar.
 3. El panel lo detecta solo. Si el `id` **no** contiene "darwinex" → aparece en **FTMO**; si contiene "darwinex" → en **Darwinex**.
 

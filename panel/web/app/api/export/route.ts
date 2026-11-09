@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { chDateTime } from "@/lib/tz";
+import { todasLasFilas } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +11,13 @@ export async function GET(req: Request) {
   const bot = new URL(req.url).searchParams.get("bot");
   const sb = createClient(U, K, { global: { fetch: (u, o) => fetch(u as any, { ...o, cache: "no-store" }) } });
 
-  let q = sb.from("trades")
-    .select("bot_id,account,ticket,symbol,direction,entry_time,exit_time,entry_price,sl,tp,exit_price,exit_reason,risk_points,volume,pnl_usd,pnl_r,session")
-    .order("exit_time", { ascending: true }).limit(50000);
-  if (bot) q = q.eq("bot_id", bot);
-  const { data, error } = await q;
+  const { data, error } = await todasLasFilas((a, z) => {
+    let q = sb.from("trades")
+      .select("bot_id,account,ticket,symbol,direction,entry_time,exit_time,entry_price,sl,tp,exit_price,exit_reason,risk_points,volume,pnl_usd,pnl_r,session")
+      .order("exit_time", { ascending: true }).order("account").order("ticket");
+    if (bot) q = q.eq("bot_id", bot);
+    return q.range(a, z);
+  });
   if (error) return new Response("Error: " + error.message, { status: 500 });
 
   const cols = [

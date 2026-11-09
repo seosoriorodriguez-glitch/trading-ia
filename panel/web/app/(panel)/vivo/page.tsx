@@ -1,6 +1,6 @@
 import { getDashboard, getSessionViews } from "@/lib/data";
 import { SessionChart } from "@/components/sessionchart";
-import { chDateTime } from "@/lib/tz";
+import { chDateTimeUtc } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +69,7 @@ export default async function Vivo() {
                     <span className={live ? "text-win font-semibold" : "text-[#8a97a8]"}>{live ? "● EN VIVO" : "■ cerrada"}</span>
                     <span>{trades.length} op.</span>
                     <span>▢ {zones.length} zonas usadas <span className="text-[#6b7684]">de {zonasTodas.length} detectadas</span></span>
-                    {v?.updatedAt && <span suppressHydrationWarning>· {chDateTime(v.updatedAt)}</span>}
+                    {v?.updatedAt && <span suppressHydrationWarning>· {chDateTimeUtc(v.updatedAt)}</span>}
                   </> : <span>fuera de sesión · aún sin datos de hoy</span>}
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { getDashboard, getVolRegime, type Alert } from "@/lib/data";
+import { getDashboard, getVolRegime, mercadoVol, MERCADO, VOL_QUIETO_PTS, VOL_AVISO_PTS, type Alert } from "@/lib/data";
 import { AlertList } from "@/components/alerts";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +8,7 @@ const VOL_SYMBOLS = ["US30.cash"];   // solo US30: los umbrales se validaron ah�
 const REGLAS = [
   { lvl: "bad", cond: "Estrategia: caída ≥ 20R desde el máximo (10k live, desde 01-jun) · aviso en 15R", que: "Peor que todo lo visto en live → DEJAR DE COMPRAR CHALLENGES y revisar" },
   { lvl: "bad", cond: "Estrategia: últimos 135 trades suman negativo", que: "Ya no es ruido: la estrategia no está ganando → pausar y revisar a fondo" },
+  { lvl: "bad", cond: `Mercado quieto: vela M5 mediana (20 sesiones) ≤ ${VOL_QUIETO_PTS} pts · aviso en ${VOL_AVISO_PTS}`, que: "≈ rango de sesión 300 pts. En ese régimen la estrategia pierde (backtest 2020-hoy) → considerar pausar" },
   { lvl: "bad", cond: "Pérdida desde el inicial ≥ 8.5% / ≥ 7%", que: "Límite duro de la prop (FTMO 10%) — incluye flotante" },
   { lvl: "warn", cond: "Devolución desde el pico ≥ 7%", que: "Deterioro, NO es el límite de la prop" },
   { lvl: "warn", cond: "WR reciente (últ. 30) < breakeven", que: "Las zonas dejan de respetarse" },
@@ -18,7 +19,7 @@ const REGLAS = [
   { lvl: "bad", cond: "Pérdida del día ≥ -3.5% / ≥ -3%", que: "Equity + flotante · el bot deja de abrir trades en -3.5% (cerrado)" },
   { lvl: "warn", cond: "Racha de 6+ pérdidas seguidas", que: "Mala racha sostenida" },
   { lvl: "warn", cond: "Ratio de volatilidad ≥ 2.0 (rojo) / ≥ 1.6 (atención)", que: "El SL fijo se desalineó del mercado" },
-  { lvl: "info", cond: "Retorno ≥ +10% / ≥ +8% (solo challenge)", que: "Pase alcanzado → parar manual · o cerca del pase 🟢" },
+  { lvl: "info", cond: "Retorno ≥ +10% / ≥ +8% en fase 1 · ≥ +5% / ≥ +4% en verificación", que: "Pase alcanzado → parar manual · o cerca del pase 🟢" },
 ];
 const DOT = { bad: "bg-loss", warn: "bg-yellow-400", info: "bg-win" };
 const COL = { verde: "text-win", amarillo: "text-yellow-400", rojo: "text-loss" };
@@ -95,6 +96,10 @@ export default async function Alertas() {
                 <div><div className="text-dim">buffer del bot</div><div>{v.bufferActual} pts (fijo)</div></div>
                 <div><div className="text-dim">buffer sugerido</div><div>{v.bufferSug} pts</div></div>
                 <div><div className="text-dim">últ. sesión medida</div><div>{v.fecha}</div></div>
+              </div>
+              <div className="mt-3 text-sm">
+                <span className={`font-semibold ${MERCADO[mercadoVol(v)].col}`}>{MERCADO[mercadoVol(v)].ico} Mercado {MERCADO[mercadoVol(v)].txt}</span>
+                <span className="text-xs text-dim"> · vela M5 {v.medianaM5.toFixed(1)} pts · alerta en ≤ {VOL_QUIETO_PTS} · aviso en ≤ {VOL_AVISO_PTS}</span>
               </div>
               <div className="mt-2 text-[11px] text-dim">
                 mediana móvil de {v.nSesiones} sesiones de London (10:00–17:00) · {hora(v.updatedAt)}
@@ -179,6 +184,18 @@ TP     = entrada + riesgo × 2.5`}</pre>
                 en años malos), o bajar el RR de 2.5 a 2.0 manteniendo el stop ancho (<span className="text-[#c5cfdb]">sin probar</span>).
               </li>
             </ol>
+          </div>
+
+          <div>
+            <div className="font-semibold mb-1">Mercado quieto: la alerta que dice si conviene operar</div>
+            <p className="text-dim text-xs">
+              El ratio mira si el buffer está alineado; esta alerta mira si la estrategia gana. Con el modelo que replica el live
+              (2020-hoy), cuando la vela M5 mediana cae a <span className="text-[#c5cfdb]">{VOL_QUIETO_PTS} pts o menos</span> (≈ rango
+              de sesión de 300 pts) el OB pierde y no le gana a zonas al azar: el TP queda demasiado lejos para lo que se mueve el Dow.
+              No abrir trades en ese régimen habría cambiado <span className="text-[#c5cfdb]">−51R por +154R</span> y la peor caída de
+              264R a 43R, a costa de pausas largas (casi todo 2021, 2023 y 2024). En 2026 cambia poco: +87R contra +90R.
+              Es un aviso: el bot no lo lee y la pausa la decides tú.
+            </p>
           </div>
 
           <div>
