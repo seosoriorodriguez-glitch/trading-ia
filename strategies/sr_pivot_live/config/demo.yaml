@@ -1,0 +1,29 @@
+# S/R Pivot al toque H1 — cuenta de PRUEBA (1-2 meses en otro MT5 antes de Darwinex).
+# Completar `terminal` y `simbolo` con los de la cuenta de prueba.
+
+cuenta:
+  balance_esperado: 100000   # el bot no arranca si la cuenta conectada tiene menos de la mitad o mas del doble
+  riesgo_pct: 0.005          # 0.5 % del balance por trade (como opera Darwinex)
+
+mt5:
+  terminal: 'C:\Program Files\MT5_SR_DEMO\terminal64.exe'   # instancia MT5 PROPIA de la prueba
+  simbolo: US30.cash         # FTMO: US30.cash | Darwinex: WS30
+  magic: 345690              # unico: NY 345678, BTC 345679, London 345680, Darwinex 345681, oro 345682, DAX 345683
+  llenado: return            # return | ioc | fok (el que acepte el broker para ordenes pendientes)
+  valor_punto_lote: null     # null = lo lee de MT5. Si el primer trade avisa "OJO valor por punto", poner aca el real
+
+estrategia:                  # la config elegida (nov-2026). NO cambiar sin volver a correr el backtest
+  W: 20                      # distancia de la orden al nivel, pts a precio 47 000 (se escala con el precio)
+  S: 130                     # SL al otro lado del nivel, pts a precio 47 000
+  RR: 2.5
+  max_niveles: 5
+  pivote_izq: 15
+  pivote_der: 15
+  precio_ref: 47000
+
+horario:                     # hora servidor = Nueva York + 7 h (FTMO y Darwinex)
+  noticias_et: ["08:26-08:34"]
+
+archivos:
+  stop: STOP_SR_PIVOT.txt    # en la raiz del proyecto
+  logs: logs_sr_pivot        # logs_sr_pivot/<login>/ eventos.log, trades.csv, estado.json

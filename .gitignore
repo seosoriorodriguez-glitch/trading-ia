@@ -26,3 +26,17 @@ Thumbs.db
 # Antecedentes / accesos con credenciales — NUNCA subir
 ACCESOS.local.md
 *.local.md
+
+# Velas M1 de research (copias locales, pesadas)
+research/_datos/
+research/pa_lab/**/_cache/
+research/pa_lab/**/_dukas/
+
+# Bot S/R Pivot (logs y archivo de parada, por cuenta)
+logs_sr_pivot/
+STOP_SR_PIVOT.txt
+
+# Laboratorio en papel: config del VPS, estado y parada
+papel/config.json
+papel/estado/
+papel/STOP_PAPEL.txt

@@ -1,4 +1,6 @@
-import { getDashboard, catOf } from "@/lib/data";
+import { getDashboard, catOf, getTradesOf } from "@/lib/data";
+import { LabDetalle } from "@/components/lab";
+import { SUF_BT } from "@/lib/lab";
 import { KPI, HEALTH } from "@/components/cards";
 import { EquityChart, RBars } from "@/components/charts";
 import { Calendar } from "@/components/calendar";
@@ -15,6 +17,7 @@ export default async function BotDetail({ params }: { params: { id: string } }) 
   const h = HEALTH[b.health];
   const rData = [...b.recent].reverse().map((t, i) => ({ i, r: t.pnl_r ?? (t.pnl_usd > 0 ? b.rr : -1) }));
   const dur = b.avgDurationMin;
+  const lab = b.category === "demo" ? await Promise.all([getTradesOf(b.id), getTradesOf(b.id + SUF_BT)]) : null;
 
   return (
     <div className="max-w-5xl">
@@ -37,6 +40,8 @@ export default async function BotDetail({ params }: { params: { id: string } }) 
         <KPI label="Drawdown" value={`${b.ddPct.toFixed(1)}%`} sub={`máx ${b.maxDdPct.toFixed(1)}% · lím 10%`} tone={b.ddPct >= 7 ? "loss" : "dim"} />
         <KPI label="Duración media" value={dur < 60 ? `${dur.toFixed(0)}m` : `${(dur / 60).toFixed(1)}h`} sub={`racha ${b.streak}${b.streakWin ? "G" : "P"}`} />
       </div>
+
+      {lab && <LabDetalle b={b} papel={lab[0]} bt={lab[1]} />}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8 font-mono text-sm">
         {[["WR London", b.wrLondon], ["WR NY", b.wrNy], ["WR Long", b.wrLong], ["WR Short", b.wrShort]].map(([l, v]) => (

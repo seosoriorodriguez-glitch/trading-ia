@@ -18,6 +18,7 @@ export type Trade = {
 export type Bot = {
   id: string; name: string; symbol: string; account: number | null;
   session: string; risk_pct: number; initial_balance: number; rr: number; magic: number;
+  created_at?: string;
 };
 export type EquityPoint = { i: number; t: string; equity: number; ma: number | null };
 // Un tramo del historial: lo que hizo el bot mientras vivio UNA cuenta concreta.
@@ -52,6 +53,7 @@ export type BotHealth = Bot & {
   equity: EquityPoint[]; recent: Trade[]; todayN: number; todayWins: number;
   daily: DayPnl[];  // para el calendario
   byAccount: AccountRun[];  // desglose por cuenta: sobrevive a las rotaciones
+  lastSnapTs: string | null;  // último snapshot de su cuenta (latido; en el lab lo sube papel/runner.py cada 5 min)
 };
 
 const MA_WINDOW = 30;
@@ -195,7 +197,7 @@ function compute(bot: Bot, all: Trade[]): BotHealth {
     breakevenWr, rollingWr, aboveMa, health,
     expectancyUsd, expectancyR, avgWinUsd, avgLossUsd, avgWinR, avgLossR, rrr,
     streak, streakWin, bestUsd, worstUsd, avgDurationMin, wrLondon, wrNy, wrLong, wrShort,
-    equity, recent: ts.slice(-80).reverse(), daily, byAccount,
+    equity, recent: ts.slice(-80).reverse(), daily, byAccount, lastSnapTs: null,
     todayN: todayTs.length, todayWins: todayTs.filter((t) => t.pnl_usd > 0).length,
   };
 }
@@ -438,6 +440,15 @@ export async function getFasesArchivadas(): Promise<{ fases: FaseArchivada[]; er
   return { fases, error: fases.length ? undefined : `${bots.length} cuentas archivadas sin trades (${ts.length} leídos)` };
 }
 
+// Trades de un bot aunque esté archivado (lo usa el detalle del laboratorio para el backtest "<id>__bt").
+export async function getTradesOf(botId: string): Promise<Trade[]> {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return [];
+  const client = sb();
+  const { data } = await todasLasFilas((a, z) => client.from("trades").select("*").eq("bot_id", botId)
+    .order("exit_time", { ascending: true }).order("ticket").range(a, z));
+  return (data ?? []) as Trade[];
+}
+
 // Supabase entrega como máximo 1000 filas por consulta aunque se pida más. Con más de 1000
 // trades el panel perdía los más recientes, así que se pide por páginas hasta traer todo.
 export async function todasLasFilas(pagina: (desde: number, hasta: number) => PromiseLike<{ data: any[] | null; error: any }>) {
@@ -480,10 +491,13 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     // balance REAL del broker (refleja retiros/depósitos)
     const latestBal = new Map<number, number>();
     const latestEq = new Map<number, number>();
-    for (const s of (snapsRaw ?? []) as { account: number; balance: number; equity: number }[]) {
+    const latestTs = new Map<number, string>();
+    for (const s of (snapsRaw ?? []) as { account: number; balance: number; equity: number; ts: string }[]) {
       if (!latestBal.has(s.account)) latestBal.set(s.account, s.balance);
       if (!latestEq.has(s.account)) latestEq.set(s.account, s.equity);
+      if (!latestTs.has(s.account)) latestTs.set(s.account, s.ts);
     }
+    for (const b of health) b.lastSnapTs = b.account != null ? latestTs.get(Number(b.account)) ?? null : null;
     // balance de apertura del día FTMO (primer snapshot ≥ reset). Va por cuenta: con un límite
     // global, una cuenta que arranca a mitad del día quedaba fuera y su día se veía en $0.
     const balAtReset = new Map<number, number>();
@@ -603,7 +617,11 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     }
     const portfolioDaily: DayPnl[] = Array.from(pdmap.entries()).map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date));
 
-    const lastCollected = ((snapsRaw?.[0] as { ts?: string } | undefined)?.ts) ?? new Date().toISOString();
+    // "Última recolección" = el COLECTOR. Los snapshots del laboratorio en papel (cuentas virtuales de bots lab_)
+    // no cuentan: si el colector se cae, el panel tiene que seguir mostrándolo aunque el papel siga vivo.
+    const labAccts = new Set(((botsRaw ?? []) as Bot[]).filter((b) => catOf(b.id) === "demo" && b.account != null).map((b) => Number(b.account)));
+    const snapReal = ((snapsRaw ?? []) as { account: number; ts?: string }[]).find((s) => !labAccts.has(Number(s.account)) && Number(s.account) < 9e9);
+    const lastCollected = snapReal?.ts ?? new Date().toISOString();
     return { bots: health, totals, alerts, portfolio, portfolioDaily, updatedAt: new Date().toISOString(), lastCollected, estrategia: est, vol };
   } catch (e) {
     return { ...base, error: String(e) };

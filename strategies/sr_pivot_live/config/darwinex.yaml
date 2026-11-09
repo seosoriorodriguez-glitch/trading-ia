@@ -1,0 +1,32 @@
+# S/R Pivot al toque H1 — DARWINEX (NO ACTIVAR hasta terminar la prueba de 1-2 meses).
+# Mismo terminal que el bot OB Darwinex: no interfieren (cada bot solo toca su magic), pero TODO lo que opere esta
+# cuenta entra al mismo DARWIN (YGZY). Para un DARWIN aparte hace falta otra cuenta Darwinex.
+
+cuenta:
+  balance_esperado: 100000
+  riesgo_pct: 0.005          # 0.5 % por trade
+
+mt5:
+  terminal: 'C:\Program Files\MT5_BREAKERBLOCKS\terminal64.exe'
+  simbolo: WS30
+  magic: 345690
+  llenado: return
+  # MT5 de Darwinex informa 0.1 por punto y lote en WS30, pero la P&L real del bot OB es ~1.0 (5 lotes x 104 pts
+  # = -$533). Con 0.1 el bot pondria 10 veces el riesgo. Confirmar con el primer trade (el bot lo avisa en el log).
+  valor_punto_lote: 1.0
+
+estrategia:
+  W: 20
+  S: 130
+  RR: 2.5
+  max_niveles: 5
+  pivote_izq: 15
+  pivote_der: 15
+  precio_ref: 47000
+
+horario:
+  noticias_et: ["08:26-08:34"]
+
+archivos:
+  stop: STOP_SR_PIVOT.txt
+  logs: logs_sr_pivot

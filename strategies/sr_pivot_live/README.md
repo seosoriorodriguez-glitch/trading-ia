@@ -1,0 +1,107 @@
+# Bot S/R Pivot al toque H1
+
+Bot nuevo, en carpeta propia. No comparte archivos con los bots activos (OB London, London 1%, Darwinex) ni con los
+módulos de `strategies/order_block/`.
+
+## Qué hace
+- **Niveles:** pivotes H1 del indicador LuxAlgo "Support and Resistance Levels with Breaks" (15 velas a cada lado).
+  Un nivel se puede operar desde la apertura de la vela H1 número 16 después del pivote. Siempre hay 5 niveles vivos.
+- **Órdenes:**
+  - Soporte → BUY LIMIT 20 pts sobre el nivel.
+  - Resistencia → SELL LIMIT 20 pts bajo el nivel.
+  - SL a 130 pts al otro lado del nivel; TP 2.5R.
+  - Los 20 y 130 pts son a precio 47 000 y se escalan con el precio: hoy son ~22 y ~143.
+- **Reglas:**
+  - La orden se pone solo si el precio está del lado de afuera.
+  - Cada nivel se opera una sola vez.
+  - Una posición a la vez.
+  - Sin entradas de 08:26 a 08:34 hora de Nueva York.
+  - Cierra todo el viernes a las 19:00 UTC.
+  - Opera las 24 h de lunes a viernes.
+- **Riesgo:** 0.5% del balance por trade (configurable).
+- **Magic:** 345690. Solo toca sus propias órdenes y posiciones, así que puede compartir terminal con otro bot.
+
+Resultado del backtest (velas M1 de FTMO, swap supuesto de −8 pts por noche en compras y −2 en ventas):
+
+| | Total | Peor caída |
+|---|---|---|
+| 2025 | +16.6R | 15.7R |
+| 2026 (ene–oct) | +61.6R | 8.1R |
+
+2020-2024 (solo informativo): +50.6R, 4 de 5 años positivos.
+
+## Comprobado antes de usarlo
+| Prueba | Qué mide | Resultado |
+|---|---|---|
+| `herramientas/paridad.py` | La lógica del bot contra el backtest, minuto a minuto | 2025: 192/192 trades idénticos · 2026: 163/163 |
+| `herramientas/simulacro.py` | El bot entero (`bot.py`) contra un MT5 falso con las velas históricas | 2025: 192/192 · 2026: 161 + 2 descartados a propósito |
+
+Los 2 descartados de 2026 son lunes en que el precio abrió más allá del SL: el backtest los anotaba como −0.01R y el
+bot no entra.
+
+Diferencia conocida con el backtest: si al abrir un minuto el precio ya pasó la orden, el bot entra a mercado con el
+mismo SL y TP. Es lo que hace el backtest, que la llena en la apertura como si la límite ya hubiera estado puesta.
+
+## Modo papel (la prueba de 1-2 meses, sin abrir cuentas)
+Se conecta a una terminal que ya existe (por ejemplo la de Darwinex, que lee WS30 en vivo) y **no envía ninguna
+orden**:
+- Las órdenes y la posición son virtuales y se llenan con cada tick real del bróker (bid/ask), no con una mirada
+  cada 2 segundos.
+- El swap se descuenta en cada medianoche del servidor con los datos reales del símbolo (largo/corto, modo de
+  cálculo y día triple).
+- No toca la cuenta ni el DARWIN, y puede leer la misma terminal que el bot OB, como hace el collector del panel.
+- Si se apaga y se vuelve a lanzar, procesa los ticks del tiempo apagado: en la realidad las órdenes habrían
+  quedado puestas en el servidor.
+
+```
+python strategies/sr_pivot_live/run_bot.py --config strategies/sr_pivot_live/config/darwinex.yaml --papel
+```
+
+**Archivos** (en `logs_sr_pivot/papel_<login>/`):
+- `trades.csv`: con R bruto, R neto (con swap y comisión), noches y swap en puntos.
+- `eventos.log`.
+- `papel_estado.json`: órdenes, posición y balance virtuales.
+
+Prueba sin conexión: `herramientas/prueba_papel.py` alimenta el bot con ticks armados desde velas M1. En septiembre
+de 2026 coinciden las 16 entradas y salidas con el backtest. El R difiere un poco porque los ticks de prueba saltan
+directo al máximo y al mínimo de cada vela.
+
+Lo que el modo papel NO prueba es la ejecución real (aceptación de órdenes, deslizamiento, valor por punto). Se
+confirma con los primeros trades reales; el bot avisa si el valor por punto no cuadra.
+
+## Prueba de 1-2 meses en otro MT5 (alternativa con cuenta demo)
+1. Instalar un MT5 aparte (por ejemplo `C:\Program Files\MT5_SR_DEMO\`) y entrar con la cuenta de prueba. Lo ideal
+   es una demo de Darwinex, porque tiene el mismo WS30, spread y swap.
+2. Revisar los costos del símbolo. Este paso no envía órdenes:
+   ```
+   python strategies/sr_pivot_live/herramientas/costos_broker.py --terminal "C:\Program Files\MT5_SR_DEMO\terminal64.exe" --simbolo WS30
+   ```
+3. Completar `config/demo.yaml`: `terminal`, `simbolo` (`WS30` o `US30.cash`) y `balance_esperado`.
+4. Ver qué haría sin operar:
+   ```
+   python strategies/sr_pivot_live/run_bot.py --config strategies/sr_pivot_live/config/demo.yaml --dry-run
+   ```
+   Muestra los 5 niveles activos y las órdenes que pondría.
+5. Operar:
+   ```
+   python strategies/sr_pivot_live/run_bot.py --config strategies/sr_pivot_live/config/demo.yaml
+   ```
+6. **Primer trade:** si en `eventos.log` aparece `OJO valor por punto`, el riesgo real no es el configurado. Hay que
+   ajustar `valor_punto_lote`. En Darwinex WS30, MT5 informa 0.1 pero la P&L real es ~1.0.
+
+**Para detenerlo:** crear `STOP_SR_PIVOT.txt` en la raíz del proyecto. El bot cancela sus órdenes pendientes y sale;
+la posición abierta queda con su SL y TP. Borrar el archivo antes de volver a lanzarlo.
+
+**Archivos** (en `logs_sr_pivot/<login>/`):
+- `eventos.log`: todo lo que hizo.
+- `trades.csv`: un trade por fila, con R y el valor por punto observado.
+- `estado.json`: los niveles ya usados. Si se pierde, se reconstruye desde el historial de MT5.
+
+Después de la prueba se compara `trades.csv` con el backtest del mismo período corrido con las velas de ese broker.
+
+## Pasarlo a Darwinex (después de la prueba)
+`config/darwinex.yaml` apunta al mismo terminal que el bot OB Darwinex (`MT5_BREAKERBLOCKS`), con `WS30` y
+`valor_punto_lote: 1.0`. Los dos bots no se pisan, pero **todo lo que opera esa cuenta forma el mismo DARWIN (YGZY)**.
+Para un DARWIN aparte hace falta otra cuenta de Darwinex.
+
+Al 0.5% cada uno, el margen alcanza para la posición S/R (~3 lotes, unos $8k) más las 2 del OB.

@@ -27,7 +27,9 @@ function TradeCard({ t, dec, candles }: { t: Trade; dec: number; candles: Candle
 }
 
 export default async function Trades({ searchParams }: { searchParams: { bot?: string } }) {
-  const { bots } = await getDashboard();
+  // Cuentas reales y, aparte, las estrategias del laboratorio en papel (no se mezclan en ninguna cifra, solo en el selector).
+  const [{ bots: reales }, { bots: lab }] = await Promise.all([getDashboard(), getDashboard({ category: "demo" })]);
+  const bots = [...reales, ...lab];
   if (!bots.length) return <div className="text-dim py-20">Sin datos aún.</div>;
   const sel = bots.find((b) => b.id === searchParams.bot) ?? bots[0];
   const dec = sel.symbol.includes("XAU") ? 2 : 1;
@@ -38,12 +40,12 @@ export default async function Trades({ searchParams }: { searchParams: { bot?: s
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold mb-1">Trades</h1>
-          <p className="text-sm text-dim">Últimas operaciones con gráfico · {sel.name}</p>
+          <p className="text-sm text-dim">Últimas operaciones con gráfico · {sel.name}{sel.category === "demo" ? " · paper trading (no son operaciones reales)" : ""}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <a href={`/api/export?bot=${sel.id}`} className="text-xs font-mono px-3 py-2 rounded-lg border border-border bg-panel2 text-dim hover:text-white hover:border-accent/50 transition">⬇ Excel · esta cuenta</a>
           <a href="/api/export" className="text-xs font-mono px-3 py-2 rounded-lg border border-border bg-panel2 text-dim hover:text-white hover:border-accent/50 transition">⬇ Excel · todo</a>
-          <BotSelector bots={bots.map((b) => ({ id: b.id, name: b.name }))} />
+          <BotSelector bots={bots.map((b) => ({ id: b.id, name: b.category === "demo" ? `🧪 Papel · ${b.name}` : b.name }))} />
         </div>
       </div>
       {trades.length === 0 ? (

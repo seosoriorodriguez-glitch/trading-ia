@@ -1,0 +1,25 @@
+{
+  "_comentario": "Copiar a papel/config.json en el VPS. feeds = terminales MT5 que YA existen (solo se leen precios). Cada estrategia: id 'lab_...', cuenta virtual >= 9000000000 y unica, destino = donde iria si pasa (darwinex | ftmo).",
+  "feeds": {
+    "darwinex": "C:\\Program Files\\MT5_BREAKERBLOCKS\\terminal64.exe",
+    "ftmo": "C:\\Program Files\\MT5_US30\\terminal64.exe"
+  },
+  "estrategias": [
+    {
+      "id": "lab_sr_pivot_h1",
+      "nombre": "S/R Pivot H1 · papel",
+      "plugin": "sr_pivot",
+      "feed": "darwinex",
+      "destino": "darwinex",
+      "simbolo": "WS30",
+      "cuenta": 9000000001,
+      "balance": 100000,
+      "riesgo_pct": 0.005,
+      "valor_punto_lote": 1.0,
+      "sesion": "24h",
+      "params": {"W": 20, "S": 130, "RR": 2.5, "max_niveles": 5, "pivote_izq": 15, "pivote_der": 15, "precio_ref": 47000},
+      "noticias_et": ["08:26-08:34"],
+      "activa": true
+    }
+  ]
+}
