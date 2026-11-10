@@ -39,6 +39,17 @@ Resultado del backtest (velas M1 de FTMO, swap supuesto de −8 pts por noche en
 Los 2 descartados de 2026 son lunes en que el precio abrió más allá del SL: el backtest los anotaba como −0.01R y el
 bot no entra.
 
+Arreglos de la auditoría del 10-nov-2026 (ver `papel/README.md`). Las paridades y el simulacro se corren sin feriados,
+con la regla de la investigación. Resultados después de los arreglos:
+
+| Prueba | Antes | Ahora |
+|---|---|---|
+| Arrancar con el backtest en posición (12 casos, mar-abr 2026) | repetía el nivel 12 de 12 | 0 de 12 |
+| Bot llamado en cada tick (sep-2026) | 15/16 | 16/16, sin entradas en el minuto del cierre |
+| Caída del VPS de viernes a lunes (sep-2026) | 15/16, −3.6R contra +1.8R | 16/16 |
+| Simulacro modo real (jul-oct 2026) | — | 64/64 |
+| Calendario de feriados 2025-26 | — | cambia 1 trade (19-06-2026) |
+
 Diferencia conocida con el backtest: si al abrir un minuto el precio ya pasó la orden, el bot entra a mercado con el
 mismo SL y TP. Es lo que hace el backtest, que la llena en la apertura como si la límite ya hubiera estado puesta.
 

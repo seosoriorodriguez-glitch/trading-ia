@@ -96,6 +96,7 @@ def main():
     mt5.symbol_select = lambda *a: True
     cfg = yaml.safe_load((RAIZ / "papel" / "estrategias" / "sr_pivot_h1" / "config" / "demo.yaml").read_text(encoding="utf-8"))
     cfg["mt5"]["valor_punto_lote"] = 1.0
+    cfg["horario"]["feriados"] = False            # se compara con motor_toque2 (corte solo el viernes)
     bot = BotSR(cfg, papel=True)
     bot.verbose = False
     with tempfile.TemporaryDirectory() as tmp:

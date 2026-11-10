@@ -32,7 +32,7 @@ import numpy as np
 import pandas as pd
 
 from papel.estrategias.sr_pivot_h1.estrategia import (bloqueado, corte_viernes, en_noticias,  # noqa: F401
-                                                      ventanas_de_texto, verano_eeuu)
+                                                      ultimo_corte, ventanas_de_texto, verano_eeuu)
 from papel.estrategias.sr_pivot_h1.niveles import find_levels
 
 PREFIJO = "FR "

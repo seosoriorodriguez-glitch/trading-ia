@@ -4,12 +4,18 @@ MODO PAPEL: el bot corre conectado a una terminal MT5 real (precios en vivo del 
 Las ordenes, posiciones e historial son virtuales y se llenan con los ticks reales (bid/ask) del simbolo.
 
   - Lee TODOS los ticks desde la ultima vuelta (copy_ticks_from), no solo el precio cada 2 s: un toque rapido de la
-    orden, el SL o el TP entre dos vueltas tambien cuenta. Al reiniciar el bot, procesa los ticks del tiempo apagado
-    (en la realidad las ordenes quedan puestas en el servidor).
-  - Llenados: BUY LIMIT si Ask <= orden (al Ask si salto por debajo), SELL LIMIT si Bid >= orden. SL de una compra
-    con Bid <= SL, al Bid de ese tick (deslizamiento real); TP con Bid >= TP, al TP. Ventas con Ask, igual.
-  - SWAP real: en cada cambio de dia del servidor con la posicion abierta, con los datos del simbolo (swap_long /
-    swap_short, modo de calculo y dia del swap triple). Se guarda en puntos y en dinero.
+    orden, el SL o el TP entre dos vueltas tambien cuenta. Al reiniciar el bot, procesa los ticks del tiempo apagado.
+  - Llenados: BUY LIMIT si Ask <= orden (al Ask si salto por debajo), SELL LIMIT si Bid >= orden; SELL STOP si
+    Bid <= orden (al Bid), BUY STOP si Ask >= orden (al Ask). Si un mismo tick cruza varias, se llena la que el precio
+    toco primero (la mas cercana al tick anterior), como el backtest (la mas cercana a la apertura).
+    SL de una compra con Bid <= SL, al Bid de ese tick (deslizamiento real); TP con Bid >= TP, al TP. Ventas con Ask.
+  - Reglas que aplica el broker AUNQUE el bot no corra (auditoria 10-nov-2026: al relanzar tras una caida, el bot
+    reprocesaba ticks sin sus reglas): `reglas(hora)` -> (bloqueado, corte) que pone el bot: en el corte de fin de
+    semana cierra la posicion y cancela las pendientes; con bloqueo (noticias, fin de semana, corte) no llena
+    pendientes; una pendiente con `hasta` vence sola; al llenarse una, se cancelan las demas (1 posicion a la vez).
+  - SWAP real: en cada cambio de dia del servidor de lunes a viernes con la posicion abierta, con los datos del simbolo
+    (swap_long / swap_short, modo de calculo y dia del swap triple). Sabado y domingo no cobran (el triple ya los
+    cubre).
   - Estado en papel_estado.json (ordenes, posicion, historial, balance virtual, ultimo tick): sobrevive reinicios.
 No toca la cuenta: puede leer la misma terminal que otro bot (como el collector del panel).
 """
@@ -24,6 +30,10 @@ import pandas as pd
 from .broker_mt5 import BrokerMT5
 
 
+def _es_compra(lado: str) -> bool:
+    return lado.startswith("buy")
+
+
 class BrokerPapel(BrokerMT5):
     def __init__(self, *a, balance_inicial: float = 100000.0, **kw):
         super().__init__(*a, **kw)
@@ -35,6 +45,7 @@ class BrokerPapel(BrokerMT5):
         self.ultimo_msc = None
         self.ultimo_tick = None
         self.avisos = []                                  # mensajes para el log del bot
+        self.reglas = None                                # hora -> (bloqueado, corte); la pone el bot
 
     # ------------------------------------------------------------------ estado
     def abrir_estado(self, carpeta: Path):
@@ -118,7 +129,15 @@ class BrokerPapel(BrokerMT5):
             antes = pd.Timestamp(self.ultimo_msc, unit="ms")
             for dia in pd.date_range(antes.normalize(), hora.normalize(), freq="D")[:-1]:
                 self._swap(dia, bid, ask)                 # rollover al pasar la medianoche del servidor
+        previo = self.ultimo_tick or (bid, ask)
         self.ultimo_tick = (bid, ask)
+        bloq, corte = self.reglas(hora) if self.reglas else (False, False)
+        if corte:
+            for p in list(self.pos.values()):
+                self._salir(p, bid if p.type == 0 else ask, "viernes", hora)
+            if self.pend:
+                self.avisos.append(f"[papel] corte de fin de semana: canceladas {len(self.pend)} pendientes")
+                self.pend.clear()
         for p in list(self.pos.values()):
             if p.type == 0:
                 if bid <= p.sl:
@@ -130,14 +149,30 @@ class BrokerPapel(BrokerMT5):
                     self._salir(p, ask, "sl", hora)
                 elif ask <= p.tp:
                     self._salir(p, p.tp, "tp", hora)
-        for o in list(self.pend.values()):
-            if o.lado == "buy_limit" and ask <= o.price_open:
-                self._abrir(o, min(o.price_open, ask), hora)
-            elif o.lado == "sell_limit" and bid >= o.price_open:
-                self._abrir(o, max(o.price_open, bid), hora)
+        for k, o in list(self.pend.items()):
+            vence = getattr(o, "hasta_ms", None)
+            if vence is not None and ms >= vence:
+                self.pend.pop(k, None)
+                self.avisos.append(f"[papel] vencio {o.comment}")
+        if bloq or self.pos or not self.pend:
+            return
+        cand = []
+        for o in self.pend.values():
+            px = o.price_open
+            if o.lado == "buy_limit" and ask <= px:
+                cand.append((abs(previo[1] - px), o, min(px, ask)))
+            elif o.lado == "sell_limit" and bid >= px:
+                cand.append((abs(previo[0] - px), o, max(px, bid)))
+            elif o.lado == "sell_stop" and bid <= px:
+                cand.append((abs(previo[0] - px), o, min(px, bid)))
+            elif o.lado == "buy_stop" and ask >= px:
+                cand.append((abs(previo[1] - px), o, max(px, ask)))
+        if cand:
+            _, o, precio = min(cand, key=lambda x: x[0])
+            self._abrir(o, precio, hora)
 
     def _swap(self, dia: pd.Timestamp, bid: float, ask: float):
-        if not self.pos:
+        if not self.pos or dia.weekday() >= 5:            # sabado y domingo: sin rollover (el triple los cubre)
             return
         i = mt5.symbol_info(self.simbolo)
         triple = 3 if (dia.weekday() + 1) % 7 == i.swap_rollover3days else 1   # MT5: 0 = domingo
@@ -162,11 +197,13 @@ class BrokerPapel(BrokerMT5):
                                f"({pts * p.volume * self.valor_punto():+.2f})")
 
     def _abrir(self, o, precio: float, hora: pd.Timestamp):
-        if self.pos:                                       # 1 posicion a la vez (el bot cancela las demas)
+        if self.pos:                                       # 1 posicion a la vez
             return
         self.pend.pop(o.ticket, None)
+        if self.pend:                                      # el bot cancela las demas: el broker no espera al bot
+            self.pend.clear()
         self.n += 1
-        p = SimpleNamespace(identifier=self.n, ticket=self.n, type=0 if o.lado == "buy_limit" else 1,
+        p = SimpleNamespace(identifier=self.n, ticket=self.n, type=0 if _es_compra(o.lado) else 1,
                             comment=o.comment, sl=o.sl, tp=o.tp, price_open=precio, volume=o.volume,
                             time_msc=int(hora.value // 10 ** 6), hora=str(hora), orden=o.price_open,
                             swap_pts=0.0, swap_dinero=0.0, noches=0)
@@ -196,12 +233,27 @@ class BrokerPapel(BrokerMT5):
     def margen_ok(self, o, volumen):
         return True, 0.0
 
+    def orden_valida(self, o, bid: float, ask: float) -> bool:
+        """En papel no hay distancia minima del broker (las ordenes son virtuales): solo que no este cruzada."""
+        if o.lado == "buy_limit":
+            return o.precio < ask
+        if o.lado == "sell_limit":
+            return o.precio > bid
+        if o.lado == "sell_stop":
+            return o.precio < bid
+        return o.precio > ask
+
     def poner_limit(self, o, volumen):
         self.n += 1
+        hasta = getattr(o, "hasta", None)
         self.pend[self.n] = SimpleNamespace(ticket=self.n, comment=o.comentario, lado=o.lado, price_open=o.precio,
-                                            sl=o.sl, tp=o.tp, volume=volumen)
+                                            sl=o.sl, tp=o.tp, volume=volumen,
+                                            hasta_ms=int(pd.Timestamp(hasta).value // 10 ** 6) if hasta is not None
+                                            else None)
         self._guardar()
         return True, f"papel #{self.n}"
+
+    poner_orden = poner_limit                              # en papel una pendiente es una pendiente (guarda el lado)
 
     def cancelar(self, ticket):
         self.pend.pop(ticket, None)
@@ -212,12 +264,12 @@ class BrokerPapel(BrokerMT5):
         b, a = self.ultimo_tick or (None, None)
         if b is None:
             return False, "sin precio"
+        compra = _es_compra(o.lado)
         o_ = SimpleNamespace(ticket=-1, comment=o.comentario, lado=o.lado, price_open=o.precio, sl=o.sl, tp=o.tp,
                              volume=volumen)
-        hora = pd.Timestamp(self.ultimo_msc, unit="ms")
-        self._abrir(o_, a if o.lado == "buy_limit" else b, hora)
+        self._abrir(o_, a if compra else b, pd.Timestamp(self.ultimo_msc, unit="ms"))
         self._guardar()
-        return True, f"papel a mercado {a if o.lado == 'buy_limit' else b}"
+        return True, f"papel a mercado {a if compra else b}"
 
     def cerrar(self, p):
         b, a = self.ultimo_tick

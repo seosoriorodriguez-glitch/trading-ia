@@ -6,8 +6,9 @@ VENTA STOP si el cierre anterior > orden y el minimo llega -> se llena a min(ord
 STOP al reves con Ask; desliz SL; SL antes que TP; el TP no se mira en la vela de entrada; hueco mas alla del SL =
 salida en la apertura; con una posicion abierta (o cerrada en esa vela) no entra nada; si en una vela se pueden llenar
 varias, la mas cercana a la apertura.
-Diferencia declarada con motor_pa: no cierra en la "ultima vela de una semana cortada" (feriado de viernes: el bot en
-vivo no lo sabe); la paridad se mide contra motor_pa con fin_semana=False.
+Semanas cortas por feriado: feriados=True usa el calendario de papel/calendario.py (corte el ultimo dia con mercado,
+15 min antes de un cierre temprano), como el bot. motor_pa cierra en la ultima vela de la semana: la paridad se mide con
+feriados=False contra motor_pa fin_semana=False. spread: un numero o uno por vela (el del broker).
 
 Lo usa tambien papel/fidelidad.py (comparacion diaria papel vs backtest) y el calentamiento del bot.
 """
@@ -24,8 +25,9 @@ def velas_h1(m1: pd.DataFrame) -> pd.DataFrame:
             .agg({"open": "first", "high": "max", "low": "min", "close": "last"}).dropna().reset_index())
 
 
-def simular(m1: pd.DataFrame, est: EstrategiaFR = None, spread: float = 2.1, desliz_sl: float = 0.7,
-            desliz_stop: float = 0.5, noticias=("08:26-08:34",), abierta: bool = False) -> pd.DataFrame:
+def simular(m1: pd.DataFrame, est: EstrategiaFR = None, spread=2.1, desliz_sl: float = 0.7,
+            desliz_stop: float = 0.5, noticias=("08:26-08:34",), abierta: bool = False,
+            feriados: bool = True) -> pd.DataFrame:
     """m1: time (hora servidor), open, high, low, close (Bid). Un trade por fila. abierta=True agrega al final la
     posicion que quedo abierta (exit_reason 'abierta')."""
     est = est or EstrategiaFR()
@@ -38,7 +40,8 @@ def simular(m1: pd.DataFrame, est: EstrategiaFR = None, spread: float = 2.1, des
     h1t = h1.time.values
     usados, pos, out = set(), None, []
     hora_actual, ordenes = None, []
-    SP, DS, DT = spread, desliz_sl, desliz_stop
+    sp = np.full(len(t), float(spread)) if np.isscalar(spread) else np.asarray(spread, float)
+    DS, DT = desliz_sl, desliz_stop
 
     def cerrar(i, precio, motivo):
         d = pos["dir"]
@@ -49,6 +52,7 @@ def simular(m1: pd.DataFrame, est: EstrategiaFR = None, spread: float = 2.1, des
 
     for i in range(1, len(t)):
         ahora = tt.iloc[i]
+        SP = sp[i]
         hora = ahora.floor("h")
         if hora != hora_actual:
             k = int(np.searchsorted(h1t, np.datetime64(hora), side="right"))      # incluye la vela en formacion
@@ -56,7 +60,7 @@ def simular(m1: pd.DataFrame, est: EstrategiaFR = None, spread: float = 2.1, des
             hora_actual = hora
         if pos is not None:
             d = pos["dir"]
-            if corte_viernes(ahora):
+            if corte_viernes(ahora, feriados):
                 cerrar(i, o[i] if d == 1 else o[i] + SP, "viernes"); pos = None
                 continue
             if d == 1:
@@ -70,14 +74,14 @@ def simular(m1: pd.DataFrame, est: EstrategiaFR = None, spread: float = 2.1, des
                 elif l[i] + SP <= pos["tp"] and pos["i"] < i:
                     cerrar(i, o[i] + SP if o[i] + SP <= pos["tp"] else pos["tp"], "tp"); pos = None
             continue
-        if bloqueado(ahora, ventanas):
+        if bloqueado(ahora, ventanas, feriados):
             continue
         cand = []
         for od in est.vigentes(ordenes, ahora, usados):
             if od.lado == "sell_stop":
                 if c[i - 1] > od.precio and l[i] <= od.precio:
                     cand.append((abs(o[i] - od.precio), -1, min(od.precio, o[i]) - DT, od))
-            elif c[i - 1] + SP < od.precio and h[i] + SP >= od.precio:
+            elif c[i - 1] + sp[i - 1] < od.precio and h[i] + SP >= od.precio:
                 cand.append((abs(o[i] + SP - od.precio), 1, max(od.precio, o[i] + SP) + DT, od))
         if not cand:
             continue
@@ -90,5 +94,5 @@ def simular(m1: pd.DataFrame, est: EstrategiaFR = None, spread: float = 2.1, des
         elif (d == 1 and l[i] <= od.sl) or (d == -1 and h[i] + SP >= od.sl):
             cerrar(i, od.sl - DS if d == 1 else od.sl + DS, "sl"); pos = None
     if abierta and pos is not None:
-        cerrar(len(t) - 1, c[-1] if pos["dir"] == 1 else c[-1] + SP, "abierta")
+        cerrar(len(t) - 1, c[-1] if pos["dir"] == 1 else c[-1] + sp[-1], "abierta")
     return pd.DataFrame(out)

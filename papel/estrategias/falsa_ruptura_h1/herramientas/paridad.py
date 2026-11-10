@@ -66,7 +66,7 @@ def main():
     # --- trades
     r = MP.correr(m1, od, max_activas=5, fin_semana=False)
     r = r[(r.entry_time >= ini) & (r.entry_time < fin)].reset_index(drop=True)
-    s = simular(m1, est)
+    s = simular(m1, est, feriados=False)            # la regla de corte del motor de investigacion
     s = s[(s.entry_time >= ini) & (s.entry_time < fin)].reset_index(drop=True)
     print(f"2) trades: investigacion {len(r)} ({r.R.sum():+.2f}R sin swap) | logica del bot {len(s)} ({s.R.sum():+.2f}R)")
     ok2 = len(r) == len(s)

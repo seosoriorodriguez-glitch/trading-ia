@@ -49,5 +49,12 @@ momento, lo avisa en el log; el papel arranca sin posición.
 | `herramientas/prueba_papel.py` | El bot entero en papel con ticks históricos falsos, incluido el calentamiento | may–oct 2026: 43/43 entradas y salidas idénticas (R del papel algo menor: el tick falso llena el SL en el extremo de la vela) · calentamiento: no repite la orden ya operada |
 | `papel/prueba_offline.py` | Runner + las dos estrategias + subida al panel (Supabase falso) | filas solo `lab_`, cuentas y tickets virtuales, papel vs backtest 7/7 |
 
-Diferencia declarada con la investigación: la investigación cierra en la última vela de una semana cortada por feriado
-(viernes sin mercado); el bot no lo sabe de antemano. En 2025-2026 eso pasó una vez (19-06-2026).
+Feriados: desde el 10-nov-2026 el bot y su backtest cortan la semana en su último día con mercado
+(`papel/calendario.py`), 15 min antes de un cierre temprano. La investigación cerraba en la última vela de esa semana.
+En 2025-2026 eso cambia 1 trade (19-06-2026: +2.4R en vez de +3.0R). Las paridades se miden sin feriados, con la regla
+de la investigación.
+
+Arreglos de la auditoría del 10-nov-2026 (ver `papel/README.md`), comprobados con las pruebas del auditor:
+- Arranque con el backtest en posición: no opera hasta que esa posición habría cerrado.
+- Bot llamado en cada tick: 7/7 en sep-2026.
+- Caída del VPS de viernes a lunes: 7/7; antes daba 6/7.

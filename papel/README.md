@@ -45,6 +45,27 @@ python papel/runner.py --feed darwinex                 # en su propia ventana, c
   - `papel/estado/<id>/eventos.log`: cada orden, llenado, swap y cierre.
   - `papel/estado/<id>/trades.csv` y `papel/estado/<id>/fidelidad.json`.
 
+## Arreglos de la auditoría del 10-nov-2026
+Una auditoría independiente buscó en qué situaciones el bot en papel (y en real) se separaría del backtest.
+Arreglado en los dos bots:
+- **Arranque con el backtest en posición.** El calentamiento detecta la posición que el backtest tendría abierta.
+  Marca su nivel como usado y el bot queda ocupado ("posición sombra") hasta que esa posición habría cerrado.
+  Antes, la S/R repetía ese nivel en 12 de 12 casos probados.
+- **Minuto del cierre.** No se decide nada en el minuto en que cerró una posición ni en el minuto del arranque,
+  porque el backtest espera la vela siguiente.
+- **Feriados** (`papel/calendario.py`). La semana termina en su último día con mercado: el corte es a las 19:00 UTC,
+  o 15 min antes de un cierre temprano. Próximos: viernes 27-nov, jueves 24-dic y jueves 31-dic.
+- **Caídas del VPS.** El broker de papel aplica corte, noticias y vencimientos aunque el bot no corra. Al llenarse
+  una orden cancela las demás. Si al volver el bot encuentra una posición abierta antes de un corte, la cierra.
+- **Desempate.** Si un salto cruza dos órdenes, se llena la que el precio tocó primero.
+- **Comparación diaria más limpia:**
+  - con el spread de cada vela y los precios redondeados al tick, como el bot;
+  - empareja por nivel;
+  - calcula el R con el riesgo nominal;
+  - corre en la pausa diaria del mercado (00:05-00:55 del servidor), así no le quita tiempo a los bots.
+- **Candado:** no pueden correr dos laboratorios con el mismo feed a la vez.
+- Una orden que no se puede poner queda en el log.
+
 ## Estrategias en papel
 | id | Qué es | Carpeta |
 |---|---|---|

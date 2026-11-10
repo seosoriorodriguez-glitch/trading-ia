@@ -106,7 +106,8 @@ class MT5Falso:
         ent = self.o[self.i] + SPREAD if compra else self.o[self.i]
         self.n += 1
         p = SimpleNamespace(identifier=self.n, ticket=self.n, type=0 if compra else 1, comment=o.comentario, sl=o.sl,
-                            tp=o.tp, price_open=ent, volume=vol, time_msc=self.i, t=pd.Timestamp(self.t[self.i]),
+                            tp=o.tp, price_open=ent, volume=vol, time_msc=int(pd.Timestamp(self.t[self.i]).value // 10 ** 6),
+                            t=pd.Timestamp(self.t[self.i]),
                             i=self.i, orden=o.precio)
         self.pos[p.identifier] = p
         self.recien = p                                  # el SL se mira en esta misma vela (procesar_vela)
@@ -172,7 +173,8 @@ class MT5Falso:
         self.pend.pop(x.ticket)
         self.n += 1
         p = SimpleNamespace(identifier=self.n, ticket=self.n, type=0 if x.lado == "buy_limit" else 1, comment=x.comment,
-                            sl=x.sl, tp=x.tp, price_open=ent, volume=x.volume, time_msc=i, t=pd.Timestamp(self.t[i]),
+                            sl=x.sl, tp=x.tp, price_open=ent, volume=x.volume,
+                            time_msc=int(pd.Timestamp(self.t[i]).value // 10 ** 6), t=pd.Timestamp(self.t[i]),
                             i=i, orden=x.price_open)
         self.pos[p.identifier] = p
         if (p.type == 0 and ent <= p.sl) or (p.type == 1 and ent >= p.sl):
@@ -186,6 +188,7 @@ def main():
     fin = pd.Timestamp(sys.argv[2] if len(sys.argv) > 2 else "2026-11-01")
     m1 = m1_periodo(ini, fin, margen_dias=40)
     cfg = yaml.safe_load((RAIZ / "papel" / "estrategias" / "sr_pivot_h1" / "config" / "demo.yaml").read_text(encoding="utf-8"))
+    cfg["horario"]["feriados"] = False            # se compara con motor_toque2 (corte solo el viernes)
     falso = MT5Falso(m1)
     bot = BotSR(cfg)
     bot.broker = falso

@@ -14,8 +14,9 @@ Un proceso por terminal (la libreria de MT5 se conecta a una sola por proceso):
     python papel/runner.py --feed darwinex --sin-panel   # solo local, sin subir nada
 
 Detener: crear papel/STOP_PAPEL.txt (o Ctrl+C). Al relanzar sigue donde iba (estado en papel/estado/<id>/).
-Cada dia, pasada la 01:00 del servidor, compara lo hecho en papel con el backtest del mismo periodo
-(papel/fidelidad.py) y lo sube como "<id>__bt" para el detalle de la estrategia en el panel.
+Cada dia, en la pausa diaria del mercado (00:05-00:55 del servidor, sin precios: no le quita tiempo a los bots),
+compara lo hecho en papel con el backtest del mismo periodo (papel/fidelidad.py) y lo sube como "<id>__bt" para el
+detalle de la estrategia en el panel. Un candado por feed impide correr dos laboratorios iguales a la vez.
 """
 import argparse
 import json
@@ -36,6 +37,7 @@ import MetaTrader5 as mt5
 import pandas as pd
 
 from papel import fidelidad as F
+from papel.calendario import verano_eeuu
 from papel.registro import BACKTESTS, PLUGINS
 from papel.sincro import DESFASE_BT, Sincro, fila_trade
 
@@ -148,35 +150,47 @@ class Laboratorio:
         if forzar_snapshot or time.time() - self.ultimo_snapshot >= CADA_SNAPSHOT_S:
             self.ultimo_snapshot = time.time()
 
+    @staticmethod
+    def hora_servidor() -> pd.Timestamp:
+        """Hora del servidor (Nueva York + 7 h) desde el reloj del VPS: en la pausa diaria no hay ticks."""
+        utc = pd.Timestamp.utcnow().tz_localize(None)
+        return utc + pd.Timedelta(hours=3 if verano_eeuu(utc) else 2)
+
     def fidelidad(self, forzar: bool = False):
+        ahora = self.hora_servidor()
+        if not forzar and not (ahora.hour == 0 and 5 <= ahora.minute <= 55):
+            return
         for id_, bot in self.bots.items():
             e, s = self._e(id_), self.est[id_]
-            tk = mt5.symbol_info_tick(e["simbolo"])
-            if tk is None:
-                continue
-            hoy = pd.Timestamp(tk.time, unit="s")
-            if not forzar and (hoy.hour < 1 or s["ultima_fidelidad"] == str(hoy.date())):
+            if not forzar and s["ultima_fidelidad"] == str(ahora.date()):
                 continue
             try:
                 inicio = pd.Timestamp(s["inicio"])
                 m1 = F.velas_m1(mt5, e["simbolo"], inicio)
                 if not len(m1):
+                    self.log(f"{id_}: sin velas M1 para comparar con el backtest (revisar 'max bars' de la terminal)")
                     continue
                 info = mt5.symbol_info(e["simbolo"])
-                spread = float(m1.spread.median()) * info.point
-                bt = BACKTESTS[e["plugin"]](e, m1[["time", "open", "high", "low", "close"]], spread)
+                spread = m1.spread.values * info.point                  # el del broker, vela por vela
+                paso = info.trade_tick_size or info.point
+                bt = BACKTESTS[e["plugin"]](e, m1[["time", "open", "high", "low", "close"]].reset_index(drop=True),
+                                            spread, paso)
                 fin = m1.time.iloc[-1]
                 if len(bt):
                     bt = bt[(bt.entry_time >= inicio) & (bt.exit_time <= fin)].reset_index(drop=True)
                 hist = bot.broker.hist
+
+                def r_nominal(h):
+                    ref = h.get("orden") if h.get("orden") is not None else h["entrada"]
+                    d = 1 if h["lado"] == "long" else -1
+                    return d * (h["salida"] - h["entrada"]) / abs(ref - h["sl"])
                 papel = pd.DataFrame([{"entry_time": pd.Timestamp(h["entrada_hora"]), "direction": h["lado"],
-                                       "R": (h["salida"] - h["entrada"]) / (h["entrada"] - h["sl"]) if h["lado"] == "long"
-                                       else (h["entrada"] - h["salida"]) / (h["sl"] - h["entrada"])}
+                                       "clave": (h["comentario_entrada"] or "")[3:14], "R": r_nominal(h)}
                                       for h in hist.values()]) if hist else pd.DataFrame(columns=["entry_time", "direction", "R"])
                 if len(papel):
                     papel = papel[papel.entry_time >= inicio]
                 res = F.comparar(papel, bt if len(bt) else pd.DataFrame(columns=["entry_time", "direction", "R"]))
-                res.update({"desde": str(inicio), "hasta": str(fin), "spread_backtest": round(spread, 2),
+                res.update({"desde": str(inicio), "hasta": str(fin), "spread_backtest": round(float(spread.mean()), 2),
                             "calculado": f"{datetime.now():%Y-%m-%d %H:%M}"})
                 F.guardar(self.estado / id_, res)
                 if self.sincro:
@@ -184,13 +198,15 @@ class Laboratorio:
                     cta = e["cuenta"] + DESFASE_BT
                     filas = [fila_trade(e, cta, k + 1, {
                         "lado": r.direction, "entrada": r.entry_price, "salida": r.exit_price, "sl": r.sl, "tp": r.tp,
+                        "orden": r.orden,
                         "entrada_hora": r.entry_time, "salida_hora": r.exit_time, "comentario_salida": r.exit_reason,
                         "volumen": 0, "profit": r.R * riesgo_usd}) for k, r in enumerate(bt.itertuples())] if len(bt) else []
                     self.sincro.backtest(e, filas)
-                s["ultima_fidelidad"] = str(hoy.date())
+                s["ultima_fidelidad"] = str(ahora.date())
                 self._guardar(e)
                 self.log(f"{id_}: papel vs backtest desde {inicio:%d-%m}: papel {res['papel']} trades ({res['R_papel']:+.1f}R)"
-                         f" | backtest {res['backtest']} ({res['R_backtest']:+.1f}R) | coinciden {res['coinciden']}")
+                         f" | backtest {res['backtest']} ({res['R_backtest']:+.1f}R) | coinciden {res['coinciden']} "
+                         f"(mismo minuto {res['mismo_minuto']})")
             except Exception as ex:
                 self.log(f"{id_}: error en la comparacion con el backtest {type(ex).__name__}: {ex}")
 
@@ -216,12 +232,40 @@ class Laboratorio:
             mt5.shutdown()
 
 
+_CANDADO = None
+
+
+def tomar_candado(feed: str) -> bool:
+    """Un solo laboratorio por feed: dos procesos escribiendo el mismo estado lo romperian. El candado del sistema
+    operativo se suelta solo si el proceso muere."""
+    global _CANDADO
+    ESTADO.mkdir(parents=True, exist_ok=True)
+    f = open(ESTADO / f"runner_{feed}.lock", "a+")
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+            f.seek(0)
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        f.close()
+        return False
+    _CANDADO = f
+    return True
+
+
 def main():
     p = argparse.ArgumentParser(description="Laboratorio en papel (paper trading con precios en vivo)")
     p.add_argument("--feed", required=True, help="terminal de precios definida en config.json (darwinex, ftmo, ...)")
     p.add_argument("--config", default=str(RAIZ / "papel" / "config.json"))
     p.add_argument("--sin-panel", action="store_true", help="no sube nada a Supabase (solo logs locales)")
     a = p.parse_args()
+    if not tomar_candado(a.feed):
+        print(f"Ya hay un laboratorio corriendo con el feed '{a.feed}' (candado papel/estado/runner_{a.feed}.lock). "
+              f"No se lanza otro.")
+        return
     cfg = json.loads(Path(a.config).read_text(encoding="utf-8"))
     sb = None
     if not a.sin_panel:

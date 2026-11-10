@@ -14,6 +14,14 @@ Ciclo (cada ~2 s):
      llena en la apertura, como una limite que ya estaba puesta). Si abrio mas alla del SL, descarta el nivel.
   Un nivel queda USADO cuando su orden se llena (comentario 'SR <clave>' en la posicion y en el historial; ademas se
   guarda en estado.json). Al reiniciar se reconstruye del historial: nunca se opera dos veces el mismo nivel.
+Arreglos de la auditoria del 10-nov-2026 (alinean el bot con el backtest en situaciones especiales):
+  - Arranque: el calentamiento corre el backtest sobre el historial; si el backtest tiene una posicion ABIERTA ahora,
+    su nivel queda usado y el bot queda ocupado por esa "posicion sombra" (no abre nada) hasta que habria cerrado.
+  - En el minuto en que cierra una posicion (o en el que arranca) no se decide nada: el backtest espera la vela
+    siguiente.
+  - Corte de fin de semana con feriados (papel/calendario.py); si el bot estuvo apagado durante un corte, al volver
+    cierra la posicion abierta antes de ese corte.
+  - Una orden que no se puede poner queda en el log.
 """
 import csv
 import json
@@ -24,7 +32,7 @@ from pathlib import Path
 import pandas as pd
 
 from .broker_mt5 import BrokerMT5
-from .estrategia import EstrategiaSR, bloqueado, clave_de_comentario, corte_viernes, ventanas_de_texto
+from .estrategia import EstrategiaSR, bloqueado, clave_de_comentario, corte_viernes, ultimo_corte, ventanas_de_texto
 
 RAIZ = Path(__file__).resolve().parents[3]
 
@@ -45,7 +53,12 @@ class BotSR:
                                     m.get("llenado", "return"))
         self.est_args = dict(W=e["W"], S=e["S"], RR=e["RR"], max_niveles=e["max_niveles"], izq=e["pivote_izq"],
                              der=e["pivote_der"], precio_ref=e["precio_ref"])
-        self.ventanas = ventanas_de_texto(cfg["horario"]["noticias_et"])
+        self.noticias = cfg["horario"]["noticias_et"]
+        self.ventanas = ventanas_de_texto(self.noticias)
+        self.feriados = bool(cfg["horario"].get("feriados", True))
+        self.sombra = None                 # posicion abierta del backtest al arrancar (ver _calentar_usados)
+        self.ultima_salida = None          # hora de la ultima salida registrada
+        self.ultimo_balance = None
         self.riesgo_pct = float(cfg["cuenta"]["riesgo_pct"])
         self.stop_file = RAIZ / cfg["archivos"]["stop"]
         self.usados: set = set()
@@ -102,6 +115,8 @@ class BotSR:
                 w.writeheader()
             w.writerow(fila)
         self.registradas.add(pid)
+        sal = pd.Timestamp(r["salida_hora"])
+        self.ultima_salida = sal if self.ultima_salida is None else max(self.ultima_salida, sal)
         self.log(f"CERRADO {r['lado']} {clave} entrada {r['entrada']} salida {r['salida']} "
                  f"({r['comentario_salida']}) {R:+.2f}R | P&L {r['profit']:+.2f} com {r['comision']:+.2f} swap {r['swap']:+.2f}")
         vp = self.broker.valor_punto()
@@ -153,6 +168,9 @@ class BotSR:
             return False
         i = self.broker.info
         self.est = EstrategiaSR(**self.est_args, paso_precio=i.trade_tick_size or i.point)
+        # el broker de papel aplica corte y noticias aunque el bot no corra (al relanzar tras una caida)
+        self.broker.reglas = lambda hora: (bloqueado(hora, self.ventanas, self.feriados),
+                                           corte_viernes(hora, self.feriados))
         self.log(f"{self.broker.simbolo}: digitos {i.digits}, tick {i.trade_tick_size}, lote min {i.volume_min} "
                  f"paso {i.volume_step} | valor por punto y lote: MT5 {self.broker.valor_punto_mt5():.4f}, "
                  f"usado {self.broker.valor_punto():.4f} | magic {self.broker.magic} | riesgo {self.riesgo_pct:.2%}")
@@ -169,6 +187,9 @@ class BotSR:
         for p in self.broker.posiciones():
             self._anotar_posicion(p)
         self._calentar_usados()
+        m1 = self.broker.velas("M1", 1)
+        if m1 is not None and len(m1):
+            self.ultima_m1 = m1.time.iloc[-1]          # el minuto del arranque no se decide: se espera la vela siguiente
         self.log(f"Niveles ya usados: {len(self.usados)} | posiciones abiertas: {len(self.posiciones_previas)} | "
                  f"pendientes: {len(self.broker.pendientes())}")
         self.guardar_estado()
@@ -187,24 +208,34 @@ class BotSR:
             activos = self.est.activos(self.est.niveles(h1), h1.time.iloc[-1])
             if not activos:
                 return
-            desde = min(n.pivote for n in activos) - pd.Timedelta(days=3)
+            desde = min(n.pivote for n in activos) - pd.Timedelta(days=10)
             minutos = int((h1.time.iloc[-1] - desde).total_seconds() // 60) + 120
             m1 = self.broker.velas("M1", min(minutos, 99000))
             if m1 is None or len(m1) < 1000:
                 self.log("calentamiento: sin historial M1 suficiente, no se marcan niveles usados previos")
                 return
             from .backtest import simular
-            spread = float(m1.spread.median()) * (self.broker.info.point or 0.01) if "spread" in m1 else 2.1
-            t = simular(m1.iloc[:-1][["time", "open", "high", "low", "close"]].reset_index(drop=True), self.est,
-                        spread=spread)
+            pt = self.broker.info.point or 0.01
+            m1 = m1.iloc[:-1].reset_index(drop=True)
+            spread = (m1.spread.values * pt) if "spread" in m1 else 2.1
+            t = simular(m1[["time", "open", "high", "low", "close"]], self.est, spread=spread,
+                        noticias=tuple(self.noticias), feriados=self.feriados, abierta=True)
             vivos = {n.clave for n in activos}
-            previos = (set(t.clave) & vivos) - self.usados if len(t) else set()
+            ab = t[t.exit_reason == "abierta"] if len(t) else t
+            previos = (((set(t.clave) & vivos) | set(ab.clave)) - self.usados) if len(t) else set()
             if previos:
                 self.usados |= previos
-                self.log(f"calentamiento: niveles vivos que el backtest ya opero antes de arrancar -> usados: "
+                self.log(f"calentamiento: niveles que el backtest ya opero antes de arrancar -> usados: "
                          f"{', '.join(sorted(previos))}")
             else:
                 self.log("calentamiento: ningun nivel vivo estaba usado antes de arrancar")
+            if len(ab) and not self.broker.posiciones():
+                x = ab.iloc[0]
+                self.sombra = {"dir": 1 if x.direction == "long" else -1, "sl": float(x.sl), "tp": float(x.tp),
+                               "clave": x.clave, "entrada": pd.Timestamp(x.entry_time)}
+                self.log(f"calentamiento: el backtest tiene ahora una posicion abierta ({x.direction} {x.clave} desde "
+                         f"{x.entry_time:%d-%m %H:%M}, SL {x.sl} TP {x.tp}): el bot queda ocupado sin operar hasta "
+                         f"que esa posicion habria cerrado (posicion sombra)")
         except Exception as ex:
             self.log(f"calentamiento: error {type(ex).__name__}: {ex} (sigue sin marcar niveles previos)")
 
@@ -230,6 +261,25 @@ class BotSR:
             self.log(f"ABIERTO {'long' if p.type == 0 else 'short'} {k} {p.volume} lotes a {p.price_open} "
                      f"SL {p.sl} TP {p.tp}")
 
+    def _sombra_sigue(self, ahora, tk) -> bool:
+        """True mientras la posicion del backtest que habia al arrancar seguiria abierta (SL, TP o corte)."""
+        x = self.sombra
+        m1 = self.broker.velas("M1", 2)
+        hi = lo = None
+        if m1 is not None and len(m1) >= 2:
+            hi, lo = float(m1.high.iloc[-2]), float(m1.low.iloc[-2])
+        sp = tk["ask"] - tk["bid"]
+        if x["dir"] == 1:
+            fuera = tk["bid"] <= x["sl"] or tk["bid"] >= x["tp"] or (lo is not None and (lo <= x["sl"] or hi >= x["tp"]))
+        else:
+            fuera = tk["ask"] >= x["sl"] or tk["ask"] <= x["tp"] or (hi is not None and (hi + sp >= x["sl"]
+                                                                                        or lo + sp <= x["tp"]))
+        if fuera or ultimo_corte(ahora, self.feriados) > x["entrada"]:
+            self.log(f"posicion sombra del backtest ({x['clave']}) cerrada: el bot vuelve a operar desde la vela "
+                     f"siguiente")
+            return False
+        return True
+
     def _cancelar_todas(self):
         for o in self.broker.pendientes():
             if not self.dry_run:
@@ -248,17 +298,35 @@ class BotSR:
         ahora = tk["hora"]
         pos = self.broker.posiciones()
         abiertas = {p.identifier for p in pos}
-        for pid in [x for x in self.posiciones_previas if x not in abiertas]:
+        cerradas = [x for x in self.posiciones_previas if x not in abiertas]
+        for pid in cerradas:
             self.registrar_trade(pid, self.posiciones_previas.pop(pid))
+            if pid not in self.registradas:
+                # el historial aun no trae la salida: por las dudas no se decide en este minuto. Si se registro, la
+                # hora real de salida (ultima_salida) es la que bloquea ese minuto, como el backtest.
+                self.ultima_m1 = ahora.floor("min")
         for p in pos:
             self._anotar_posicion(p)
 
-        if corte_viernes(ahora):
-            self._cancelar_todas()
-            for p in pos:
+        en_corte = corte_viernes(ahora, self.feriados)
+        corte = ultimo_corte(ahora, self.feriados)
+        viejas = [] if en_corte else [p for p in pos if pd.Timestamp(p.time_msc, unit="ms") < corte]
+        if en_corte or viejas:
+            if self.broker.pendientes():
+                self._cancelar_todas()
+            for p in (pos if en_corte else viejas):
                 ok, msg = self.broker.cerrar(p) if not self.dry_run else (True, "dry")
-                self.log(f"cierre del viernes {p.comment}: {msg}")
+                nota = f" (abierta antes del corte del {corte:%d-%m %H:%M}: el bot estuvo apagado)" if viejas else ""
+                self.log(f"cierre de fin de semana {p.comment}{nota}: {msg}")
             return
+        if self.sombra is not None and not pos:
+            if self._sombra_sigue(ahora, tk):
+                if self.broker.pendientes():
+                    self._cancelar_todas()
+                self._tablero(ahora, tk)
+                return
+            self.sombra = None
+            self.ultima_m1 = ahora.floor("min")
         if pos:
             self._cancelar_todas()
             if len(pos) > 1:
@@ -279,8 +347,6 @@ class BotSR:
         if m1.time.iloc[-1] == self.ultima_m1:
             self._tablero(ahora, tk)
             return
-        self.ultima_m1 = m1.time.iloc[-1]
-        cierre_ant = float(m1.close.iloc[-2])
 
         # historial: posiciones que se abrieron y cerraron entre dos vueltas (nivel usado + registro del trade)
         nuevos = self.broker.claves_usadas(dias=10) - self.usados
@@ -289,6 +355,10 @@ class BotSR:
             self.guardar_estado()
         for pid in self.broker.cerradas_recientes(dias=10) - self.registradas:
             self.registrar_trade(pid)
+        self.ultima_m1 = m1.time.iloc[-1]
+        if self.ultima_salida is not None and self.ultima_salida.floor("min") >= self.ultima_m1:
+            return                                       # cerro una posicion en este minuto: se espera la vela siguiente
+        cierre_ant = float(m1.close.iloc[-2])
 
         h1 = self.broker.velas("H1", 601)
         if h1 is not None and h1.time.iloc[-1] != self.hora_h1:
@@ -313,7 +383,12 @@ class BotSR:
             else:
                 ok, msg = self.broker.cancelar(o.ticket)
                 self.log(f"cancelada {o.comment} (ya no corresponde) {msg}")
-        bal = self.broker.cuenta()["balance"]
+        c = self.broker.cuenta()
+        if c is not None:
+            self.ultimo_balance = c["balance"]
+        bal = self.ultimo_balance
+        if bal is None:
+            return
 
         # el precio ya paso la orden al abrir la vela: el backtest la llena en la apertura -> a mercado
         cruzadas = sorted([o for k, o in deseadas.items() if k not in puestas and
@@ -337,7 +412,11 @@ class BotSR:
                 return
 
         for k, o in deseadas.items():
-            if k in puestas or not self.broker.orden_valida(o, tk["bid"], tk["ask"]):
+            if k in puestas:
+                continue
+            if not self.broker.orden_valida(o, tk["bid"], tk["ask"]):
+                self.log(f"{k}: {o.lado} {o.precio} no se puede poner ahora (bid {tk['bid']} ask {tk['ask']}: muy "
+                         f"cerca o cruzada); se reintenta en la proxima vela")
                 continue
             vol = self.broker.volumen(bal * self.riesgo_pct, o.riesgo_pts)
             if vol <= 0:

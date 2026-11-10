@@ -5,9 +5,11 @@ MISMO periodo en que estuvo en papel, y lo compara trade por trade con lo que hi
 
   - Velas: las del terminal (copy_rates_from_pos, por cantidad: no depende de husos horarios), con 40 dias de margen
     antes del inicio para que los niveles se formen igual.
-  - Spread del backtest: la mediana del spread de esas velas (el del broker, no el de FTMO).
-  - Coincide = misma direccion y entrada en el mismo minuto (+-1). Diferencias esperables: el papel llena con cada
-    tick real y el backtest con supuestos de vela (SL - 0.7, el TP no en la vela de entrada).
+  - Spread del backtest: el de cada vela del broker (Darwinex ~1 pt de dia y 3-4 de noche). Precios redondeados al
+    tick del simbolo, como los del bot.
+  - Coincide = mismo nivel (clave) y misma direccion; se informa aparte cuantas entran en el mismo minuto (+-1).
+    R del papel con el riesgo nominal (orden - SL), igual que el backtest. Diferencias esperables: el papel llena con
+    cada tick real y el backtest con supuestos de vela (SL - 0.7, el TP no en la vela de entrada).
 """
 import json
 from pathlib import Path
@@ -28,23 +30,28 @@ def velas_m1(mt5, simbolo: str, desde: pd.Timestamp, margen_dias: int = 40) -> p
 
 
 def comparar(papel: pd.DataFrame, bt: pd.DataFrame) -> dict:
-    """papel / bt: entry_time, direction, R. Devuelve el resumen de coincidencias."""
+    """papel / bt: entry_time, direction, R y (si estan) clave. Devuelve el resumen de coincidencias."""
     if not len(papel) and not len(bt):
-        return {"papel": 0, "backtest": 0, "coinciden": 0, "solo_papel": 0, "solo_backtest": 0,
+        return {"papel": 0, "backtest": 0, "coinciden": 0, "mismo_minuto": 0, "solo_papel": 0, "solo_backtest": 0,
                 "R_papel": 0.0, "R_backtest": 0.0, "R_coinciden_papel": 0.0, "R_coinciden_backtest": 0.0}
     p = papel.assign(m=pd.to_datetime(papel.entry_time).dt.floor("min")).reset_index(drop=True)
     b = bt.assign(m=pd.to_datetime(bt.entry_time).dt.floor("min")).reset_index(drop=True)
+    con_clave = "clave" in p and "clave" in b
     usados, pares = set(), []
     for i, x in p.iterrows():
-        cand = b[(b.direction == x.direction) & ((b.m - x.m).abs() <= pd.Timedelta(minutes=1))]
+        if con_clave and isinstance(x.clave, str) and x.clave:
+            cand = b[(b.clave == x.clave) & (b.direction == x.direction)]          # un trade por nivel
+        else:
+            cand = b[(b.direction == x.direction) & ((b.m - x.m).abs() <= pd.Timedelta(minutes=1))]
         cand = cand[~cand.index.isin(usados)]
         if len(cand):
             j = cand.index[0]
             usados.add(j)
             pares.append((i, j))
     ip, ib = [a for a, _ in pares], [c for _, c in pares]
-    return {"papel": len(p), "backtest": len(b), "coinciden": len(pares), "solo_papel": len(p) - len(pares),
-            "solo_backtest": len(b) - len(pares), "R_papel": round(float(p.R.sum()), 2),
+    mismo = sum(abs(p.m[a] - b.m[c]) <= pd.Timedelta(minutes=1) for a, c in pares)
+    return {"papel": len(p), "backtest": len(b), "coinciden": len(pares), "mismo_minuto": int(mismo),
+            "solo_papel": len(p) - len(pares), "solo_backtest": len(b) - len(pares), "R_papel": round(float(p.R.sum()), 2),
             "R_backtest": round(float(b.R.sum()), 2), "R_coinciden_papel": round(float(p.loc[ip].R.sum()), 2),
             "R_coinciden_backtest": round(float(b.loc[ib].R.sum()), 2)}
 

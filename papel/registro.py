@@ -32,11 +32,13 @@ def construir_sr_pivot(e: dict, feeds: dict):
     return BotSR(cfg, papel=True)
 
 
-def backtest_sr_pivot(e: dict, m1, spread: float):
+def backtest_sr_pivot(e: dict, m1, spread, paso=None):
+    """spread: numero o uno por vela; paso: tick del simbolo (el bot redondea sus precios a el, la comparacion igual)."""
     from papel.estrategias.sr_pivot_h1.backtest import simular
     from papel.estrategias.sr_pivot_h1.estrategia import EstrategiaSR
     p = {**DEF_SR, **e.get("params", {})}
-    est = EstrategiaSR(p["W"], p["S"], p["RR"], p["max_niveles"], p["pivote_izq"], p["pivote_der"], p["precio_ref"])
+    est = EstrategiaSR(p["W"], p["S"], p["RR"], p["max_niveles"], p["pivote_izq"], p["pivote_der"], p["precio_ref"],
+                       paso_precio=paso)
     return simular(m1, est, spread=spread, noticias=tuple(e.get("noticias_et", ["08:26-08:34"])))
 
 
@@ -57,12 +59,12 @@ def construir_falsa_ruptura(e: dict, feeds: dict):
     return BotFR(cfg, papel=True)
 
 
-def backtest_falsa_ruptura(e: dict, m1, spread: float):
+def backtest_falsa_ruptura(e: dict, m1, spread, paso=None):
     from papel.estrategias.falsa_ruptura_h1.backtest import simular
     from papel.estrategias.falsa_ruptura_h1.estrategia import EstrategiaFR
     p = {**DEF_FR, **e.get("params", {})}
     est = EstrategiaFR(p["W"], p["vig_h"], p["buf"], p["n_ext"], p["RR"], p["max_niveles"], p["max_ordenes"],
-                       p["pivote_izq"], p["pivote_der"], p["precio_ref"])
+                       p["pivote_izq"], p["pivote_der"], p["precio_ref"], paso_precio=paso)
     return simular(m1, est, spread=spread, noticias=tuple(e.get("noticias_et", ["08:26-08:34"])))
 
 

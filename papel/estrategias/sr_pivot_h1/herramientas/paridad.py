@@ -36,7 +36,8 @@ VENTANA_H1 = 600
 
 
 def simular(m1, est):
-    return simular_bot(m1, est, spread=SPREAD, desliz_sl=DESLIZ_SL)
+    # feriados=False: la regla de corte del motor de investigacion (solo viernes 19:00 UTC)
+    return simular_bot(m1, est, spread=SPREAD, desliz_sl=DESLIZ_SL, feriados=False)
 
 
 def main():
@@ -51,7 +52,7 @@ def main():
 
     # 2) bloqueos del bot == los del backtest
     tt = pd.to_datetime(m1.time)
-    mio = np.array([bloqueado(x, VENTANAS) for x in tt])
+    mio = np.array([bloqueado(x, VENTANAS, feriados=False) for x in tt])
     ref = es_noticia(m1.time) | es_cierre_viernes(m1.time) | (tt.dt.weekday.values >= 5)
     print(f"2) minutos bloqueados: bot {mio.sum()} | backtest {ref.sum()} | distintos {(mio != ref).sum()}")
 

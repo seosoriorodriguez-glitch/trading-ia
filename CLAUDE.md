@@ -19,6 +19,16 @@ falla si el motor no es fiel al live.
 Si un resultado se ve demasiado bien, buscar el lookahead **antes** de reportarlo.
 Los scripts en la raíz y en `journal/analysis/` son exploratorios, no fuente de verdad.
 
+## ⚠️ Plan de fondeo — leer `PLAN_FONDEO.md`
+Antes de responder sobre cuentas (FTMO, The5ers, Darwinex), riesgo por cuenta, retiros o qué estrategia va dónde,
+leer `PLAN_FONDEO.md`. Resumen:
+- **FTMO:** solo OB.
+- **The5ers:** fondeadas con los pivotes juntos.
+- **Darwinex:** la OB, y los pivotes desde el 10-ene-2027.
+- **Estrategias nuevas a Darwinex:** papel 2 meses, luego 0.25 % y después 0.5 %.
+
+Si el usuario cambia el plan, actualizar ese archivo.
+
 ## Proyecto
 Dos bots de trading automatizado Order Block:
 - **US30.cash** — FTMO Challenge $10,000 — RR 3.5 — sesión NY 13:30-23:00 UTC+3

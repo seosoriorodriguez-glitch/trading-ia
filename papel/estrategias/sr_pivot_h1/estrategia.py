@@ -13,6 +13,7 @@ Replica research/pa_lab/repaso/motor_toque2.py con solo_limit=True y escala=True
   usados    un nivel se opera UNA vez: queda usado cuando su orden se llena.
   bloqueos  sin entradas sabado/domingo, en la ventana de noticias 08:26-08:34 ET ni desde el corte del viernes
             (19:00 UTC = 22:00 servidor con horario de verano de EE.UU., 21:00 sin), que ademas cierra la posicion.
+            Semanas cortas por feriado: el corte es el ultimo dia con mercado (papel/calendario.py).
   1 posicion a la vez: con una posicion abierta no hay ordenes pendientes.
 Hora: todo en hora SERVIDOR (FTMO y Darwinex = Nueva York + 7 h, verificado).
 """
@@ -59,12 +60,9 @@ def clave_de_comentario(comentario: str) -> Optional[str]:
 
 
 # ---------------------------------------------------------------------------------------------- horarios
-def verano_eeuu(t: pd.Timestamp) -> bool:
-    mar1 = pd.Timestamp(t.year, 3, 1)
-    nov1 = pd.Timestamp(t.year, 11, 1)
-    ini = mar1 + pd.Timedelta(days=(6 - mar1.weekday()) % 7 + 7)
-    fin = nov1 + pd.Timedelta(days=(6 - nov1.weekday()) % 7)
-    return ini <= t.normalize() < fin
+# El corte de fin de semana vive en papel/calendario.py (incluye feriados y cierres tempranos, nov-2026).
+# feriados=False = la regla vieja (solo viernes 19:00 UTC), la de los motores de investigacion: la usan las paridades.
+from papel.calendario import corte_semana, ultimo_corte, verano_eeuu  # noqa: E402,F401
 
 
 def en_noticias(ahora: pd.Timestamp, ventanas: Sequence[Tuple[int, int]]) -> bool:
@@ -75,12 +73,13 @@ def en_noticias(ahora: pd.Timestamp, ventanas: Sequence[Tuple[int, int]]) -> boo
     return any(a <= m <= b for a, b in ventanas)
 
 
-def corte_viernes(ahora: pd.Timestamp) -> bool:
-    return ahora.weekday() == 4 and ahora.hour >= (22 if verano_eeuu(ahora) else 21)
+def corte_viernes(ahora: pd.Timestamp, feriados: bool = True) -> bool:
+    """Corte de fin de semana (viernes 19:00 UTC, o antes si la semana termina antes por feriado)."""
+    return corte_semana(ahora, feriados)
 
 
-def bloqueado(ahora: pd.Timestamp, ventanas: Sequence[Tuple[int, int]]) -> bool:
-    return ahora.weekday() >= 5 or en_noticias(ahora, ventanas) or corte_viernes(ahora)
+def bloqueado(ahora: pd.Timestamp, ventanas: Sequence[Tuple[int, int]], feriados: bool = True) -> bool:
+    return ahora.weekday() >= 5 or en_noticias(ahora, ventanas) or corte_viernes(ahora, feriados)
 
 
 def ventanas_de_texto(textos: Sequence[str]) -> List[Tuple[int, int]]:

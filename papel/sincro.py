@@ -54,7 +54,8 @@ def fila_trade(e: dict, cuenta: int, n: int, h: dict) -> dict:
     """h: registro de una posicion cerrada (broker_papel.hist o un trade del backtest normalizado)."""
     larga = h["lado"] == "long"
     ent, sal, sl = float(h["entrada"]), float(h["salida"]), h.get("sl")
-    riesgo = abs(ent - sl) if sl else None
+    ref = float(h["orden"]) if h.get("orden") is not None else ent      # riesgo nominal (orden - SL), como el backtest
+    riesgo = abs(ref - sl) if sl else None
     pts = (sal - ent) if larga else (ent - sal)
     motivo = {"tp": "tp", "sl": "sl", "sl_hueco": "sl"}.get(h["comentario_salida"], "other")
     eh = pd.Timestamp(h["entrada_hora"])
