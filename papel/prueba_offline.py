@@ -78,13 +78,14 @@ def main():
     mt5.copy_rates_range = lambda *a: mk.copy_rates_from_pos(None, mt5.TIMEFRAME_M1, 0, 300)
     from papel.runner import Laboratorio
     cfg = json.loads((RAIZ / "papel" / "config.example.json").read_text(encoding="utf-8"))
-    cfg["estrategias"][0]["simbolo"] = "US30.cash"
+    for e in cfg["estrategias"]:
+        e["simbolo"] = "US30.cash"
     sb = SBFalso()
     with tempfile.TemporaryDirectory() as tmp:
         lab = Laboratorio(cfg, "darwinex", sb=sb, log=lambda x: None, estado_dir=tmp)
         assert lab.iniciar(), "no arranco"
-        bot = lab.bots["lab_sr_pivot_h1"]
-        bot.verbose = False
+        for bot in lab.bots.values():
+            bot.verbose = False
         for i in range(mk.i, len(m1)):
             mk.i = i
             lab.paso()
@@ -92,20 +93,24 @@ def main():
                 lab.sincronizar()
         lab.sincronizar(forzar_snapshot=True)
         lab.fidelidad(forzar=True)
-        res = json.loads((Path(tmp) / "lab_sr_pivot_h1" / "fidelidad.json").read_text())
+        res = {i: json.loads((Path(tmp) / i / "fidelidad.json").read_text()) for i in lab.bots}
     bots = [d for op, d, _ in sb.ops["bots"]]
     subidos = [r for op, d, _ in sb.ops["trades"] if op == "upsert" for r in d]
-    papel = [r for r in subidos if r["bot_id"] == "lab_sr_pivot_h1"]
-    bt = [r for r in subidos if r["bot_id"] == "lab_sr_pivot_h1__bt"]
     borrados = [f for op, d, f in sb.ops["trades"] if op == "delete"]
     print("bots registrados:", [(b["id"], b["account"], b["active"]) for b in bots])
-    print(f"trades papel subidos {len(papel)} | backtest subidos {len(bt)} | snapshots {len(sb.ops['account_snapshots'])}"
-          f" | velas {sum(len(d) for _, d, _ in sb.ops['trade_candles'])} | borrados (solo __bt): {borrados}")
-    print("ejemplo de fila:", {k: papel[0][k] for k in ("bot_id", "account", "ticket", "direction", "entry_time",
-                                                        "exit_time", "exit_reason", "risk_points", "pnl_usd", "pnl_r", "session")} if papel else "-")
+    print(f"snapshots {len(sb.ops['account_snapshots'])} | velas {sum(len(d) for _, d, _ in sb.ops['trade_candles'])} | "
+          f"borrados (solo __bt): {borrados}")
+    for i in lab.bots:
+        papel = [r for r in subidos if r["bot_id"] == i]
+        bt = [r for r in subidos if r["bot_id"] == i + "__bt"]
+        print(f"\n[{i}] trades papel subidos {len(papel)} | backtest subidos {len(bt)}")
+        print("  ejemplo de fila:", {k: papel[0][k] for k in ("bot_id", "account", "ticket", "direction", "entry_time",
+                                                              "exit_time", "exit_reason", "risk_points", "pnl_usd",
+                                                              "pnl_r", "session")} if papel else "-")
+        print("  comparacion papel vs backtest:", res[i])
     ok_ids = all(r["bot_id"].startswith("lab_") and r["account"] >= 9_000_000_000 and r["ticket"] >= 9e14 for r in subidos)
-    print("todas las filas lab_ / cuentas y tickets virtuales:", ok_ids)
-    print("comparacion papel vs backtest:", res)
+    tickets = [r["ticket"] for r in subidos]
+    print("\ntodas las filas lab_ / cuentas y tickets virtuales:", ok_ids, "| tickets repetidos:", len(tickets) - len(set(tickets)))
 
 
 if __name__ == "__main__":

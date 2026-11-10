@@ -40,5 +40,31 @@ def backtest_sr_pivot(e: dict, m1, spread: float):
     return simular(m1, est, spread=spread, noticias=tuple(e.get("noticias_et", ["08:26-08:34"])))
 
 
-PLUGINS = {"sr_pivot": construir_sr_pivot}
-BACKTESTS = {"sr_pivot": backtest_sr_pivot}
+DEF_FR = {"W": 20, "vig_h": 8, "buf": 20, "n_ext": 4, "RR": 3.0, "max_niveles": 5, "max_ordenes": 5, "pivote_izq": 15,
+          "pivote_der": 15, "precio_ref": 47000}
+
+
+def construir_falsa_ruptura(e: dict, feeds: dict):
+    from papel.estrategias.falsa_ruptura_h1.bot import BotFR
+    cfg = {
+        "cuenta": {"balance_esperado": e["balance"], "riesgo_pct": e["riesgo_pct"]},
+        "mt5": {"terminal": feeds[e["feed"]], "simbolo": e["simbolo"], "llenado": "return",
+                "valor_punto_lote": e.get("valor_punto_lote")},
+        "estrategia": {**DEF_FR, **e.get("params", {})},
+        "horario": {"noticias_et": e.get("noticias_et", ["08:26-08:34"])},
+        "papel": {"balance_inicial": e["balance"]},
+    }
+    return BotFR(cfg, papel=True)
+
+
+def backtest_falsa_ruptura(e: dict, m1, spread: float):
+    from papel.estrategias.falsa_ruptura_h1.backtest import simular
+    from papel.estrategias.falsa_ruptura_h1.estrategia import EstrategiaFR
+    p = {**DEF_FR, **e.get("params", {})}
+    est = EstrategiaFR(p["W"], p["vig_h"], p["buf"], p["n_ext"], p["RR"], p["max_niveles"], p["max_ordenes"],
+                       p["pivote_izq"], p["pivote_der"], p["precio_ref"])
+    return simular(m1, est, spread=spread, noticias=tuple(e.get("noticias_et", ["08:26-08:34"])))
+
+
+PLUGINS = {"sr_pivot": construir_sr_pivot, "falsa_ruptura": construir_falsa_ruptura}
+BACKTESTS = {"sr_pivot": backtest_sr_pivot, "falsa_ruptura": backtest_falsa_ruptura}

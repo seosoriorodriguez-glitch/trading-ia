@@ -45,7 +45,16 @@ python papel/runner.py --feed darwinex                 # en su propia ventana, c
   - `papel/estado/<id>/eventos.log`: cada orden, llenado, swap y cierre.
   - `papel/estado/<id>/trades.csv` y `papel/estado/<id>/fidelidad.json`.
 
+## Estrategias en papel
+| id | Qué es | Carpeta |
+|---|---|---|
+| `lab_sr_pivot_h1` | S/R Pivot al toque H1 (LIMIT) | `papel/estrategias/sr_pivot_h1/` |
+| `lab_falsa_ruptura_h1` | Falsa ruptura de pivotes H1 (STOP en contra de la ruptura) | `papel/estrategias/falsa_ruptura_h1/` |
+
 ## Agregar una estrategia
+Para sumar al `config.json` del VPS las estrategias nuevas del ejemplo, sin tocar las que ya están:
+`python papel/sumar_estrategias.py`. Guarda antes una copia `config.json.bak-<fecha>`.
+
 1. **Si es otra configuración de una que ya existe**, por ejemplo el S/R con otros parámetros u otro símbolo: una
    entrada nueva en `config.json` con:
    - `id` que empiece con `lab_`.
@@ -59,9 +68,13 @@ python papel/runner.py --feed darwinex                 # en su propia ventana, c
 ## Pruebas (sin conexión, no tocan nada)
 - `python papel/prueba_offline.py 2026-09-01 2026-10-01`: el laboratorio completo con un MT5 falso (ticks armados
   con velas M1) y un Supabase falso. Revisa las filas que se subirían y la comparación con el backtest
-  (sep-2026: 16/16).
+  (sep-2026: S/R 16/16, falsa ruptura 7/7).
 - `python papel/estrategias/sr_pivot_h1/herramientas/paridad.py`: la lógica del S/R contra el backtest de investigación.
   Da 163/163 trades idénticos en 2026 y 192/192 en 2025.
+- `python papel/estrategias/falsa_ruptura_h1/herramientas/paridad.py`: lo mismo para la falsa ruptura. Da 67/67 en
+  2026 y 76/76 en 2025.
+- `python papel/estrategias/falsa_ruptura_h1/herramientas/prueba_papel.py 2026-09-01 2026-10-01`: el bot de la falsa
+  ruptura en papel con ticks falsos, incluido el calentamiento.
 
 ## Qué mirar en el panel
 Un mes en papel sirve para comprobar que la estrategia **se ejecuta como en el backtest**: mecánica, costos, swap y

@@ -23,6 +23,17 @@ export const LAB: Record<string, LabRef> = {
       { periodo: "2020-2024 (informativo)", trades: 889, R: 50.7, wr: 0, pf: 0, ddR: 21 },
     ],
   },
+  lab_falsa_ruptura_h1: {
+    destino: "Darwinex",
+    feed: "WS30 · terminal Darwinex",
+    reglas: "Pivotes H1 15/15 · 1ª vela H1 que cierra más allá del nivel = ruptura · STOP en contra a 20 pts del nivel, 8 h · SL espejo (4 velas + 20) · TP 3R · 24 h lun-vie · cierre viernes 19:00 UTC · 0.5 % por trade",
+    esperado: { ePorTrade: 0.2, tradesMes: 6.3, wr: 43, sdR: 1.6, nota: "año normal ≈ 2025; 2020-2024 promedió +0.07R por trade" },
+    backtest: [
+      { periodo: "2025", trades: 76, R: 15.4, wr: 43.4, pf: 1.37, ddR: 6.2 },
+      { periodo: "2026 (ene-oct)", trades: 67, R: 26.7, wr: 46.3, pf: 1.76, ddR: 5.1 },
+      { periodo: "2020-2024 (informativo)", trades: 413, R: 28.2, wr: 34.6, pf: 0, ddR: 24.3 },
+    ],
+  },
 };
 
 export const SUF_BT = "__bt";

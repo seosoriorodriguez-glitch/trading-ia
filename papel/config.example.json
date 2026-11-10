@@ -17,8 +17,47 @@
       "riesgo_pct": 0.005,
       "valor_punto_lote": 1.0,
       "sesion": "24h",
-      "params": {"W": 20, "S": 130, "RR": 2.5, "max_niveles": 5, "pivote_izq": 15, "pivote_der": 15, "precio_ref": 47000},
-      "noticias_et": ["08:26-08:34"],
+      "params": {
+        "W": 20,
+        "S": 130,
+        "RR": 2.5,
+        "max_niveles": 5,
+        "pivote_izq": 15,
+        "pivote_der": 15,
+        "precio_ref": 47000
+      },
+      "noticias_et": [
+        "08:26-08:34"
+      ],
+      "activa": true
+    },
+    {
+      "id": "lab_falsa_ruptura_h1",
+      "nombre": "Falsa ruptura H1 · papel",
+      "plugin": "falsa_ruptura",
+      "feed": "darwinex",
+      "destino": "darwinex",
+      "simbolo": "WS30",
+      "cuenta": 9000000002,
+      "balance": 100000,
+      "riesgo_pct": 0.005,
+      "valor_punto_lote": 1.0,
+      "sesion": "24h",
+      "params": {
+        "W": 20,
+        "vig_h": 8,
+        "buf": 20,
+        "n_ext": 4,
+        "RR": 3.0,
+        "max_niveles": 5,
+        "max_ordenes": 5,
+        "pivote_izq": 15,
+        "pivote_der": 15,
+        "precio_ref": 47000
+      },
+      "noticias_et": [
+        "08:26-08:34"
+      ],
       "activa": true
     }
   ]
