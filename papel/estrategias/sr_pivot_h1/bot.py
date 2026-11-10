@@ -168,10 +168,45 @@ class BotSR:
             self.registradas |= set(pd.read_csv(t).position_id.astype(int))
         for p in self.broker.posiciones():
             self._anotar_posicion(p)
+        self._calentar_usados()
         self.log(f"Niveles ya usados: {len(self.usados)} | posiciones abiertas: {len(self.posiciones_previas)} | "
                  f"pendientes: {len(self.broker.pendientes())}")
         self.guardar_estado()
         return True
+
+    def _calentar_usados(self):
+        """Al arrancar, el bot no sabe que niveles ya se 'gastaron' antes de que existiera (un nivel se opera una sola
+        vez). Ejemplo real, 10-nov-2026: la resistencia del 02-nov se toco por primera vez el 04-nov (el backtest la opera
+        y pierde ahi), pero el papel arranco el 10-nov y la opero de nuevo. Para empezar alineado con el backtest se corre
+        la MISMA logica (backtest.simular) sobre el historial reciente del broker, desde 3 dias antes del pivote mas
+        antiguo de los niveles vivos, y se marcan como usados los niveles vivos que esa simulacion ya opero."""
+        try:
+            h1 = self.broker.velas("H1", 601)
+            if h1 is None or len(h1) < 40:
+                return
+            activos = self.est.activos(self.est.niveles(h1), h1.time.iloc[-1])
+            if not activos:
+                return
+            desde = min(n.pivote for n in activos) - pd.Timedelta(days=3)
+            minutos = int((h1.time.iloc[-1] - desde).total_seconds() // 60) + 120
+            m1 = self.broker.velas("M1", min(minutos, 99000))
+            if m1 is None or len(m1) < 1000:
+                self.log("calentamiento: sin historial M1 suficiente, no se marcan niveles usados previos")
+                return
+            from .backtest import simular
+            spread = float(m1.spread.median()) * (self.broker.info.point or 0.01) if "spread" in m1 else 2.1
+            t = simular(m1.iloc[:-1][["time", "open", "high", "low", "close"]].reset_index(drop=True), self.est,
+                        spread=spread)
+            vivos = {n.clave for n in activos}
+            previos = (set(t.clave) & vivos) - self.usados if len(t) else set()
+            if previos:
+                self.usados |= previos
+                self.log(f"calentamiento: niveles vivos que el backtest ya opero antes de arrancar -> usados: "
+                         f"{', '.join(sorted(previos))}")
+            else:
+                self.log("calentamiento: ningun nivel vivo estaba usado antes de arrancar")
+        except Exception as ex:
+            self.log(f"calentamiento: error {type(ex).__name__}: {ex} (sigue sin marcar niveles previos)")
 
     def _anotar_posicion(self, p):
         k = clave_de_comentario(p.comment)
