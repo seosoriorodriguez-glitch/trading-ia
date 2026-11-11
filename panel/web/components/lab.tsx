@@ -1,10 +1,45 @@
 import { EquityChart } from "@/components/charts";
-import { KPI } from "@/components/cards";
+import { DiaCard, KPI } from "@/components/cards";
 import type { BotHealth, Trade } from "@/lib/data";
 import { LAB, latido, diasDesde, vsEsperado, compararConBacktest, simChallenge } from "@/lib/lab";
-import { chDateTime } from "@/lib/tz";
+import { chDateTime, ftmoDayStart } from "@/lib/tz";
 
 const money = (n: number) => `${n < 0 ? "-" : ""}$${Math.abs(Math.round(n)).toLocaleString()}`;
+
+// "El día por estrategia" del laboratorio: las mismas tarjetas que las cuentas reales (día desde las 00:00 Praga,
+// saldo, operación abierta) + operaciones del día, retorno desde que entró al papel y latido. Si todas tienen el mismo
+// tamaño, una tarjeta más con la suma: cómo se vería tenerlas juntas en UNA cuenta (cada una con su riesgo).
+export function LabDia({ bots }: { bots: BotHealth[] }) {
+  const desde = +ftmoDayStart();
+  const orden = [...bots].sort((a, b) => a.name.localeCompare(b.name));
+  const saldo = (b: BotHealth) => b.realBalance ?? b.balance;
+  const opsHoy = (b: BotHealth) => b.recent.filter((t) => +new Date(t.exit_time) >= desde).length;
+  const sg = (v: number) => `${v >= 0 ? "+" : "-"}${Math.abs(v).toFixed(2)}%`;
+  const base = orden[0]?.initial_balance ?? 0;
+  const juntas = orden.length >= 2 && base > 0 && orden.every((b) => b.initial_balance === base);
+  const suma = (f: (b: BotHealth) => number) => orden.reduce((a, b) => a + f(b), 0);
+  const jDia = suma((b) => b.dayPnlBal);
+  const jSaldo = base + suma((b) => saldo(b) - b.initial_balance);
+  const enLinea = orden.filter((b) => latido(b).ok).length;
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+      {orden.map((b) => {
+        const l = latido(b);
+        const tot = b.initial_balance ? ((saldo(b) - b.initial_balance) / b.initial_balance) * 100 : 0;
+        return (
+          <DiaCard key={b.id} name={b.name} href={`/bot/${b.id}`} dia={b.dayPnlBal} diaPct={b.dayPnlBalPct}
+            saldo={saldo(b)} flotante={b.floating}
+            extra={<>{opsHoy(b)} ops hoy · total {sg(tot)} · <span className={l.ok ? "text-win" : "text-loss"}>{l.ok ? "●" : "○"} {l.txt}</span></>} />
+        );
+      })}
+      {juntas && (
+        <DiaCard name={`Las ${orden.length} juntas · 1 cuenta de ${money(base)}`} dia={jDia} diaPct={(jDia / base) * 100}
+          saldo={jSaldo} flotante={suma((b) => b.floating)}
+          extra={<>{suma(opsHoy)} ops hoy · total {sg(((jSaldo - base) / base) * 100)} · {enLinea}/{orden.length} en línea</>} />
+      )}
+    </div>
+  );
+}
 
 export function DestinoBadge({ destino }: { destino?: string }) {
   if (!destino) return null;

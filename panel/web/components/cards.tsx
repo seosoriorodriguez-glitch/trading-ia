@@ -1,4 +1,5 @@
 import { EquityChart } from "@/components/charts";
+import type { ReactNode } from "react";
 import type { BotHealth } from "@/lib/data";
 import { chDateTime } from "@/lib/tz";
 
@@ -16,6 +17,34 @@ export function KPI({ label, value, sub, tone }: { label: string; value: string;
       <div className={`font-mono text-base sm:text-lg font-semibold tabular-nums truncate ${color}`}>{value}</div>
       {sub && <div className="text-[10px] text-dim font-mono truncate">{sub}</div>}
     </div>
+  );
+}
+
+// Tarjeta "el día por cuenta": P&L del día FTMO (desde el balance a las 00:00 Praga), saldo y operación abierta
+// (flotante = equity − balance). La usan la vista general (cuentas reales) y Lab · Papel (cuentas virtuales).
+const usd = (n: number) => `$${Math.round(n).toLocaleString()}`;
+export function DiaCard({ name, href, dia, diaPct, saldo, flotante, extra }: {
+  name: string; href?: string; dia: number; diaPct: number; saldo: number; flotante: number; extra?: ReactNode;
+}) {
+  const pos = dia >= 0;
+  const abierta = Math.abs(flotante) >= 0.01;
+  return (
+    <a href={href} className={`bg-panel border border-border rounded-xl px-4 py-3 transition block ${href ? "hover:border-accent/50" : ""}`}>
+      <div className="flex items-center justify-between gap-2 mb-0.5">
+        <span className="text-[11px] text-dim truncate">{name}</span>
+        {abierta && (
+          <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 ${flotante >= 0 ? "bg-win/15 text-win" : "bg-loss/15 text-loss"}`}>
+            ● abierta {flotante >= 0 ? "+" : "-"}{usd(Math.abs(flotante))}
+          </span>
+        )}
+      </div>
+      <div className={`font-mono text-lg sm:text-xl font-semibold tabular-nums truncate ${pos ? "text-win" : "text-loss"}`}>{pos ? "+" : "-"}{usd(Math.abs(dia))}</div>
+      <div className="text-[11px] font-mono text-dim truncate">
+        <span className={pos ? "text-win" : "text-loss"}>{pos ? "+" : ""}{diaPct.toFixed(2)}%</span> · saldo {usd(saldo)}
+        {abierta && <span className="text-dim"> · c/flot. {usd(saldo + flotante)}</span>}
+      </div>
+      {extra && <div className="text-[10px] font-mono text-dim truncate mt-0.5">{extra}</div>}
+    </a>
   );
 }
 

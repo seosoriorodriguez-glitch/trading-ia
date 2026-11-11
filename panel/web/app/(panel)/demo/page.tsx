@@ -1,8 +1,9 @@
 import { getDashboard, periodRange } from "@/lib/data";
 import { AggKPI } from "@/components/cards";
-import { LabCard } from "@/components/lab";
+import { LabCard, LabDia } from "@/components/lab";
 import { PeriodSelector } from "@/components/selectors";
 import { latido } from "@/lib/lab";
+import { ftmoResetCL } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,15 @@ export default async function Demo({ searchParams }: { searchParams: { period?: 
         <AggKPI label="Retorno medio" value={`${avgRet >= 0 ? "+" : ""}${avgRet.toFixed(1)}%`} sub="por estrategia" tone={avgRet >= 0 ? "win" : "loss"} />
         <AggKPI label="Prometedoras" value={`${demo.filter((b) => b.n >= 15 && b.pf >= 1.2 && b.wr >= b.breakevenWr).length}`} sub="≥15 ops · PF≥1.2" tone="win" />
       </div>
+      {demo.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold">El día por estrategia</h2>
+            <span className="text-[10px] text-dim font-mono">reinicia {ftmoResetCL()} CL · 00:00 Praga</span>
+          </div>
+          <LabDia bots={demo} />
+        </div>
+      )}
       {demo.length === 0 ? (
         <div className="text-dim py-16 max-w-3xl">
           Sin estrategias en papel aún. Se agregan en <code className="text-accent">papel/config.json</code> (id <code className="text-accent">lab_…</code>) y se lanzan en el VPS con{" "}

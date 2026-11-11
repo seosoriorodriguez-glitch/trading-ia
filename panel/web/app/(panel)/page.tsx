@@ -1,6 +1,7 @@
 import { getDashboard, periodRange, etapaRecuperacion, mercadoVol, MERCADO, VOL_QUIETO_PTS, type BotHealth } from "@/lib/data";
 import { chToday, ftmoResetCL } from "@/lib/tz";
-import { AggKPI } from "@/components/cards";
+import { AggKPI, DiaCard } from "@/components/cards";
+import { LabDia } from "@/components/lab";
 import { PctLines } from "@/components/pctlines";
 import { Calendar } from "@/components/calendar";
 import { AlertList } from "@/components/alerts";
@@ -23,7 +24,12 @@ function groupSummary(bots: BotHealth[]) {
 export default async function Overview({ searchParams }: { searchParams: { period?: string; type?: string } }) {
   const pr = periodRange(searchParams.period);
   const category = searchParams.type === "ftmo" || searchParams.type === "darwinex" ? searchParams.type : undefined;
-  const { bots, totals, alerts, portfolio, portfolioDaily, error, estrategia, vol } = await getDashboard({ since: pr.since, until: pr.until, category });
+  // El laboratorio en papel va en su propia fila (solo con "Todos"): no entra en totales, curvas ni calendario.
+  const [{ bots, totals, alerts, portfolio, portfolioDaily, error, estrategia, vol }, labDash] = await Promise.all([
+    getDashboard({ since: pr.since, until: pr.until, category }),
+    category ? null : getDashboard({ category: "demo" }),
+  ]);
+  const lab = labDash?.bots ?? [];
   if (error) return <div className="text-dim py-20">Sin datos: <span className="text-loss font-mono">{error}</span></div>;
   const mercado = vol ? MERCADO[mercadoVol(vol)] : null;
   const groups = [
@@ -173,27 +179,21 @@ export default async function Overview({ searchParams }: { searchParams: { perio
             <span className="text-[10px] text-dim font-mono">reinicia {ftmoResetCL()} CL · 00:00 Praga (regla diaria FTMO)</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-            {bots.map((b) => {
-              const pos = b.dayPnlBal >= 0;
-              return (
-                <a key={b.id} href={`/bot/${b.id}`} className="bg-panel border border-border rounded-xl px-4 py-3 hover:border-accent/50 transition block">
-                  <div className="flex items-center justify-between gap-2 mb-0.5">
-                    <span className="text-[11px] text-dim truncate">{b.name}</span>
-                    {Math.abs(b.floating) >= 0.01 && (
-                      <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 ${b.floating >= 0 ? "bg-win/15 text-win" : "bg-loss/15 text-loss"}`}>
-                        ● abierta {b.floating >= 0 ? "+" : "-"}{money(Math.abs(b.floating))}
-                      </span>
-                    )}
-                  </div>
-                  <div className={`font-mono text-lg sm:text-xl font-semibold tabular-nums truncate ${pos ? "text-win" : "text-loss"}`}>{pos ? "+" : "-"}{money(Math.abs(b.dayPnlBal))}</div>
-                  <div className="text-[11px] font-mono text-dim truncate">
-                    <span className={pos ? "text-win" : "text-loss"}>{pos ? "+" : ""}{b.dayPnlBalPct.toFixed(2)}%</span> · saldo {money(b.realBalance ?? b.balance)}
-                    {Math.abs(b.floating) >= 0.01 && <span className="text-dim"> · c/flot. {money((b.realBalance ?? b.balance) + b.floating)}</span>}
-                  </div>
-                </a>
-              );
-            })}
+            {bots.map((b) => (
+              <DiaCard key={b.id} name={b.name} href={`/bot/${b.id}`} dia={b.dayPnlBal} diaPct={b.dayPnlBalPct}
+                saldo={b.realBalance ?? b.balance} flotante={b.floating} />
+            ))}
           </div>
+        </div>
+      )}
+
+      {lab.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold">Laboratorio en papel <span className="text-dim font-normal">· no cuenta para el portafolio</span></h2>
+            <a href="/demo" className="text-xs text-accent">Lab · Papel →</a>
+          </div>
+          <LabDia bots={lab} />
         </div>
       )}
 

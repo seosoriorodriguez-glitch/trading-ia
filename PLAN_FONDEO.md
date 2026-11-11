@@ -23,6 +23,11 @@
 
 Pivotes: papel desde el 10-nov-2026 → real el 10-ene-2027 si pasan la validación.
 
+Qué esperar de los 2 meses de papel (las dos juntas): ~45 trades (37 a 50); la S/R hace ~16 al mes y la falsa
+ruptura ~6-7. La ganancia de 2 meses no dice si la estrategia sirve. Fuera de muestra (2020-24), 37 % de las
+ventanas de 2 meses terminan negativas; la mediana es +2.8R y el 10 % peor está bajo −8.7R. Por eso se decide por
+**fidelidad** (mismos trades y R que el backtest del mismo período), no por cuánto ganó.
+
 ## Lo que se espera de verdad (no lo de 2026)
 - **Pivotes juntas a 0.5 % cada una: ~+8 %/año** (fuera de muestra 2020-24). Puede haber años negativos, como 2020
   (−10 %, caída de 17 %).
@@ -70,9 +75,12 @@ Challenge con pivotes, F1 0.75 % / F2 0.5 % c/u:
   - si la pérdida diaria se mide sobre balance o equity, y a qué hora se reinicia;
   - si una pendiente que se llena dentro de ±2 min de una noticia es infracción;
   - el tope total de capital.
-- [ ] Arreglos de los bots en papel antes del real (auditoría del 10-nov-2026): arranque con posición del backtest,
-      feriados (27-nov, 24-25 dic, 31 dic-1 ene), reinicios del VPS, minuto del cierre, desempate S/R.
+- [x] Arreglos de los bots en papel (auditoría del 10-nov-2026): arranque con posición del backtest, feriados,
+      reinicios del VPS, minuto del cierre, desempate. Commit 7582152, corriendo en el VPS desde el 10-nov 20:49.
 - [ ] La falsa ruptura todavía no tiene modo real (órdenes STOP en MT5): hay que hacerlo antes del 10-ene.
+- [ ] Modo real, apertura con gap (01:00 servidor o lunes): si el gap cruza dos órdenes pendientes, MT5 llena las
+      dos (el papel y el backtest llenan una). Antes del real, el bot debe cerrar la segunda o poner una sola orden.
+      Pasó 1 vez en ene-ago 2026.
 
 Fuentes: [The5ers High Stakes](https://the5ers.com/high-stakes/) ·
 [The5ers prácticas prohibidas](https://the5ers.com/faqs/prohibited-trading-practices/) ·
