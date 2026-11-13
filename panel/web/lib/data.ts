@@ -271,6 +271,50 @@ export function estrategiaRef(bots: Bot[], trades: Trade[]) {
   return { n: rs.length, ddR: pico - cum, ultN: ult.length, ultR: ult.reduce((a, b) => a + b, 0) };
 }
 
+// Cuenta detenida (13-nov-2026). Todas las cuentas corren la misma estrategia OB: si ≥ 2 cuentas operaron un día y
+// esta no, algo le pasa. El challenge 50k nov quedó "DETENIDO (Daily DD)" del 10 al 13-nov sin que nadie lo viera.
+// Calibrado ago-nov 2026 con los trades reales: fuera de ese caso ninguna cuenta faltó 2 días seguidos; 1 día suelto
+// pasa 0-3 veces por cuenta (por eso 1 día = INFO y 2+ = ALERTA). Días en UTC (la sesión London cae entera en un día).
+// Hoy no cuenta si la cuenta tiene una operación abierta (la tabla trades solo trae las cerradas).
+export const SIN_OPERAR_MIN_OTRAS = 2;
+function sinOperar(health: BotHealth[], bots: Bot[], trades: Trade[]): Alert[] {
+  const reales = bots.filter((b) => catOf(b.id) !== "demo");
+  const desde = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10);
+  const hoy = new Date().toISOString().slice(0, 10);
+  const dias = new Map<string, Set<string>>();
+  const primero = new Map<string, string>();
+  for (const t of trades) {
+    if (!t.entry_time) continue;
+    const d = new Date(t.entry_time).toISOString().slice(0, 10);
+    const p = primero.get(t.bot_id);
+    if (!p || d < p) primero.set(t.bot_id, d);
+    if (d < desde) continue;
+    if (!dias.has(t.bot_id)) dias.set(t.bot_id, new Set());
+    dias.get(t.bot_id)!.add(d);
+  }
+  const ddmm = (d: string) => `${d.slice(8, 10)}-${d.slice(5, 7)}`;
+  const out: Alert[] = [];
+  for (const b of health) {
+    const ini = primero.get(b.id);
+    if (catOf(b.id) === "demo" || !ini) continue;
+    const otras = reales.filter((o) => o.id !== b.id);
+    const fechas = Array.from(new Set(otras.flatMap((o) => Array.from(dias.get(o.id) ?? [])))).sort().reverse();
+    const faltas: string[] = [];
+    for (const d of fechas) {
+      if (d < ini) break;
+      if (otras.filter((o) => dias.get(o.id)?.has(d)).length < SIN_OPERAR_MIN_OTRAS) continue;
+      if (dias.get(b.id)?.has(d) || (d === hoy && Math.abs(b.floating) >= 0.01)) break;
+      faltas.push(d);
+    }
+    if (!faltas.length) continue;
+    const cuando = faltas.slice().reverse().map(ddmm).join(", ");
+    out.push(faltas.length >= 2
+      ? { botId: b.id, botName: b.name, level: "bad", msg: `Sin operar ${faltas.length} días seguidos (${cuando}) mientras otras cuentas sí → posible bot DETENIDO: mira su consola (p.ej. "DETENIDO (Daily DD)") y reinícialo sin posiciones abiertas (Ctrl+C, ↑, Enter)` }
+      : { botId: b.id, botName: b.name, level: "info", msg: `No operó el ${cuando} y otras cuentas sí — si mañana se repite, revisa el bot` });
+  }
+  return out;
+}
+
 function alertsFor(b: BotHealth): Alert[] {
   const out: Alert[] = [];
   const A = (level: Alert["level"], msg: string) => out.push({ botId: b.id, botName: b.name, level, msg });
@@ -573,6 +617,8 @@ export async function getDashboard(opts: Opts = {}): Promise<Dashboard> {
     };
     const rankLvl = { bad: 0, warn: 1, info: 2 };
     const alerts = health.flatMap(alertsFor);
+    // Al principio: pide una acción (reiniciar el bot) y la vista general muestra solo las 4 primeras.
+    alerts.unshift(...sinOperar(health, (botsRaw ?? []) as Bot[], (tradesRaw ?? []) as Trade[]));
     if (totals.retPct <= -5)
       alerts.unshift({ botId: "__portfolio__", botName: "Portafolio", level: totals.retPct <= -8 ? "bad" : "warn", msg: `Portafolio en pérdida ${totals.retPct.toFixed(1)}% del capital total` });
     // Alarmas de la ESTRATEGIA (no de una cuenta): se miden sobre la cuenta de referencia
