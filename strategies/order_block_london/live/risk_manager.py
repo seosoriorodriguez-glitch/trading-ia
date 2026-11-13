@@ -118,6 +118,12 @@ class FTMORiskManager:
     def reset_daily(self):
         self.daily_start_balance = self.current_balance
         self.trades_today        = 0
+        # El freno por perdida diaria dura solo ese dia (antes quedaba detenido hasta reiniciar el bot, 13-nov-2026).
+        # Total DD, profit target y emergencia siguen siendo permanentes.
+        if not self.trading_enabled and self.stop_reason.startswith("Daily DD"):
+            print(f"Reset diario - se reactiva el trading (estaba detenido por {self.stop_reason})", flush=True)
+            self.trading_enabled = True
+            self.stop_reason     = ""
         print(f"Reset diario - Balance: ${self.current_balance:,.2f}")
 
     def emergency_stop(self, reason: str):
