@@ -9,6 +9,11 @@ el TP no se mira en la vela de entrada). El bot "despierta" una vez por minuto, 
 
     python papel/estrategias/sr_pivot_h1/herramientas/simulacro.py                 # 2026-01-01 a 2026-11-01
     python papel/estrategias/sr_pivot_h1/herramientas/simulacro.py 2026-09-01 2026-10-01
+    python papel/estrategias/sr_pivot_h1/herramientas/simulacro.py 2026-01-01 2026-11-01 --todas
+
+--todas: el MT5 falso llena TODAS las pendientes que cruza una vela, como el MT5 real en un gap (el backtest llena una
+sola, la mas cercana a la apertura). El bot debe quedarse con la del backtest, cerrar las demas en el minuto siguiente
+("sobra") y dejar sus niveles sin usar: el resto de los trades tiene que salir identico.
 """
 import sys
 import tempfile
@@ -27,14 +32,15 @@ import yaml
 from datos import m1_periodo, tf
 import motor_toque2 as MT
 from papel.estrategias.sr_pivot_h1.bot import BotSR
-from papel.estrategias.sr_pivot_h1.estrategia import clave_de_comentario
+from papel.estrategias.sr_pivot_h1.estrategia import clave_de_comentario, corte_viernes
 from papel.estrategias.sr_pivot_h1.niveles import find_levels
 
 SPREAD, DESLIZ_SL = 2.1, 0.7
 
 
 class MT5Falso:
-    def __init__(self, m1):
+    def __init__(self, m1, todas=False):
+        self.todas = todas
         self.m1 = m1.reset_index(drop=True)
         self.t = self.m1.time.values
         self.o, self.h, self.l, self.c = (self.m1[k].values.astype(float) for k in ("open", "high", "low", "close"))
@@ -115,11 +121,11 @@ class MT5Falso:
 
     def cerrar(self, p):
         precio = self.o[self.i] if p.type == 0 else self.o[self.i] + SPREAD
-        self._salir(p, precio, "viernes")
+        self._salir(p, precio, "viernes" if corte_viernes(pd.Timestamp(self.t[self.i]), False) else "sobra")
         return True, f"cerrada a {precio}"
 
-    def claves_usadas(self, dias=None):
-        return {clave_de_comentario(x["comentario_entrada"]) for x in self.hist.values()}
+    def claves_usadas(self, dias=None, excluir=()):
+        return {clave_de_comentario(x["comentario_entrada"]) for k, x in self.hist.items() if k not in excluir}
 
     def cerradas_recientes(self, dias=10):
         return set(self.hist)
@@ -139,7 +145,7 @@ class MT5Falso:
         self.trades.append(dict(entry_time=p.t, exit_time=pd.Timestamp(self.t[self.i]),
                                 direction="long" if d == 1 else "short", orden=p.orden, entry_price=p.price_open,
                                 sl=p.sl, tp=p.tp, exit_price=precio, exit_reason=motivo,
-                                R=d * (precio - p.price_open) / abs(p.orden - p.sl)))
+                                R=d * (precio - p.price_open) / abs(p.orden - p.sl), extra=getattr(p, "extra", False)))
 
     def procesar_vela(self):
         """Lo que pasa DENTRO de la vela i despues de que el bot actuo al abrirla."""
@@ -169,27 +175,30 @@ class MT5Falso:
                 cand.append((abs(o - x.price_open), x, max(x.price_open, o)))
         if not cand:
             return
-        _, x, ent = min(cand, key=lambda z: z[0])
-        self.pend.pop(x.ticket)
-        self.n += 1
-        p = SimpleNamespace(identifier=self.n, ticket=self.n, type=0 if x.lado == "buy_limit" else 1, comment=x.comment,
-                            sl=x.sl, tp=x.tp, price_open=ent, volume=x.volume,
-                            time_msc=int(pd.Timestamp(self.t[i]).value // 10 ** 6), t=pd.Timestamp(self.t[i]),
-                            i=i, orden=x.price_open)
-        self.pos[p.identifier] = p
-        if (p.type == 0 and ent <= p.sl) or (p.type == 1 and ent >= p.sl):
-            self._salir(p, o if p.type == 0 else o + SPREAD, "sl_hueco")
-        elif (p.type == 0 and l <= p.sl) or (p.type == 1 and h + SPREAD >= p.sl):
-            self._salir(p, p.sl - DESLIZ_SL if p.type == 0 else p.sl + DESLIZ_SL, "sl")
+        cand.sort(key=lambda z: z[0])                  # el primero es el del backtest (el mas cercano a la apertura)
+        for k, (_, x, ent) in enumerate(cand if self.todas else cand[:1]):
+            self.pend.pop(x.ticket)
+            self.n += 1
+            p = SimpleNamespace(identifier=self.n, ticket=self.n, type=0 if x.lado == "buy_limit" else 1,
+                                comment=x.comment, sl=x.sl, tp=x.tp, price_open=ent, volume=x.volume,
+                                time_msc=int(pd.Timestamp(self.t[i]).value // 10 ** 6) + k, t=pd.Timestamp(self.t[i]),
+                                i=i, orden=x.price_open, extra=k > 0)
+            self.pos[p.identifier] = p
+            if (p.type == 0 and ent <= p.sl) or (p.type == 1 and ent >= p.sl):
+                self._salir(p, o if p.type == 0 else o + SPREAD, "sl_hueco")
+            elif (p.type == 0 and l <= p.sl) or (p.type == 1 and h + SPREAD >= p.sl):
+                self._salir(p, p.sl - DESLIZ_SL if p.type == 0 else p.sl + DESLIZ_SL, "sl")
 
 
 def main():
-    ini = pd.Timestamp(sys.argv[1] if len(sys.argv) > 1 else "2026-01-01")
-    fin = pd.Timestamp(sys.argv[2] if len(sys.argv) > 2 else "2026-11-01")
+    todas = "--todas" in sys.argv
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    ini = pd.Timestamp(args[0] if len(args) > 0 else "2026-01-01")
+    fin = pd.Timestamp(args[1] if len(args) > 1 else "2026-11-01")
     m1 = m1_periodo(ini, fin, margen_dias=40)
     cfg = yaml.safe_load((RAIZ / "papel" / "estrategias" / "sr_pivot_h1" / "config" / "demo.yaml").read_text(encoding="utf-8"))
     cfg["horario"]["feriados"] = False            # se compara con motor_toque2 (corte solo el viernes)
-    falso = MT5Falso(m1)
+    falso = MT5Falso(m1, todas=todas)
     bot = BotSR(cfg)
     bot.broker = falso
     bot.verbose = False
@@ -203,6 +212,11 @@ def main():
         eventos = (Path(tmp) / "eventos.log").read_text(encoding="utf-8").splitlines()
     s = pd.DataFrame(falso.trades)
     s = s[(s.entry_time >= ini) & (s.entry_time < fin)].reset_index(drop=True)
+    if len(s) and todas:
+        ex = s[s.extra]
+        print(f"--todas: {len(ex)} llenados de mas (gap); el bot cerro {(ex.exit_reason == 'sobra').sum()} en el minuto "
+              f"siguiente, {(ex.exit_reason != 'sobra').sum()} tocaron SL/TP en la misma vela; costo {ex.R.sum():+.2f}R")
+        s = s[~s.extra].reset_index(drop=True)
     nv = [(pd.Timestamp(x.activation_time), x.price, x.kind, k) for k, x in enumerate(find_levels(tf(m1, 60), 15, 15))]
     r = MT.correr(m1, nv, 20, 130, 2.5, solo_limit=True, escala=True)
     r = r[(r.entry_time >= ini) & (r.entry_time < fin)].reset_index(drop=True)

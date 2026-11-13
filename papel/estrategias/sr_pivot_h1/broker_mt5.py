@@ -16,7 +16,14 @@ TF = {"M1": mt5.TIMEFRAME_M1, "M5": mt5.TIMEFRAME_M5, "H1": mt5.TIMEFRAME_H1}
 LLENADO = {"return": mt5.ORDER_FILLING_RETURN, "ioc": mt5.ORDER_FILLING_IOC, "fok": mt5.ORDER_FILLING_FOK}
 
 
+def _es_compra(lado: str) -> bool:
+    return lado.startswith("buy")
+
+
 class BrokerMT5:
+    clave = staticmethod(clave_de_comentario)        # comentario de la orden -> nivel ('SR <clave>'); la FR la cambia
+    comentario_cierre = "SR cierre"
+
     def __init__(self, simbolo: str, terminal: Optional[str], magic: int, valor_punto: Optional[float] = None,
                  llenado: str = "return"):
         self.simbolo = simbolo
@@ -95,7 +102,7 @@ class BrokerMT5:
         return (o.precio < ask - dist) if o.lado == "buy_limit" else (o.precio > bid + dist)
 
     def margen_ok(self, o: Orden, volumen: float) -> Tuple[bool, float]:
-        tipo = mt5.ORDER_TYPE_BUY if o.lado == "buy_limit" else mt5.ORDER_TYPE_SELL
+        tipo = mt5.ORDER_TYPE_BUY if _es_compra(o.lado) else mt5.ORDER_TYPE_SELL
         m = mt5.order_calc_margin(tipo, self.simbolo, volumen, o.precio)
         a = mt5.account_info()
         if m is None or a is None:
@@ -118,7 +125,7 @@ class BrokerMT5:
         """Entrada a mercado con el SL/TP de la orden: cuando al abrir la vela el precio ya paso la LIMIT (el backtest
         la llena en la apertura, como una limite que ya estaba puesta)."""
         t = mt5.symbol_info_tick(self.simbolo)
-        compra = o.lado == "buy_limit"
+        compra = _es_compra(o.lado)
         req = {"action": mt5.TRADE_ACTION_DEAL, "symbol": self.simbolo, "volume": volumen,
                "type": mt5.ORDER_TYPE_BUY if compra else mt5.ORDER_TYPE_SELL, "price": t.ask if compra else t.bid,
                "sl": o.sl, "tp": o.tp, "deviation": 20, "magic": self.magic, "comment": o.comentario,
@@ -141,7 +148,8 @@ class BrokerMT5:
         compra = p.type == mt5.POSITION_TYPE_BUY
         req = {"action": mt5.TRADE_ACTION_DEAL, "symbol": self.simbolo, "volume": p.volume,
                "type": mt5.ORDER_TYPE_SELL if compra else mt5.ORDER_TYPE_BUY, "position": p.ticket,
-               "price": t.bid if compra else t.ask, "deviation": 20, "magic": self.magic, "comment": "SR cierre",
+               "price": t.bid if compra else t.ask, "deviation": 20, "magic": self.magic,
+               "comment": self.comentario_cierre,
                "type_time": mt5.ORDER_TIME_GTC, "type_filling": mt5.ORDER_FILLING_IOC}
         r = mt5.order_send(req)
         if r is None or r.retcode != mt5.TRADE_RETCODE_DONE:
@@ -154,13 +162,14 @@ class BrokerMT5:
         d = mt5.history_deals_get(desde, datetime.now() + timedelta(days=3))
         return [x for x in (d or []) if x.magic == self.magic and x.symbol == self.simbolo]
 
-    def claves_usadas(self, dias: Optional[int] = None) -> Set[str]:
+    def claves_usadas(self, dias: Optional[int] = None, excluir=()) -> Set[str]:
         """Niveles ya operados segun el historial (deals de entrada con comentario 'SR <clave>'). Cubre tambien las
-        posiciones que se abrieron y cerraron entre dos vueltas del bot."""
+        posiciones que se abrieron y cerraron entre dos vueltas del bot. `excluir`: posiciones que no cuentan (las que
+        el bot cerro porque un gap lleno dos ordenes a la vez: en el backtest ese nivel sigue sin usar)."""
         out = set()
         for x in self._deals(dias):
-            if x.entry == mt5.DEAL_ENTRY_IN:
-                k = clave_de_comentario(x.comment)
+            if x.entry == mt5.DEAL_ENTRY_IN and x.position_id not in excluir:
+                k = self.clave(x.comment)
                 if k:
                     out.add(k)
         return out
@@ -181,6 +190,6 @@ class BrokerMT5:
         return {"entrada_hora": pd.Timestamp(e.time, unit="s"), "salida_hora": pd.Timestamp(s.time, unit="s"),
                 "lado": "long" if e.type == mt5.DEAL_TYPE_BUY else "short", "volumen": e.volume,
                 "entrada": e.price, "salida": s.price, "comentario_entrada": e.comment, "comentario_salida": s.comment,
-                "sl": o0.sl if o0 else None, "tp": o0.tp if o0 else None,
+                "sl": o0.sl if o0 else None, "tp": o0.tp if o0 else None, "orden": o0.price_open if o0 else None,
                 "profit": sum(x.profit for x in sal), "comision": sum(x.commission for x in ds),
                 "swap": sum(x.swap for x in ds)}

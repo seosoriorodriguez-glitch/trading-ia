@@ -1,0 +1,36 @@
+# Falsa ruptura H1 — DARWINEX, cuenta real (alta decidida por el usuario el 13-nov-2026, ver PLAN_FONDEO.md).
+# Mismo terminal que el bot OB Darwinex y el S/R: no interfieren (cada bot solo toca su magic), pero TODO lo que opere
+# esta cuenta entra al mismo DARWIN (YGZY).
+
+cuenta:
+  balance_esperado: 100000   # el bot no arranca si la cuenta conectada tiene menos de la mitad o mas del doble
+  riesgo_fijo: 500           # USD por trade, fijo: igual que el bot OB Darwinex (0.5 % de los 100k iniciales)
+  riesgo_pct: 0.005          # solo se usa si se borra riesgo_fijo (entonces 0.5 % del balance actual)
+
+mt5:
+  terminal: 'C:\Program Files\MT5_BREAKERBLOCKS\terminal64.exe'
+  simbolo: WS30
+  magic: 345691              # unico: NY 345678, BTC 345679, London 345680, Darwinex 345681, oro 345682, DAX 345683, S/R 345690
+  llenado: return
+  # MT5 de Darwinex informa 0.1 por punto y lote en WS30, pero la P&L real es ~1.0 (bot OB: 9.26 lotes x 55 pts =
+  # -$500). Con 0.1 el bot pondria 10 veces el riesgo. Confirmar con el primer trade (el bot lo avisa en el log).
+  valor_punto_lote: 1.0
+
+estrategia:                  # la config de la investigacion (nov-2026). NO cambiar sin volver a correr el backtest
+  W: 20                      # la STOP va a 20 pts del nivel, del lado de adentro (a precio 47 000, se escala)
+  vig_h: 8                   # la orden vale 8 h desde el cierre de la vela de ruptura
+  buf: 20                    # SL espejo: extremo de las 4 velas + 20 pts (a precio 47 000)
+  n_ext: 4
+  RR: 3.0
+  max_niveles: 5
+  max_ordenes: 5
+  pivote_izq: 15
+  pivote_der: 15
+  precio_ref: 47000
+
+horario:                     # hora servidor = Nueva York + 7 h
+  noticias_et: ["08:26-08:34"]
+
+archivos:
+  stop: STOP_FALSA_RUPTURA.txt   # en la raiz del proyecto
+  logs: logs_falsa_ruptura       # logs_falsa_ruptura/<login>/ eventos.log, trades.csv, estado.json

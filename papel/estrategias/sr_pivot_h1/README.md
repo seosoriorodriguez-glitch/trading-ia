@@ -18,7 +18,7 @@ módulos de `strategies/order_block/`.
   - Sin entradas de 08:26 a 08:34 hora de Nueva York.
   - Cierra todo el viernes a las 19:00 UTC.
   - Opera las 24 h de lunes a viernes.
-- **Riesgo:** 0.5% del balance por trade (configurable).
+- **Riesgo:** `riesgo_fijo` en dinero por trade (Darwinex: $500, igual que el OB) o `riesgo_pct` del balance.
 - **Magic:** 345690. Solo toca sus propias órdenes y posiciones, así que puede compartir terminal con otro bot.
 
 Resultado del backtest (velas M1 de FTMO, swap supuesto de −8 pts por noche en compras y −2 en ventas):
@@ -110,9 +110,32 @@ la posición abierta queda con su SL y TP. Borrar el archivo antes de volver a l
 
 Después de la prueba se compara `trades.csv` con el backtest del mismo período corrido con las velas de ese broker.
 
-## Pasarlo a Darwinex (después de la prueba)
-`config/darwinex.yaml` apunta al mismo terminal que el bot OB Darwinex (`MT5_BREAKERBLOCKS`), con `WS30` y
-`valor_punto_lote: 1.0`. Los dos bots no se pisan, pero **todo lo que opera esa cuenta forma el mismo DARWIN (YGZY)**.
-Para un DARWIN aparte hace falta otra cuenta de Darwinex.
+## Darwinex (cuenta real desde el 13-nov-2026)
+El usuario decidió pasarla a real sin esperar los 2 meses de papel, junto con la falsa ruptura. El papel sigue corriendo
+para comparar.
 
-Al 0.5% cada uno, el margen alcanza para la posición S/R (~3 lotes, unos $8k) más las 2 del OB.
+`config/darwinex.yaml` apunta al mismo terminal que el bot OB Darwinex (`MT5_BREAKERBLOCKS`), con `WS30` y
+`valor_punto_lote: 1.0`. La cuenta es **Hedge**, así que los bots no se pisan. Pero **todo lo que opera esa cuenta forma
+el mismo DARWIN (YGZY)**; para un DARWIN aparte hace falta otra cuenta de Darwinex.
+
+**Riesgo:** `riesgo_fijo: 500`, $500 fijos por trade. Es lo mismo que arriesga el OB de Darwinex: su config dice 0.05 %,
+pero con el valor por punto real de WS30 son ~$500 (13-nov: −$484 a −$528 por SL).
+
+**Margen:** la posición S/R (~3.3 lotes, unos $9k), la de la falsa ruptura (~1.9 lotes, ~$5k) y las 2 del OB
+(~9 lotes cada una) caben juntas en los ~$108k de la cuenta.
+
+**Gap que llena dos órdenes a la vez** (13-nov-2026). MT5 llena todas las LIMIT cruzadas; el backtest, solo la más
+cercana a la apertura.
+- El bot se queda con esa y cierra las demás a mercado.
+- Los niveles cerrados quedan sin usar, como en el backtest.
+
+Simulacro `--todas`: 2025 192/192 trades idénticos, con 1 llenado de más cerrado al minuto siguiente (+0.06R). En
+2026, 160/163, las mismas 3 diferencias de siempre:
+- 2 lunes que abrieron más allá del SL;
+- el 19-06, Juneteenth sin feriados.
+
+**Lanzarlo en el VPS** (desde `C:\Users\Administrator\trading-ia`, después de `git pull`):
+```
+python papel/estrategias/sr_pivot_h1/run_bot.py --config papel/estrategias/sr_pivot_h1/config/darwinex.yaml --dry-run
+python papel/estrategias/sr_pivot_h1/run_bot.py --config papel/estrategias/sr_pivot_h1/config/darwinex.yaml
+```

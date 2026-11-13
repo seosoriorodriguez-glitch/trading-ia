@@ -11,5 +11,5 @@ from .estrategia import clave_de_comentario
 
 
 class BrokerPapelFR(BrokerPapel):
-    def claves_usadas(self, dias=None):
-        return {clave_de_comentario(h["comentario_entrada"]) for h in self.hist.values()} - {None}
+    def claves_usadas(self, dias=None, excluir=()):
+        return {clave_de_comentario(h["comentario_entrada"]) for k, h in self.hist.items() if k not in excluir} - {None}

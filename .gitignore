@@ -36,6 +36,10 @@ research/pa_lab/**/_dukas/
 logs_sr_pivot/
 STOP_SR_PIVOT.txt
 
+# Bot falsa ruptura H1 en real (logs y archivo de parada, por cuenta)
+logs_falsa_ruptura/
+STOP_FALSA_RUPTURA.txt
+
 # Laboratorio en papel: config del VPS, estado y parada
 papel/config.json
 papel/estado/

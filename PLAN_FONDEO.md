@@ -12,7 +12,7 @@
 | **FTMO, fondeadas** | **Solo OB** | 0.5 % fijo | Hasta el tope de FTMO: $400k antes del scaling (el usuario dijo 450k; el tope oficial es 400k) | Ingreso rotativo: si se quema, es costo del negocio y se repone con un challenge |
 | **The5ers, challenges** (High Stakes) | OB | 0.75 % (diaria 4 %, máxima 8 %) | 1 challenge de 50k o 100k a la vez ($249 el de 50k) | Pasar rápido |
 | **The5ers, fondeadas** (Pro Trader) | **Pivotes juntos en la misma cuenta**: S/R Pivot H1 + falsa ruptura H1 | **0.4 % cada una** (con máxima 8 %, a 0.5 % se queman demasiado) | Hasta 4 cuentas Pro; cada una escala +10 % hasta $500k | Ingreso estable de largo plazo |
-| **Darwinex (DARWIN YGZY)** | OB como hoy + pivotes desde el **10-ene-2027** | OB igual que hoy · pivotes 0.25 % cada una el 1er mes, luego **0.5 % cada una para siempre** | Una sola cuenta consolidada (no se abre un 2.º DARWIN: cuesta $50/mes) | Fondo de inversión de largo plazo |
+| **Darwinex (DARWIN YGZY)** | OB como hoy + pivotes en real desde el **13-nov-2026** (operan desde el lunes 16-nov) | OB igual que hoy (~$500 por trade) · pivotes **$500 fijos cada una** (0.5 % de los 100k), igual que el OB | Una sola cuenta consolidada (no se abre un 2.º DARWIN: cuesta $50/mes) | Fondo de inversión de largo plazo |
 
 ## Cómo entra una estrategia nueva al fondo Darwinex (procedimiento fijo)
 1. Investigación con backtest fiel. Se decide con 2026 + 2025; 2020-2024 queda como referencia fuera de muestra.
@@ -21,7 +21,15 @@
 3. Real en Darwinex a **0.25 %** el primer mes.
 4. Si todo sigue bien, sube a **0.5 %** y queda así.
 
-Pivotes: papel desde el 10-nov-2026 → real el 10-ene-2027 si pasan la validación.
+Pivotes: papel desde el 10-nov-2026. **El 13-nov-2026 el usuario decidió pasarlos a real ya, a 0.5 % ($500 fijos) cada
+uno**, sin esperar los 2 meses ni el escalón de 0.25 %. Razones:
+- 2 meses de papel no dicen si la estrategia gana.
+- La ejecución ya estaba probada: papel = backtest 4/4, simulacros de años completos.
+- Lo que falta probar (lote real, llenados, swap) solo se ve en real.
+
+El papel sigue corriendo en paralelo para comparar real, papel y backtest. Al primer trade de cada una, revisar el
+lote y los dólares arriesgados. El procedimiento de arriba sigue valiendo para estrategias nuevas, salvo que el
+usuario decida otra cosa.
 
 Qué esperar de los 2 meses de papel (las dos juntas): ~45 trades (37 a 50); la S/R hace ~16 al mes y la falsa
 ruptura ~6-7. La ganancia de 2 meses no dice si la estrategia sirve. Fuera de muestra (2020-24), 37 % de las
@@ -77,10 +85,14 @@ Challenge con pivotes, F1 0.75 % / F2 0.5 % c/u:
   - el tope total de capital.
 - [x] Arreglos de los bots en papel (auditoría del 10-nov-2026): arranque con posición del backtest, feriados,
       reinicios del VPS, minuto del cierre, desempate. Commit 7582152, corriendo en el VPS desde el 10-nov 20:49.
-- [ ] La falsa ruptura todavía no tiene modo real (órdenes STOP en MT5): hay que hacerlo antes del 10-ene.
-- [ ] Modo real, apertura con gap (01:00 servidor o lunes): si el gap cruza dos órdenes pendientes, MT5 llena las
-      dos (el papel y el backtest llenan una). Antes del real, el bot debe cerrar la segunda o poner una sola orden.
-      Pasó 1 vez en ene-ago 2026.
+- [x] Modo real de la falsa ruptura (órdenes STOP en MT5, magic 345691, vencimiento 8 h), 13-nov-2026.
+      Simulacro: 76/76 (2025) y 66/67 (2026; la diferencia es Juneteenth sin feriados).
+- [x] Modo real, apertura con gap (01:00 servidor o lunes). Si el gap cruza dos pendientes, MT5 llena las dos; el
+      backtest, una.
+  - Desde el 13-nov-2026 los dos bots se quedan con la del backtest (la más cercana a la apertura) y cierran las
+    demás al minuto siguiente.
+  - Esos niveles u órdenes quedan sin usar.
+  - Simulacro `--todas`, 2025-26: de 1 a 4 casos por año, costo −0.1R a +0.06R.
 
 Fuentes: [The5ers High Stakes](https://the5ers.com/high-stakes/) ·
 [The5ers prácticas prohibidas](https://the5ers.com/faqs/prohibited-trading-practices/) ·

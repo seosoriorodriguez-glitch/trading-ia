@@ -278,9 +278,9 @@ class BrokerPapel(BrokerMT5):
         self._guardar()
         return True, f"papel cerrada a {precio}"
 
-    def claves_usadas(self, dias=None):
+    def claves_usadas(self, dias=None, excluir=()):
         from .estrategia import clave_de_comentario
-        return {clave_de_comentario(h["comentario_entrada"]) for h in self.hist.values()} - {None}
+        return {clave_de_comentario(h["comentario_entrada"]) for k, h in self.hist.items() if k not in excluir} - {None}
 
     def cerradas_recientes(self, dias=10):
         return set(self.hist)

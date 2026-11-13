@@ -6,7 +6,9 @@ backtest con herramientas/paridad.py); el bot entero se prueba contra un MT5 fal
 Ciclo (cada ~2 s):
   1. Archivo STOP -> cancela sus pendientes y sale. La posicion abierta queda con su SL/TP (no se cierra).
   2. Corte del viernes -> cancela pendientes y cierra la posicion (como el backtest).
-  3. Con posicion abierta -> sin pendientes (1 posicion a la vez). Si por velocidad se llenaron dos, cierra la nueva.
+  3. Con posicion abierta -> sin pendientes (1 posicion a la vez). Si un gap (o un movimiento muy rapido) lleno dos
+     ordenes a la vez, se queda con la que el backtest habria llenado (la orden mas cercana a su precio de llenado) y
+     cierra las otras; sus niveles quedan sin usar, como en el backtest (13-nov-2026).
   4. Noticias 08:26-08:34 ET o fin de semana -> sin pendientes.
   5. Al empezar cada vela M1 -> repasa el historial (niveles usados, trades cerrados), calcula las ordenes que deberian
      estar (niveles activos no usados, del lado de afuera segun el cierre M1 anterior) y pone/cancela para que MT5
@@ -22,6 +24,8 @@ Arreglos de la auditoria del 10-nov-2026 (alinean el bot con el backtest en situ
   - Corte de fin de semana con feriados (papel/calendario.py); si el bot estuvo apagado durante un corte, al volver
     cierra la posicion abierta antes de ese corte.
   - Una orden que no se puede poner queda en el log.
+Riesgo: `cuenta.riesgo_fijo` (dinero por trade, como el bot OB de Darwinex: $500 = 0.5 % de los 100k iniciales) o, si
+no esta, `riesgo_pct` x balance actual.
 """
 import csv
 import json
@@ -60,8 +64,10 @@ class BotSR:
         self.ultima_salida = None          # hora de la ultima salida registrada
         self.ultimo_balance = None
         self.riesgo_pct = float(cfg["cuenta"]["riesgo_pct"])
+        self.riesgo_fijo = cfg["cuenta"].get("riesgo_fijo")       # dinero fijo por trade (None = riesgo_pct x balance)
         self.stop_file = RAIZ / cfg["archivos"]["stop"]
         self.usados: set = set()
+        self.liberadas: set = set()        # posiciones cerradas por doble llenado: su nivel no cuenta como usado
         self.registradas: set = set()
         self.niveles, self.hora_h1 = [], None
         self.ultima_m1 = None
@@ -80,7 +86,37 @@ class BotSR:
 
     def guardar_estado(self):
         (self.dir_logs / "estado.json").write_text(json.dumps(
-            {"usados": sorted(self.usados), "actualizado": f"{datetime.now():%Y-%m-%d %H:%M:%S}"}, indent=1))
+            {"usados": sorted(self.usados), "liberadas": sorted(self.liberadas),
+             "actualizado": f"{datetime.now():%Y-%m-%d %H:%M:%S}"}, indent=1))
+
+    def riesgo_dinero(self, balance: float) -> float:
+        return float(self.riesgo_fijo) if self.riesgo_fijo else balance * self.riesgo_pct
+
+    def texto_riesgo(self) -> str:
+        return f"${float(self.riesgo_fijo):,.0f} fijo por trade" if self.riesgo_fijo else f"{self.riesgo_pct:.2%} del balance"
+
+    def _cerrar_sobrantes(self, pos):
+        """MT5 llena TODAS las pendientes que un gap (o un movimiento muy rapido) cruza; el backtest llena una sola: la
+        mas cercana a la apertura. La apertura se aproxima con el precio del PRIMER llenado (en un gap, todas las cruzadas
+        se llenan a ese precio): se queda la posicion cuya orden esta mas cerca de el (a igual distancia, la primera) y
+        se cierran las demas a mercado. Sus niveles quedan sin usar, como en el backtest."""
+        ref = min(pos, key=lambda p: p.time_msc).price_open
+
+        def clave_orden(p):
+            prev = self.posiciones_previas.get(p.identifier, {})
+            return round(abs(prev.get("precio_orden", p.price_open) - ref)), p.time_msc
+        orden = sorted(pos, key=clave_orden)
+        queda = self.posiciones_previas.get(orden[0].identifier, {}).get("clave")
+        for p in orden[1:]:
+            k = self.posiciones_previas.get(p.identifier, {}).get("clave")
+            ok, msg = self.broker.cerrar(p) if not self.dry_run else (True, "dry")
+            if ok and not self.dry_run:
+                self.liberadas.add(int(p.identifier))
+                if k:
+                    self.usados.discard(k)
+                self.guardar_estado()
+            self.log(f"se llenaron {len(pos)} ordenes a la vez (gap): queda {queda}, cierro {k} ({msg}); el nivel {k} "
+                     f"queda sin usar, como en el backtest")
 
     def _orden_de_clave(self, clave):
         n = next((x for x in self.niveles if x.clave == clave), None)
@@ -96,7 +132,7 @@ class BotSR:
         clave = clave_de_comentario(r["comentario_entrada"]) or previa.get("clave")
         sl = r.get("sl") or previa.get("sl")
         o = self._orden_de_clave(clave)
-        orden = o.precio if o else previa.get("precio_orden", r["entrada"])
+        orden = o.precio if o else (r.get("orden") or previa.get("precio_orden", r["entrada"]))
         riesgo = abs(orden - sl) if sl else float("nan")
         d = 1 if r["lado"] == "long" else -1
         R = d * (r["salida"] - r["entrada"]) / riesgo if riesgo else float("nan")
@@ -173,14 +209,16 @@ class BotSR:
                                            corte_viernes(hora, self.feriados))
         self.log(f"{self.broker.simbolo}: digitos {i.digits}, tick {i.trade_tick_size}, lote min {i.volume_min} "
                  f"paso {i.volume_step} | valor por punto y lote: MT5 {self.broker.valor_punto_mt5():.4f}, "
-                 f"usado {self.broker.valor_punto():.4f} | magic {self.broker.magic} | riesgo {self.riesgo_pct:.2%}")
+                 f"usado {self.broker.valor_punto():.4f} | magic {self.broker.magic} | riesgo {self.texto_riesgo()}")
         self.log(f"Estrategia: pivotes H1 {self.est.izq}/{self.est.der}, {self.est.max_niveles} niveles, W {self.est.W}, "
                  f"S {self.est.S} (a precio {self.est.precio_ref:,.0f}), RR {self.est.RR}, solo LIMIT"
                  + (" | DRY RUN: no se envian ordenes" if self.dry_run else ""))
         f = self.dir_logs / "estado.json"
         if f.exists():
-            self.usados |= set(json.loads(f.read_text()).get("usados", []))
-        self.usados |= self.broker.claves_usadas()
+            est = json.loads(f.read_text())
+            self.usados |= set(est.get("usados", []))
+            self.liberadas |= {int(x) for x in est.get("liberadas", [])}
+        self.usados |= self.broker.claves_usadas(excluir=self.liberadas)
         t = self.dir_logs / "trades.csv"
         if t.exists():
             self.registradas |= set(pd.read_csv(t).position_id.astype(int))
@@ -330,9 +368,7 @@ class BotSR:
         if pos:
             self._cancelar_todas()
             if len(pos) > 1:
-                for p in sorted(pos, key=lambda x: x.time_msc)[1:]:
-                    ok, msg = self.broker.cerrar(p) if not self.dry_run else (True, "dry")
-                    self.log(f"se llenaron dos ordenes a la vez: cierro la mas nueva {p.comment} ({msg})")
+                self._cerrar_sobrantes(pos)
             self._tablero(ahora, tk)
             return
         if bloqueado(ahora, self.ventanas):
@@ -349,7 +385,7 @@ class BotSR:
             return
 
         # historial: posiciones que se abrieron y cerraron entre dos vueltas (nivel usado + registro del trade)
-        nuevos = self.broker.claves_usadas(dias=10) - self.usados
+        nuevos = self.broker.claves_usadas(dias=10, excluir=self.liberadas) - self.usados
         if nuevos:
             self.usados |= nuevos
             self.guardar_estado()
@@ -401,7 +437,7 @@ class BotSR:
                 self.guardar_estado()
                 self.log(f"{o.clave}: el precio abrio mas alla del SL, nivel descartado")
                 continue
-            vol = self.broker.volumen(bal * self.riesgo_pct, o.riesgo_pts)
+            vol = self.broker.volumen(self.riesgo_dinero(bal), o.riesgo_pts)
             if vol <= 0:
                 continue
             ok, msg = self.broker.abrir_mercado(o, vol)
@@ -418,9 +454,9 @@ class BotSR:
                 self.log(f"{k}: {o.lado} {o.precio} no se puede poner ahora (bid {tk['bid']} ask {tk['ask']}: muy "
                          f"cerca o cruzada); se reintenta en la proxima vela")
                 continue
-            vol = self.broker.volumen(bal * self.riesgo_pct, o.riesgo_pts)
+            vol = self.broker.volumen(self.riesgo_dinero(bal), o.riesgo_pts)
             if vol <= 0:
-                self.log(f"{k}: volumen menor al minimo con riesgo {self.riesgo_pct:.2%}, no se pone")
+                self.log(f"{k}: volumen menor al minimo con riesgo {self.texto_riesgo()}, no se pone")
                 continue
             ok_m, margen = self.broker.margen_ok(o, vol)
             if not ok_m:

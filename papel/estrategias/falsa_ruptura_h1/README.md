@@ -1,8 +1,10 @@
-# Falsa ruptura de pivotes H1 (laboratorio en papel)
+# Falsa ruptura de pivotes H1
 
-Solo corre **en papel** dentro de `papel/runner.py`: usa los precios en vivo de la terminal y sus órdenes son virtuales.
-No envía nada al broker. Tiene carpeta propia y no toca los bots en producción ni el bot S/R. Del S/R solo
-**hereda** el broker de papel y los horarios, sin modificarlos.
+Corre de dos formas:
+- **En papel**, dentro de `papel/runner.py`: usa los precios en vivo de la terminal y sus órdenes son virtuales.
+- **En real** desde el 13-nov-2026, con `run_bot.py` y órdenes STOP en MT5 (ver [Cuenta real](#cuenta-real-darwinex)).
+
+Tiene carpeta propia y no toca los bots OB en producción. Del S/R hereda el broker (papel y MT5) y los horarios.
 
 ## Qué hace
 - **Niveles:** los mismos pivotes H1 15/15 del S/R. Un nivel se puede romper mientras está entre los 5 últimos
@@ -22,7 +24,7 @@ No envía nada al broker. Tiene carpeta propia y no toca los bots en producción
   - Una posición a la vez.
   - Sin entradas de 08:26 a 08:34 hora de Nueva York.
   - Cierra todo el viernes a las 19:00 UTC.
-- **Riesgo:** 0.5 % de 100 000 virtuales.
+- **Riesgo:** en papel, 0.5 % de 100 000 virtuales. En real, $500 fijos por trade, igual que el OB de Darwinex.
 - **Destino:** Darwinex (WS30).
 - Los 20 pts están a precio 47 000 y se escalan con el precio.
 
@@ -58,3 +60,41 @@ Arreglos de la auditoría del 10-nov-2026 (ver `papel/README.md`), comprobados c
 - Arranque con el backtest en posición: no opera hasta que esa posición habría cerrado.
 - Bot llamado en cada tick: 7/7 en sep-2026.
 - Caída del VPS de viernes a lunes: 7/7; antes daba 6/7.
+
+## Cuenta real (Darwinex)
+Decidido por el usuario el 13-nov-2026: entra a real junto con el S/R, sin esperar los 2 meses de papel. El papel sigue
+corriendo para comparar.
+
+**Qué cambia respecto del papel:**
+- `broker_mt5.py`: VENTA STOP / COMPRA STOP en MT5 con magic **345691** y comentario `FR <clave>`.
+  - Cada orden va con su vencimiento (8 h) si el símbolo lo acepta; el servidor la borra aunque el bot esté apagado.
+  - Si el bróker no acepta la fecha, va GTC y la cancela el bot.
+- **Riesgo fijo** `riesgo_fijo: 500` en el config. Con un riesgo típico de 270 pts son ~1.85 lotes.
+- **Gap que llena dos STOP a la vez.** MT5 llena todas las cruzadas; el backtest, solo la más cercana a la apertura.
+  - El bot se queda con esa y cierra las demás a mercado en el minuto siguiente.
+  - Las órdenes cerradas quedan sin usar, como en el backtest.
+  - Lo mismo hace el S/R con sus LIMIT.
+
+**Pruebas del modo real** (`herramientas/simulacro.py`: el bot entero contra un MT5 falso, sin feriados):
+
+| | Trades idénticos al backtest | Con `--todas` (MT5 llena todas las cruzadas) |
+|---|---|---|
+| 2025 | — | 76/76; 3 llenados de más, cerrados al minuto siguiente (−0.09R) |
+| 2026 (ene–oct) | 66/67 | 66/67; 4 llenados de más, cerrados al minuto siguiente (−0.02R) |
+
+La diferencia de 2026 es el 19-06 (Juneteenth). El backtest sin feriados no tiene velas después del cierre temprano y
+mantiene la posición todo el fin de semana; el bot la cierra el lunes. Con feriados, como corre en real, cierran igual.
+
+Las órdenes que se mandan a MT5 (tipo, precio, SL/TP, vencimiento, magic, comentario, lado del margen) se revisaron
+con un MT5 simulado.
+
+**Cómo lanzarlo en el VPS** (desde `C:\Users\Administrator\trading-ia`, después de `git pull`):
+```
+python papel/estrategias/falsa_ruptura_h1/run_bot.py --config papel/estrategias/falsa_ruptura_h1/config/darwinex.yaml --dry-run
+python papel/estrategias/falsa_ruptura_h1/run_bot.py --config papel/estrategias/falsa_ruptura_h1/config/darwinex.yaml
+```
+- El `--dry-run` muestra la cuenta, el valor por punto, el riesgo y las órdenes que pondría, sin mandar nada.
+- **Para detenerlo:** crear `STOP_FALSA_RUPTURA.txt` en la raíz. El bot cancela sus pendientes y sale; la posición
+  queda con su SL/TP. Con Ctrl+C las pendientes quedan en MT5 y vencen solas a su hora.
+- **Archivos** en `logs_falsa_ruptura/<login>/`: `eventos.log`, `trades.csv` y `estado.json`.
+- **Primer trade:** si `eventos.log` dice `OJO valor por punto`, el riesgo real no es $500.

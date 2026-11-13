@@ -24,8 +24,8 @@ Antes de responder sobre cuentas (FTMO, The5ers, Darwinex), riesgo por cuenta, r
 leer `PLAN_FONDEO.md`. Resumen:
 - **FTMO:** solo OB.
 - **The5ers:** fondeadas con los pivotes juntos.
-- **Darwinex:** la OB, y los pivotes desde el 10-ene-2027.
-- **Estrategias nuevas a Darwinex:** papel 2 meses, luego 0.25 % y después 0.5 %.
+- **Darwinex:** la OB y los pivotes (S/R + falsa ruptura en real desde el 13-nov-2026, $500 fijos cada una, igual que el OB).
+- **Estrategias nuevas a Darwinex:** papel 2 meses, luego 0.25 % y después 0.5 % (los pivotes se saltaron esto por decisión del usuario).
 
 Si el usuario cambia el plan, actualizar ese archivo.
 
