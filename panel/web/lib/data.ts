@@ -224,7 +224,7 @@ export type Dashboard = {
 // trade el 09-nov-2026; los YAML conservan el nombre "45usd".
 export const RECUPERACION: Record<string, { hasta1: number; hasta2: number; yaml1: string; riesgo1: number }> = {
   us30_live_100k: { hasta1: 93200, hasta2: 96000, yaml1: "etapa1_45usd_100k.yaml", riesgo1: 100 },
-  dax_50k: { hasta1: 46600, hasta2: 48000, yaml1: "etapa1_45usd_50k.yaml", riesgo1: 100 },
+  // dax_50k salió el 13-nov-2026: tocó el piso de pérdida máxima (balance $44.993,57) y quedó archivado.
 };
 export type EtapaRec = {
   etapa: 1 | 2 | 3; enUso: 1 | 2 | 3 | null; riesgoUsd: number | null;
