@@ -3,6 +3,7 @@
 # cuenta entra al mismo DARWIN (YGZY). Para un DARWIN aparte hace falta otra cuenta Darwinex.
 
 cuenta:
+  login: 4000096966        # el bot no arranca si la terminal esta en otra cuenta
   balance_esperado: 100000
   riesgo_fijo: 500           # USD por trade, fijo: igual que el bot OB Darwinex (0.5 % de los 100k iniciales)
   riesgo_pct: 0.005          # solo se usa si se borra riesgo_fijo (entonces 0.5 % del balance actual)

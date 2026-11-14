@@ -139,3 +139,32 @@ Simulacro `--todas`: 2025 192/192 trades idénticos, con 1 llenado de más cerra
 python papel/estrategias/sr_pivot_h1/run_bot.py --config papel/estrategias/sr_pivot_h1/config/darwinex.yaml --dry-run
 python papel/estrategias/sr_pivot_h1/run_bot.py --config papel/estrategias/sr_pivot_h1/config/darwinex.yaml
 ```
+
+## Auditoría del 14-nov-2026 (antes de operar en real)
+Dos revisiones independientes, línea por línea, contra la investigación. **La lógica y los parámetros replican la
+investigación**: paridad 2025 y 2026 idéntica en niveles, órdenes, minutos bloqueados y trades. Lo que se arregló es
+robustez de la ejecución en MT5 real (vale para el S/R y la falsa ruptura):
+- **Reconexión:** si la terminal se reinicia, el bot vuelve a conectar. Antes seguía vivo pero ciego.
+- **Vencimiento:** las pendientes vencen en el corte de fin de semana (la falsa ruptura, también a las 8 h). Si el
+  bot se cae, no quedan vivas el fin de semana. Si el bróker no acepta la fecha, van GTC.
+- **Spread de "del lado de afuera":** se usa el de la vela M1 anterior, como el backtest. En la reapertura de las 01:00
+  el spread del tick (10-30 pts) hacía poner compras que el backtest no pone.
+- **Orden muy cerca del precio:** si el bróker no la deja poner (distancia mínima) o la rechaza porque el precio se
+  movió, el bot la vigila el resto del minuto y entra a mercado si el precio la cruza, como la llenaría el backtest.
+- **Errores de MT5:** si MT5 no entrega posiciones u órdenes, el ciclo falla y reintenta. Antes creía que no tenía
+  nada y podía duplicar órdenes.
+- **Otros:**
+  - un llenado parcial cuenta como entrada;
+  - se guarda el ticket de cada orden con su nivel en `estado.json`, de respaldo si el bróker borra el comentario;
+  - la hora de la vela nueva manda sobre la del tick (noticias, corte);
+  - se verifica la cuenta (`login` del config);
+  - un solo bot por magic (candado);
+  - el dry-run guarda su estado aparte (`<login>_dryrun`).
+- **Arranque:** el bot escribe en el log las reglas del bróker para WS30 (stops level, freeze level, IOC,
+  vencimiento) y una prueba `order_check` de una orden lejana (no se envía).
+
+Pruebas después del arreglo:
+- simulacros `--todas` 2025-2026 iguales que antes;
+- papel y `papel/prueba_offline.py` OK;
+- órdenes a MT5 revisadas con un MT5 simulado: 35/35;
+- vigilancia, noticias y spread con pruebas dirigidas.

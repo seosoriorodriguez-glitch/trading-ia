@@ -97,7 +97,7 @@ class MT5Falso:
     def margen_ok(self, o, v):
         return True, 0.0
 
-    def poner_limit(self, o, vol):
+    def poner_limit(self, o, vol, vence=None):
         self.n += 1
         self.pend[self.n] = SimpleNamespace(ticket=self.n, comment=o.comentario, lado=o.lado, price_open=o.precio,
                                             sl=o.sl, tp=o.tp, volume=vol)
@@ -124,7 +124,7 @@ class MT5Falso:
         self._salir(p, precio, "viernes" if corte_viernes(pd.Timestamp(self.t[self.i]), False) else "sobra")
         return True, f"cerrada a {precio}"
 
-    def claves_usadas(self, dias=None, excluir=()):
+    def claves_usadas(self, dias=None, excluir=(), mapa=None):
         return {clave_de_comentario(x["comentario_entrada"]) for k, x in self.hist.items() if k not in excluir}
 
     def cerradas_recientes(self, dias=10):

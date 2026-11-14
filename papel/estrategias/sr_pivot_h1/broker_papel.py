@@ -243,7 +243,7 @@ class BrokerPapel(BrokerMT5):
             return o.precio < bid
         return o.precio > ask
 
-    def poner_limit(self, o, volumen):
+    def poner_limit(self, o, volumen, vence=None):
         self.n += 1
         hasta = getattr(o, "hasta", None)
         self.pend[self.n] = SimpleNamespace(ticket=self.n, comment=o.comentario, lado=o.lado, price_open=o.precio,
@@ -278,7 +278,7 @@ class BrokerPapel(BrokerMT5):
         self._guardar()
         return True, f"papel cerrada a {precio}"
 
-    def claves_usadas(self, dias=None, excluir=()):
+    def claves_usadas(self, dias=None, excluir=(), mapa=None):
         from .estrategia import clave_de_comentario
         return {clave_de_comentario(h["comentario_entrada"]) for k, h in self.hist.items() if k not in excluir} - {None}
 

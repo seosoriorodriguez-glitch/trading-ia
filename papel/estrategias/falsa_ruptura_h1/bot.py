@@ -26,6 +26,15 @@ Arreglos de la auditoria del 10-nov-2026:
     cierra la posicion abierta antes de ese corte. Las pendientes vencen solas en el broker de papel (8 h).
   - Una orden que no se puede poner queda en el log.
 Riesgo: cuenta.riesgo_fijo (dinero por trade, como el bot OB de Darwinex) o, si no esta, riesgo_pct x balance.
+Robustez en cuenta real (auditoria del 14-nov-2026), igual que el S/R:
+  - reconecta si la terminal se reinicia; avisa si MT5 deja de dar precios;
+  - cada STOP vence a la hora mas temprana entre su `hasta` (8 h) y el corte de fin de semana;
+  - "del lado de afuera" usa el spread de la vela M1 anterior (como el backtest), no el del tick;
+  - una STOP que el broker no deja poner por estar muy cerca del precio (o que rechaza porque el precio se movio) se
+    VIGILA el resto del minuto y entra a mercado si el precio la cruza (el 28-34 % de los trades se llenan en el primer
+    minuto en que la orden queda del lado de afuera, casi siempre a <= 10 pts);
+  - ticket de cada orden -> clave en estado.json: respaldo si el broker borra el comentario;
+  - la hora de la vela nueva manda sobre la del tick; cuenta (login) del config verificada; un solo bot por magic.
 """
 import csv
 import json
@@ -34,6 +43,9 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+
+from papel.calendario import corte_de_la_semana
+from papel.estrategias.sr_pivot_h1.broker_mt5 import PRECIO_INVALIDO
 
 from .estrategia import EstrategiaFR, bloqueado, clave_de_comentario, corte_viernes, ultimo_corte, ventanas_de_texto
 
@@ -68,6 +80,10 @@ class BotFR:
         self.riesgo_fijo = cfg["cuenta"].get("riesgo_fijo")       # dinero fijo por trade (None = riesgo_pct x balance)
         self.usados: set = set()
         self.liberadas: set = set()        # posiciones cerradas por doble llenado: su orden no cuenta como usada
+        self.tickets: dict = {}            # ticket de la orden (= id de la posicion que abre) -> clave
+        self.vigilar: dict = {}            # clave -> STOP que no se pudo poner este minuto (muy cerca del precio)
+        self.login = cfg["cuenta"].get("login")
+        self._avisos: dict = {}
         self.registradas: set = set()
         self.ordenes, self.hora_h1 = [], None
         self.ultima_m1 = None
@@ -86,9 +102,30 @@ class BotFR:
             f.write(linea + "\n")
 
     def guardar_estado(self):
+        tickets = dict(list(self.tickets.items())[-500:])
         (self.dir_logs / "estado.json").write_text(json.dumps(
-            {"usados": sorted(self.usados), "liberadas": sorted(self.liberadas),
+            {"usados": sorted(self.usados), "liberadas": sorted(self.liberadas), "tickets": tickets,
              "actualizado": f"{datetime.now():%Y-%m-%d %H:%M:%S}"}, indent=1))
+
+    def aviso(self, tema: str, msg: str, cada_s: float = 600):
+        """Log que no se repite mas de una vez cada `cada_s` segundos (fallos que se reintentan cada 2 s)."""
+        if time.time() - self._avisos.get(tema, 0) >= cada_s:
+            self._avisos[tema] = time.time()
+            self.log(msg)
+
+    def _anotar_ticket(self, clave: str):
+        t = getattr(self.broker, "ultimo_ticket", None)
+        if t is not None and clave:
+            self.tickets[str(t)] = clave
+            self.guardar_estado()
+
+    def _clave(self, comentario, ticket) -> str:
+        return clave_de_comentario(comentario) or self.tickets.get(str(ticket))
+
+    @staticmethod
+    def proximo_corte(ahora: pd.Timestamp) -> pd.Timestamp:
+        c = corte_de_la_semana(ahora)
+        return c if c > ahora else corte_de_la_semana(ahora + pd.Timedelta(days=7))
 
     def riesgo_dinero(self, balance: float) -> float:
         return float(self.riesgo_fijo) if self.riesgo_fijo else balance * self.riesgo_pct
@@ -104,11 +141,19 @@ class BotFR:
         cercana a la apertura. La apertura se aproxima con el precio del PRIMER llenado: se queda la posicion cuya orden
         esta mas cerca de el (a igual distancia, la primera) y se cierran las demas a mercado. Sus ordenes quedan sin
         usar, como en el backtest."""
-        ref = min(pos, key=lambda p: p.time_msc).price_open
+        primera = min(pos, key=lambda p: p.time_msc)
+        ref, sp = primera.price_open, 0.0
+        m1 = self.broker.velas("M1", 5)
+        if m1 is not None and len(m1):
+            v = m1[m1.time == pd.Timestamp(primera.time_msc, unit="ms").floor("min")]
+            if len(v):            # la clave del backtest: distancia a la apertura de esa vela (compras con Ask)
+                ref = float(v.open.iloc[0])
+                sp = float(v.spread.iloc[0]) * (self.broker.info.point or 0.01)
 
         def clave_orden(p):
             prev = self.posiciones_previas.get(p.identifier, {})
-            return round(abs(prev.get("precio_orden", p.price_open) - ref)), p.time_msc
+            r = ref + (sp if p.type == 0 else 0.0)
+            return round(abs(prev.get("precio_orden", p.price_open) - r)), p.time_msc
         orden = sorted(pos, key=clave_orden)
         queda = self.posiciones_previas.get(orden[0].identifier, {}).get("clave")
         for p in orden[1:]:
@@ -116,7 +161,7 @@ class BotFR:
             ok, msg = self.broker.cerrar(p) if not self.dry_run else (True, "dry")
             if ok and not self.dry_run:
                 self.liberadas.add(int(p.identifier))
-                if k:
+                if k and k != queda:
                     self.usados.discard(k)
                 self.guardar_estado()
             self.log(f"se llenaron {len(pos)} ordenes a la vez (gap): queda {queda}, cierro {k} ({msg}); la orden {k} "
@@ -129,9 +174,10 @@ class BotFR:
         if r is None:
             return
         previa = previa or {}
-        clave = clave_de_comentario(r["comentario_entrada"]) or previa.get("clave")
+        clave = self._clave(r["comentario_entrada"], pid) or previa.get("clave")
         sl = r.get("sl") or previa.get("sl")
-        orden = r.get("orden") or previa.get("precio_orden") or r["entrada"]
+        o = self._orden_de_clave(clave)
+        orden = (o.precio if o else None) or previa.get("precio_orden") or r.get("orden") or r["entrada"]
         riesgo = abs(orden - sl) if sl else float("nan")
         d = 1 if r["lado"] == "long" else -1
         R = d * (r["salida"] - r["entrada"]) / riesgo if riesgo else float("nan")
@@ -161,8 +207,34 @@ class BotFR:
                      f"Revisar 'valor_punto_lote' en el config: el riesgo real no es el configurado.")
 
     # ------------------------------------------------------------------ modo real
+    def _candado(self):
+        """Un solo bot por magic: dos copias lanzadas a mano duplicarian ordenes. El candado del sistema operativo se
+        suelta solo si el proceso muere."""
+        carpeta = RAIZ / self.cfg["archivos"]["logs"]
+        carpeta.mkdir(parents=True, exist_ok=True)
+        f = open(carpeta / f"instancia_{self.cfg['mt5']['magic']}.lock", "a+")
+        try:
+            import msvcrt
+            f.seek(0)
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+        except ImportError:
+            import fcntl
+            try:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                f.close()
+                return None
+        except OSError:
+            f.close()
+            return None
+        return f
+
     def iniciar(self):
         """Bucle del modo real (en papel lo maneja papel/runner.py)."""
+        candado = self._candado()
+        if candado is None:
+            print(f"ABORTADO: ya hay otro bot corriendo con magic {self.cfg['mt5']['magic']} (cierra la otra ventana)")
+            return
         if not self.preparar():
             return
         stop = RAIZ / self.cfg["archivos"]["stop"]
@@ -173,6 +245,10 @@ class BotFR:
                              f"con su SL/TP)")
                     self._cancelar_todas()
                     break
+                if not self.broker.asegurar_conexion():
+                    self.aviso("conexion", "MT5 no responde (terminal cerrada o reiniciandose): reintento cada 10 s")
+                    time.sleep(10)
+                    continue
                 try:
                     self.ciclo()
                 except Exception as ex:                       # un error de red no debe tumbar el bot
@@ -196,7 +272,8 @@ class BotFR:
         elif self.papel:
             self.dir_logs = RAIZ / "papel" / "estado" / "falsa_ruptura"
         else:
-            self.dir_logs = RAIZ / self.cfg["archivos"]["logs"] / str(cta["login"])
+            carpeta = str(cta["login"]) + ("_dryrun" if self.dry_run else "")    # el dry-run no toca el estado real
+            self.dir_logs = RAIZ / self.cfg["archivos"]["logs"] / carpeta
         self.dir_logs.mkdir(parents=True, exist_ok=True)
         if self.papel:
             self.broker.abrir_estado(self.dir_logs)
@@ -211,6 +288,12 @@ class BotFR:
                 self.log(f"ABORTADO: el balance no cuadra con balance_esperado={esperado:,.0f}. Revisa terminal y config.")
                 self.broker.desconectar()
                 return False
+            if self.login and str(cta["login"]) != str(self.login):
+                self.log(f"ABORTADO: la terminal esta en la cuenta {cta['login']} y el config dice {self.login}.")
+                self.broker.desconectar()
+                return False
+            if hasattr(self.broker, "propiedades"):
+                self.log(f"Broker {self.broker.simbolo}: {self.broker.propiedades()}")
         i = self.broker.info
         self.est = EstrategiaFR(**self.est_args, paso_precio=i.trade_tick_size or i.point)
         self.broker.reglas = lambda hora: (bloqueado(hora, self.ventanas, self.feriados),
@@ -227,7 +310,12 @@ class BotFR:
             est = json.loads(f.read_text())
             self.usados |= set(est.get("usados", []))
             self.liberadas |= {int(x) for x in est.get("liberadas", [])}
-        self.usados |= self.broker.claves_usadas(excluir=self.liberadas)
+            self.tickets.update(est.get("tickets", {}))
+        h1 = self.broker.velas("H1", 601)          # ordenes antes de anotar posiciones (precio de la STOP)
+        if h1 is not None and len(h1) > 40:
+            self.ordenes = self.est.ordenes(h1)
+            self.hora_h1 = h1.time.iloc[-1]
+        self.usados |= self.broker.claves_usadas(excluir=self.liberadas, mapa=self.tickets)
         t = self.dir_logs / "trades.csv"
         if t.exists():
             self.registradas |= set(pd.read_csv(t).position_id.astype(int))
@@ -239,8 +327,27 @@ class BotFR:
             self.ultima_m1 = m1.time.iloc[-1]          # el minuto del arranque no se decide: se espera la vela siguiente
         self.log(f"Ordenes ya usadas: {len(self.usados)} | posiciones abiertas: {len(self.posiciones_previas)} | "
                  f"pendientes: {len(self.broker.pendientes())}")
+        self._autoprueba()
         self.guardar_estado()
         return True
+
+    def _autoprueba(self):
+        """Cuenta real: valida con order_check (sin enviar) una VENTA STOP de prueba lejos del precio, con vencimiento."""
+        if self.papel or not hasattr(self.broker, "chequear_pendiente"):
+            return
+        try:
+            from .estrategia import OrdenFR
+            tk = self.broker.tick()
+            if tk is None:
+                return
+            p = self.est._r(tk["bid"] * 0.97)
+            h = tk["hora"].floor("h") + pd.Timedelta(hours=8)
+            o = OrdenFR("prueba", "sell_stop", p, self.est._r(p + 270), self.est._r(p - 810), p, 270.0, h, h, h, p)
+            vol = self.broker.info.volume_min
+            self.log(f"Prueba de orden (order_check, no se envia): "
+                     f"{self.broker.chequear_pendiente(o, vol, min(h, self.proximo_corte(tk['hora'])))}")
+        except Exception as ex:
+            self.log(f"Prueba de orden: error {type(ex).__name__}: {ex}")
 
     def _calentar_usados(self):
         """El bot no sabe que ordenes ya se 'gastaron' antes de existir (una orden se opera una sola vez). Ejemplo real
@@ -250,7 +357,8 @@ class BotFR:
         try:
             m1 = self.broker.velas("M1", 60000)
             if m1 is None or len(m1) < 20000:
-                self.log("calentamiento: sin historial M1 suficiente, no se marcan ordenes usadas previas")
+                self.log("OJO calentamiento: la terminal no entrega historial M1 suficiente ('max bars' >= 60000): no "
+                         "se marcan ordenes usadas previas y el bot podria repetir una orden ya operada")
                 return
             from .backtest import simular
             pt = self.broker.info.point or 0.01
@@ -282,7 +390,7 @@ class BotFR:
             self.log(f"calentamiento: error {type(ex).__name__}: {ex} (sigue sin marcar ordenes previas)")
 
     def _anotar_posicion(self, p):
-        k = clave_de_comentario(p.comment)
+        k = self._clave(p.comment, p.identifier)
         if k and k not in self.usados:
             self.usados.add(k)
             self.guardar_estado()
@@ -326,6 +434,7 @@ class BotFR:
         if hasattr(self.broker, "avisos"):
             self.broker.avisos.clear()
         if tk is None:
+            self.aviso("sin_tick", "MT5 no da precio de este simbolo (sin conexion con el broker?)")
             return
         ahora = tk["hora"]
         pos = self.broker.posiciones()
@@ -349,7 +458,10 @@ class BotFR:
             for p in (pos if en_corte else viejas):
                 ok, msg = self.broker.cerrar(p) if not self.dry_run else (True, "dry")
                 nota = f" (abierta antes del corte del {corte:%d-%m %H:%M}: el bot estuvo apagado)" if viejas else ""
-                self.log(f"cierre de fin de semana {p.comment}{nota}: {msg}")
+                if ok:
+                    self.log(f"cierre de fin de semana {p.comment}{nota}: {msg}")
+                else:
+                    self.aviso(f"corte_{p.identifier}", f"cierre de fin de semana {p.comment}{nota}: {msg} (reintento)")
             return
         if self.sombra is not None and not pos:
             if self._sombra_sigue(ahora, tk):
@@ -366,7 +478,8 @@ class BotFR:
                 self._cerrar_sobrantes(pos)
             self._tablero(ahora, tk)
             return
-        if bloqueado(ahora, self.ventanas):
+        if bloqueado(ahora, self.ventanas, self.feriados):
+            self.vigilar = {}
             if self.broker.pendientes():
                 self.log("noticias / fin de semana: cancelo pendientes")
                 self._cancelar_todas()
@@ -376,10 +489,17 @@ class BotFR:
         if m1 is None or len(m1) < 2:
             return
         if m1.time.iloc[-1] == self.ultima_m1:
+            if self.vigilar:
+                self._vigilar(tk, ahora)
             self._tablero(ahora, tk)
             return
+        self.vigilar = {}
+        if m1.time.iloc[-1] > ahora:                  # el tick se leyo justo antes del cambio de minuto
+            ahora = m1.time.iloc[-1]
+            if bloqueado(ahora, self.ventanas, self.feriados):
+                return
 
-        nuevos = self.broker.claves_usadas(dias=10, excluir=self.liberadas) - self.usados
+        nuevos = self.broker.claves_usadas(dias=10, excluir=self.liberadas, mapa=self.tickets) - self.usados
         if nuevos:
             self.usados |= nuevos
             self.guardar_estado()
@@ -389,6 +509,8 @@ class BotFR:
         if self.ultima_salida is not None and self.ultima_salida.floor("min") >= self.ultima_m1:
             return                                       # cerro una posicion en este minuto: se espera la vela siguiente
         cierre_ant = float(m1.close.iloc[-2])
+        pt = self.broker.info.point or 0.01
+        sp_ant = float(m1.spread.iloc[-2]) * pt if "spread" in m1 else 0.0
 
         h1 = self.broker.velas("H1", 601)
         if h1 is not None and h1.time.iloc[-1] != self.hora_h1:
@@ -400,7 +522,8 @@ class BotFR:
                          f"{o.lado} {o.precio} SL {o.sl} TP {o.tp} riesgo {o.riesgo_pts:.1f} pts, vale hasta "
                          f"{o.hasta:%d-%m %H:%M}")
         vig = self.est.vigentes(self.ordenes, ahora, self.usados)
-        spread = tk["ask"] - tk["bid"]
+        # spread de la vela M1 anterior, como el backtest (no el del tick: en la reapertura de las 01:00 llega a 10-30)
+        spread = sp_ant if sp_ant > 0 else tk["ask"] - tk["bid"]
         deseadas = {o.clave: o for o in self.est.deseadas(vig, cierre_ant, spread)}
         if set(deseadas) != self.deseadas_previas:
             self.log("ordenes que corresponden: " + (", ".join(
@@ -412,12 +535,12 @@ class BotFR:
 
         puestas = {}
         for o in self.broker.pendientes():
-            k = clave_de_comentario(o.comment)
+            k = self._clave(o.comment, o.ticket)
             if k in deseadas and k not in puestas:
                 puestas[k] = o
             else:
-                self.broker.cancelar(o.ticket)
-                self.log(f"cancelada {o.comment} (ya no corresponde)")
+                ok, msg = self.broker.cancelar(o.ticket)
+                self.log(f"cancelada {o.comment} (ya no corresponde) {msg}")
         c = self.broker.cuenta()
         if c is not None:
             self.ultimo_balance = c["balance"]
@@ -443,6 +566,7 @@ class BotFR:
             self.log(f"{'ENTRADA A MERCADO' if ok else 'FALLO a mercado'} {o.lado} {o.clave} {vol} lotes (STOP "
                      f"{o.precio} ya cruzada) SL {o.sl} TP {o.tp} {msg}")
             if ok:
+                self._anotar_ticket(o.clave)
                 self._cancelar_todas()
                 return
 
@@ -450,8 +574,9 @@ class BotFR:
             if k in puestas:
                 continue
             if not self.broker.orden_valida(o, tk["bid"], tk["ask"]):
-                self.log(f"{k}: {o.lado} {o.precio} no se puede poner ahora (bid {tk['bid']} ask {tk['ask']}); se "
-                         f"reintenta en la proxima vela")
+                self.vigilar[k] = o
+                self.log(f"{k}: {o.lado} {o.precio} muy cerca del precio para ponerla (bid {tk['bid']} ask "
+                         f"{tk['ask']}): la vigilo este minuto y entro a mercado si la cruza")
                 continue
             vol = self.broker.volumen(self.riesgo_dinero(bal), o.riesgo_pts)
             if vol <= 0:
@@ -461,10 +586,47 @@ class BotFR:
             if not ok_m:
                 self.log(f"{k}: margen insuficiente ({margen:,.0f}) para {vol} lotes, no se pone")
                 continue
-            ok, msg = self.broker.poner_orden(o, vol)
+            ok, msg = self.broker.poner_orden(o, vol, vence=self.proximo_corte(ahora))
             self.log(f"{'PUESTA' if ok else 'FALLO'} {o.lado} {k} {vol} lotes a {o.precio} SL {o.sl} TP {o.tp} "
                      f"(riesgo {o.riesgo_pts:.1f} pts, vale hasta {o.hasta:%d-%m %H:%M}) {msg}")
+            if ok:
+                self._anotar_ticket(k)
+            elif getattr(self.broker, "ultimo_retcode", None) in PRECIO_INVALIDO:
+                self.vigilar[k] = o                       # el precio se movio entre la lectura y el envio
         self._tablero(ahora, tk)
+
+    def _vigilar(self, tk, ahora):
+        """STOP que el broker no dejo poner al abrir el minuto (muy cerca del precio): si el precio la cruza dentro del
+        minuto, entra a mercado con su SL/TP (el backtest la llenaria en esta vela)."""
+        if self.dry_run or self.broker.posiciones():
+            self.vigilar = {}
+            return
+        for k, o in list(self.vigilar.items()):
+            if ahora >= o.hasta:
+                self.vigilar.pop(k)
+                continue
+            cruzada = (tk["bid"] <= o.precio) if o.lado == "sell_stop" else (tk["ask"] >= o.precio)
+            if not cruzada:
+                continue
+            if (o.lado == "sell_stop" and tk["ask"] >= o.sl) or (o.lado == "buy_stop" and tk["bid"] <= o.sl):
+                self.vigilar.pop(k)
+                continue
+            if self.ultimo_balance is None:
+                return
+            vol = self.broker.volumen(self.riesgo_dinero(self.ultimo_balance), o.riesgo_pts)
+            if vol <= 0:
+                self.vigilar.pop(k)
+                continue
+            ok, msg = self.broker.abrir_mercado(o, vol)
+            self.log(f"{'ENTRADA A MERCADO' if ok else 'FALLO a mercado'} {o.lado} {k} {vol} lotes (STOP vigilada "
+                     f"{o.precio}, cruzada dentro del minuto) SL {o.sl} TP {o.tp} {msg}")
+            if ok:
+                self._anotar_ticket(k)
+                self.vigilar = {}
+                self._cancelar_todas()
+            else:
+                self.vigilar.pop(k)
+            return
 
     def _tablero(self, ahora, tk):
         if time.time() - self.ultimo_tablero < 900:
